@@ -1,4 +1,6 @@
 use_ssl: false
 recipients_csv: recipients.csv
 html_path: email.html
-subject_template: "Thank You, {name}!"
+subject_template: "Thank You for Joining Bluff & Bargain {name} at IOIT TENET 25 – Certificate Inside!"
+attachment_folder: attachments/
+log_folder: logs/

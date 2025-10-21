@@ -4,6 +4,9 @@
 # env variables
 .env
 
+logs/
+attachments/
+
 # Python virtual environments
 venv/
 env/

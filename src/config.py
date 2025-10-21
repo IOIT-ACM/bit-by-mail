@@ -17,6 +17,8 @@ class Settings:
     recipients_csv: str = "recipients.csv"
     html_path: str = "email.html"
     subject_template: str = "Thank You, {name}!"
+    attachment_folder: str = "certificates/"
+    log_folder: str = "logs/"
 
     @classmethod
     def from_yaml(cls, path: str = "config.yaml"):
@@ -24,7 +26,6 @@ class Settings:
             data = yaml.safe_load(f) or {}
         kwargs: Dict[str, Any] = {}
 
-        # Load non-sensitive config from YAML
         if "use_ssl" in data:
             kwargs["use_ssl"] = bool(data["use_ssl"])
         if "recipients_csv" in data:
@@ -33,9 +34,11 @@ class Settings:
             kwargs["html_path"] = data["html_path"]
         if "subject_template" in data:
             kwargs["subject_template"] = data["subject_template"]
+        if "attachment_folder" in data:
+            kwargs["attachment_folder"] = data["attachment_folder"]
+        if "log_folder" in data:
+            kwargs["log_folder"] = data["log_folder"]
 
-        # Load connection/sensitive config from environment variables.
-        # This will override any defaults if the environment variables are set.
         env_smtp_server = os.getenv("SMTP_SERVER")
         if env_smtp_server:
             kwargs["smtp_server"] = env_smtp_server

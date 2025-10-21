@@ -2,6 +2,9 @@ from typing import Optional, Union
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
+import os
 
 
 class Mailer:
@@ -17,33 +20,50 @@ class Mailer:
 
     def __enter__(self) -> "Mailer":
         if self.use_ssl:
-            conn = smtplib.SMTP_SSL(self.server, self.port)
-            conn.login(self.sender, self.password)
-            self._conn = conn
+            self._conn = smtplib.SMTP_SSL(self.server, self.port)
         else:
-            conn = smtplib.SMTP(self.server, self.port)
-            conn.ehlo()
-            conn.starttls()
-            conn.login(self.sender, self.password)
-            self._conn = conn
+            self._conn = smtplib.SMTP(self.server, self.port)
+            self._conn.ehlo()
+            self._conn.starttls()
+        self._conn.login(self.sender, self.password)
         return self
 
     def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
-        conn = self._conn
-        if conn is not None:
+        if self._conn is not None:
             try:
-                conn.quit()
+                self._conn.quit()
             finally:
                 self._conn = None
 
-    def send_html(self, to_email: str, subject: str, html_body: str) -> None:
-        conn = self._conn
-        if conn is None:
+    def send_email(
+        self,
+        to_email: str,
+        subject: str,
+        html_body: str,
+        attachment_path: str,
+    ) -> None:
+        if self._conn is None:
             raise RuntimeError("SMTP connection is not established")
-        msg = MIMEMultipart("alternative")
+
+        msg = MIMEMultipart("mixed")
         msg["From"] = self.sender
         msg["To"] = to_email
         msg["Subject"] = subject
-        part = MIMEText(html_body, "html")
+
+        msg_alternative = MIMEMultipart("alternative")
+        msg_alternative.attach(MIMEText(html_body, "html"))
+        msg.attach(msg_alternative)
+
+        with open(attachment_path, "rb") as attachment:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(attachment.read())
+
+        encoders.encode_base64(part)
+        filename = os.path.basename(attachment_path)
+        part.add_header(
+            "Content-Disposition",
+            f"attachment; filename= {filename}",
+        )
         msg.attach(part)
-        conn.send_message(msg)
+
+        self._conn.send_message(msg)
