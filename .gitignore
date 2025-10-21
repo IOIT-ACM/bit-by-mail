@@ -6,6 +6,7 @@
 
 logs/
 attachments/
+recipients.csv
 
 # Python virtual environments
 venv/
