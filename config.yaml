@@ -1,0 +1,4 @@
+use_ssl: false
+recipients_csv: recipients.csv
+html_path: email.html
+subject_template: "Thank You, {name}!"

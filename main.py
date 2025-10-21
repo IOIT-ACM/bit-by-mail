@@ -1,42 +1,40 @@
-import smtplib
-from email.mime.text import MIMEText
-import pandas as pd
+from src.config import settings
+from src.html_reader import load_html
+from src.recipients import load_recipients
+from src.mailer import Mailer
+from src.utils import format_subject
+import logging
 
-SMTP_SERVER = "mail.ioit.acm.org"
-SMTP_PORT = 587  # Usually 587 for TLS, 465 for SSL
-SENDER_EMAIL = "chair@ioit.acm.org"
-SENDER_PASSWORD = "chair@ioit.acm.org"
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-print("Loading recipients CSV...")
-recipients = pd.read_csv("recipients.csv")
-print(f"Loaded {len(recipients)} recipients.")
 
-print("Connecting to SMTP server...")
-with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-    print("Starting TLS...")
-    server.starttls()
-    print("Logging in...")
-    server.login(SENDER_EMAIL, SENDER_PASSWORD)
-    print("Logged in successfully.")
+def main():
+    logging.info("Loading recipients from %s", settings.recipients_csv)
+    recipients = load_recipients(settings.recipients_csv)
+    logging.info("Loaded %d recipients", len(recipients))
+    logging.info("Loading HTML content from %s", settings.html_path)
+    html = load_html(settings.html_path)
+    logging.info("Connecting to SMTP %s:%s", settings.smtp_server, settings.smtp_port)
+    with Mailer(
+        settings.smtp_server,
+        settings.smtp_port,
+        settings.sender_email,
+        settings.sender_password,
+        settings.use_ssl,
+    ) as mailer:
+        logging.info("Logged in as %s", settings.sender_email)
+        for idx, r in enumerate(recipients):
+            name = str(r.get("Name", ""))
+            to_email = str(r.get("Email", ""))
+            logging.info("Processing %d: %s <%s>", idx + 1, name, to_email)
+            subject = format_subject(settings.subject_template, name)
+            try:
+                mailer.send_html(to_email, subject, html)
+                logging.info("Sent to %s", to_email)
+            except Exception as e:
+                logging.exception("Failed to send to %s: %s", to_email, e)
+    logging.info("All done")
 
-    for index, row in recipients.iterrows():
-        print(f"\nProcessing row {index}...")
-        name = str(row["Name"])
-        to_email = str(row["Email"])
-        print(f"Preparing email for {name} <{to_email}>")
 
-        subject = f"Thank You, {name}!"
-        body = f"Hi {name},\n\nThis is a test email."
-
-        msg = MIMEText(body)
-        msg["From"] = SENDER_EMAIL
-        msg["To"] = to_email
-        msg["Subject"] = subject
-
-        try:
-            server.send_message(msg)
-            print(f"Sent email to {name} <{to_email}> successfully.")
-        except Exception as e:
-            print(f"Failed to send email to {name} <{to_email}>. Error: {e}")
-
-print("\nAll emails processed.")
+if __name__ == "__main__":
+    main()
