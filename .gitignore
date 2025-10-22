@@ -1,26 +1,23 @@
-# macOS system files
-.DS_Store
-
-# env variables
-.env
-
-logs/
-attachments/
-recipients.csv
-
-# Python virtual environments
+# Python
 venv/
-env/
-*.pyc
-*.pyo
-*.pyd
 __pycache__/
+*.pyc
+*.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+npm-debug.log
+
+# Data
+data/uploads/
+data/attachments/
 
 scripts
+logs
+attachments
+recipients.csv
 
-# Python-related IDEs (like PyCharm, VSCode)
-.idea/
+# IDE
 .vscode/
-
-# Log files
-*.log
+.idea/

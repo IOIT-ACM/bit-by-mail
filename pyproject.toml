@@ -1,0 +1,9 @@
+[project]
+name = "bit-by-mail"
+version = "1.0.0"
+description = "Tornado backend for the bulk mailer application."
+requires-python = ">=3.9"
+dependencies = [
+    "tornado>=6.4",
+    "pandas>=2.0.0",
+]

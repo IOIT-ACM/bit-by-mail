@@ -1,6 +1,0 @@
-use_ssl: false
-recipients_csv: recipients.csv
-html_path: email.html
-subject_template: "TENET Hackathon 2025 — Certificate of Appreciation for {Name}"
-attachment_folder: attachments/hack/
-log_folder: logs/
