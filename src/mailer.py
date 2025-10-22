@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 import os
+import logging
 
 
 class Mailer:
@@ -19,18 +20,28 @@ class Mailer:
         self._conn: Optional[Union[smtplib.SMTP, smtplib.SMTP_SSL]] = None
 
     def __enter__(self) -> "Mailer":
+        logging.info(f"Connecting to SMTP server {self.server}:{self.port}...")
         if self.use_ssl:
+            logging.info("Using SSL for connection.")
             self._conn = smtplib.SMTP_SSL(self.server, self.port)
         else:
+            logging.info("Using standard SMTP with STARTTLS.")
             self._conn = smtplib.SMTP(self.server, self.port)
+            logging.info("Sending EHLO command...")
             self._conn.ehlo()
+            logging.info("Initiating TLS handshake...")
             self._conn.starttls()
+            logging.info("TLS handshake successful.")
+
+        logging.info(f"Logging in as {self.sender}...")
         self._conn.login(self.sender, self.password)
+        logging.info("SMTP login successful.")
         return self
 
     def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
         if self._conn is not None:
             try:
+                logging.info("Closing SMTP connection.")
                 self._conn.quit()
             finally:
                 self._conn = None

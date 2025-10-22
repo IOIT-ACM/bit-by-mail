@@ -16,6 +16,8 @@ env/
 *.pyd
 __pycache__/
 
+scripts
+
 # Python-related IDEs (like PyCharm, VSCode)
 .idea/
 .vscode/
