@@ -88,7 +88,7 @@ class MailerService:
 
     def _process_recipient(self, server, config, html_template, recipient):
         email = recipient.get("Email")
-        attachment_file = recipient.get("CertificateFile")
+        attachment_file = recipient.get("AttachmentFile")
 
         if not email or not attachment_file:
             return "SKIPPED", "Missing email or attachment file name."

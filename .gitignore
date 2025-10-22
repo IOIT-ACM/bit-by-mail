@@ -12,6 +12,7 @@ npm-debug.log
 # Data
 data/uploads/
 data/attachments/
+settings.json
 
 scripts
 logs

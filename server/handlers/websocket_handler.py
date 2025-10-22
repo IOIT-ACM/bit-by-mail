@@ -22,6 +22,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 config = await self.config_service.get_full_config()
                 recipients = await self.config_service.get_recipients()
                 template = await self.config_service.get_template()
+                is_password_set = bool(config.get("sender_password"))
                 config.pop("sender_password", None)
                 self.write_message(
                     json.dumps(
@@ -31,6 +32,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                                 "config": config,
                                 "recipients": recipients,
                                 "template": template,
+                                "is_password_set": is_password_set,
                             },
                         }
                     )
@@ -99,12 +101,24 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                         )
                     )
                 else:
+                    stored_config = await self.config_service.get_full_config()
+                    client_config = payload.get("config", {})
+                    if not client_config.get("sender_password"):
+                        client_config["sender_password"] = stored_config.get(
+                            "sender_password"
+                        )
                     await self.mailer_service.start_mailing(
-                        payload.get("config"), payload.get("recipients")
+                        client_config, payload.get("recipients")
                     )
 
             elif action == "preflight_check":
-                result = self.preflight_service.run_checks(payload)
+                stored_config = await self.config_service.get_full_config()
+                client_config = payload or {}
+                if not client_config.get("sender_password"):
+                    client_config["sender_password"] = stored_config.get(
+                        "sender_password"
+                    )
+                result = self.preflight_service.run_checks(client_config)
                 self.write_message(
                     json.dumps(
                         {"action": "preflight_result", "payload": result.to_dict()}

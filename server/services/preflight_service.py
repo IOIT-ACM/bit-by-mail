@@ -92,12 +92,12 @@ class PreflightService:
             if not recipients_to_process.empty:
                 for index, row in recipients_to_process.iterrows():
                     row_num = cast(int, index) + 2
-                    cert_file = str(row.get("CertificateFile", "")).strip()
+                    cert_file = str(row.get("AttachmentFile", "")).strip()
                     name = row.get("Name", f"Row {row_num}")
 
                     if not cert_file:
                         warnings.append(
-                            f"Row {row_num}: Recipient '{name}' has an empty 'CertificateFile' field."
+                            f"Row {row_num}: Recipient '{name}' has an empty 'AttachmentFile' field."
                         )
                         continue
 

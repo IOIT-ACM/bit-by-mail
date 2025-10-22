@@ -1,8 +1,0 @@
-{
-  "smtp_server": "mail.ioit.acm.org",
-  "smtp_port": 587,
-  "sender_email": "tenet@ioit.acm.org",
-  "use_ssl": false,
-  "subject_template": "Hello {Name}!",
-  "attachment_folder": "attachments/"
-}

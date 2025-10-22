@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import base64
 from tornado.ioloop import IOLoop
+from . import crypto_service
 
 
 class ConfigService:
@@ -20,12 +21,21 @@ class ConfigService:
             "use_ssl": False,
             "subject_template": "Hello {Name}!",
             "attachment_folder": "attachments/",
+            "sender_password": "",
         }
         if not os.path.exists(self.settings_path):
             return defaults
         try:
             with open(self.settings_path, "r") as f:
                 stored_settings = json.load(f)
+
+            if "sender_password_encrypted" in stored_settings:
+                decrypted_password = crypto_service.decrypt(
+                    stored_settings["sender_password_encrypted"]
+                )
+                stored_settings["sender_password"] = decrypted_password
+                del stored_settings["sender_password_encrypted"]
+
             defaults.update(stored_settings)
             return defaults
         except (IOError, json.JSONDecodeError):
@@ -40,6 +50,19 @@ class ConfigService:
             "subject_template": data.get("subject_template"),
             "attachment_folder": data.get("attachment_folder"),
         }
+
+        password_to_save = data.get("sender_password")
+        if password_to_save:
+            encrypted_password = crypto_service.encrypt(password_to_save)
+            settings_to_save["sender_password_encrypted"] = encrypted_password
+        else:
+            current_config = self._read_config()
+            if current_config.get("sender_password"):
+                encrypted_password = crypto_service.encrypt(
+                    current_config["sender_password"]
+                )
+                settings_to_save["sender_password_encrypted"] = encrypted_password
+
         with open(self.settings_path, "w") as f:
             json.dump(settings_to_save, f, indent=2)
 

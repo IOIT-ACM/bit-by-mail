@@ -18,35 +18,51 @@ export const useWebSocket = () => {
           setRecipients(payload);
           break;
         case "status_update":
-          addLog(
-            `[${payload.status}] To: ${payload.email} - ${payload.details}`,
-          );
+          const statusLevelMap: { [key: string]: string } = {
+            SENT: "success",
+            ERROR: "error",
+            SKIPPED: "warn",
+          };
+          const level = statusLevelMap[payload.status.toUpperCase()] || "info";
+          addLog({
+            level,
+            message: `To: ${payload.email} - ${payload.details}`,
+          });
           setRecipients(payload.recipients);
           break;
         case "log":
-          addLog(`[${payload.level.toUpperCase()}] ${payload.message}`);
+          addLog({ level: payload.level, message: payload.message });
           break;
         case "finish":
           setIsSending(false);
           break;
         case "preflight_result":
-          addLog("--- PREFLIGHT CHECK RESULTS ---");
+          addLog({ level: "info", message: "--- PREFLIGHT CHECK RESULTS ---" });
           if (payload.ok) {
-            addLog("[SUCCESS] All preflight checks passed.");
+            addLog({
+              level: "success",
+              message: "All preflight checks passed.",
+            });
           } else {
-            addLog(
-              "[ERROR] Preflight checks failed. Please review the errors below.",
-            );
+            addLog({
+              level: "error",
+              message:
+                "Preflight checks failed. Please review the errors below.",
+            });
           }
           if (payload.errors && payload.errors.length > 0) {
-            addLog("ERRORS:");
-            payload.errors.forEach((err: string) => addLog(`- ${err}`));
+            addLog({ level: "info", message: "ERRORS:" });
+            payload.errors.forEach((err: string) =>
+              addLog({ level: "error", message: `- ${err}` }),
+            );
           }
           if (payload.warnings && payload.warnings.length > 0) {
-            addLog("WARNINGS:");
-            payload.warnings.forEach((warn: string) => addLog(`- ${warn}`));
+            addLog({ level: "info", message: "WARNINGS:" });
+            payload.warnings.forEach((warn: string) =>
+              addLog({ level: "warn", message: `- ${warn}` }),
+            );
           }
-          addLog("-----------------------------");
+          addLog({ level: "info", message: "-----------------------------" });
           break;
         case "notify":
           break;

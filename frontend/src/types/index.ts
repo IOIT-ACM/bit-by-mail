@@ -11,9 +11,14 @@ export interface Config {
 export interface Recipient {
   Name: string;
   Email: string;
-  CertificateFile: string;
+  AttachmentFile: string;
   Status: string;
   [key: string]: string;
+}
+
+export interface LogEntry {
+  level: string;
+  message: string;
 }
 
 export interface AppState {
@@ -21,6 +26,7 @@ export interface AppState {
   sender_password: string;
   recipients: Recipient[];
   emailBody: string;
-  logs: string[];
+  logs: LogEntry[];
   isSending: boolean;
+  isPasswordSet: boolean;
 }

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppState, Recipient, Config } from "../types";
+import { AppState, Recipient, Config, LogEntry } from "../types";
 
 interface AppActions {
   setConfig: (config: Omit<Config, "sender_password">) => void;
@@ -7,13 +7,14 @@ interface AppActions {
   setRecipients: (recipients: Recipient[]) => void;
   updateRecipient: (index: number, recipient: Recipient) => void;
   setEmailBody: (body: string) => void;
-  addLog: (log: string) => void;
+  addLog: (log: LogEntry) => void;
   clearLogs: () => void;
   setIsSending: (isSending: boolean) => void;
   setInitialData: (data: {
     config: Config;
     recipients: Recipient[];
     template: string;
+    is_password_set: boolean;
   }) => void;
 }
 
@@ -33,6 +34,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   emailBody: "",
   logs: [],
   isSending: false,
+  isPasswordSet: false,
 
   setConfig: (config) => set({ config }),
   setSenderPassword: (password) => set({ sender_password: password }),
@@ -54,6 +56,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       sender_password: "",
       recipients: data.recipients,
       emailBody: data.template,
+      isPasswordSet: data.is_password_set,
     });
   },
 }));

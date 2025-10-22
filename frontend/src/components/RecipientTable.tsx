@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { Recipient } from '../types';
+import { Upload, Download } from 'lucide-react';
 
 interface RecipientTableProps {
   sendMessage: (action: string, payload?: any) => void;
@@ -15,17 +16,12 @@ const RecipientTable: React.FC<RecipientTableProps> = ({ sendMessage }) => {
       isFirstRender.current = false;
       return;
     }
-
     const handler = setTimeout(() => {
       if (recipients.length > 0) {
-        console.log('Autosaving recipients...');
         sendMessage('save_recipients', recipients);
       }
     }, 1500);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    return () => clearTimeout(handler);
   }, [recipients, sendMessage]);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -43,45 +39,69 @@ const RecipientTable: React.FC<RecipientTableProps> = ({ sendMessage }) => {
 
   const handleCellChange = (index: number, field: keyof Recipient, value: string) => {
     const recipient = recipients[index];
-    const updatedRecipient = { ...recipient, [field]: value };
-    updateRecipient(index, updatedRecipient);
+    updateRecipient(index, { ...recipient, [field]: value });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusClasses = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'SENT': return 'text-green-600';
-      case 'ERROR': return 'text-red-600';
-      case 'SKIPPED': return 'text-yellow-500';
-      default: return 'text-gray-500';
+      case 'SENT': return 'bg-status-success-bg text-status-success-text';
+      case 'ERROR': return 'bg-status-danger-bg text-status-danger-text';
+      case 'SKIPPED': return 'bg-status-info-bg text-status-info-text';
+      default: return 'bg-surface-element text-text-secondary';
     }
   };
 
+  const handleDownloadSample = () => {
+    const csvContent = "Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING";
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "sample_recipients.csv");
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="bg-white p-4 rounded-lg shadow-md flex flex-col">
+    <div className="bg-surface-card backdrop-blur-xl border border-borders-primary rounded-card shadow-card p-6 flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">Recipients (Changes save automatically)</h2>
-        <input type="file" id="csv-upload" accept=".csv" onChange={handleFileUpload} className="hidden" />
-        <label htmlFor="csv-upload" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded cursor-pointer">
-		Upload data
-        </label>
+        <h2 className="text-heading-3 font-medium text-text-primary">Recipients ({recipients.length})</h2>
+        <div className="flex items-center gap-2">
+          <button onClick={handleDownloadSample} className="flex items-center gap-2 h-10 px-4 rounded-button text-sm font-medium transition-colors duration-200 bg-surface-element hover:bg-surface-element-hover text-text-secondary cursor-pointer">
+            <Download size={16} />
+            <span>Sample Data</span>
+          </button>
+          <input type="file" id="csv-upload" accept=".csv" onChange={handleFileUpload} className="hidden" />
+          <label htmlFor="csv-upload" className="flex items-center gap-2 h-10 px-4 rounded-button text-sm font-medium transition-colors duration-200 bg-accent-green/20 hover:bg-accent-green/30 text-accent-green cursor-pointer">
+            <Upload size={16} />
+            <span>Upload Data</span>
+          </label>
+        </div>
       </div>
-      <div className="overflow-auto flex-grow" style={{ maxHeight: '400px' }}>
+      <div className="overflow-auto flex-grow -mr-3 pr-3" style={{ maxHeight: '400px' }}>
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+          <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-surface-card/80 backdrop-blur-sm">
             <tr>
-              <th scope="col" className="px-4 py-2">Name</th>
-              <th scope="col" className="px-4 py-2">Email</th>
-              <th scope="col" className="px-4 py-2">Attachment File</th>
-              <th scope="col" className="px-4 py-2">Status</th>
+              <th scope="col" className="px-4 py-3">Name</th>
+              <th scope="col" className="px-4 py-3">Email</th>
+              <th scope="col" className="px-4 py-3">Certificate File</th>
+              <th scope="col" className="px-4 py-3 text-center">Status</th>
             </tr>
           </thead>
           <tbody>
             {recipients.map((recipient, index) => (
-              <tr key={index} className="bg-white border-b hover:bg-gray-50">
-                <td className="px-4 py-2"><input type="text" value={recipient.Name} onChange={(e) => handleCellChange(index, 'Name', e.target.value)} className="bg-transparent w-full outline-none" /></td>
-                <td className="px-4 py-2"><input type="text" value={recipient.Email} onChange={(e) => handleCellChange(index, 'Email', e.target.value)} className="bg-transparent w-full outline-none" /></td>
-                <td className="px-4 py-2"><input type="text" value={recipient.CertificateFile} onChange={(e) => handleCellChange(index, 'CertificateFile', e.target.value)} className="bg-transparent w-full outline-none" /></td>
-                <td className={`px-4 py-2 font-mono font-semibold ${getStatusColor(recipient.Status)}`}>{recipient.Status || 'PENDING'}</td>
+              <tr key={index} className="border-b border-borders-primary hover:bg-surface-element/50 transition-colors">
+                <td className="p-1"><input type="text" value={recipient.Name} onChange={(e) => handleCellChange(index, 'Name', e.target.value)} className="bg-transparent w-full outline-none px-3 py-2 rounded-md focus:bg-surface-element" /></td>
+                <td className="p-1"><input type="text" value={recipient.Email} onChange={(e) => handleCellChange(index, 'Email', e.target.value)} className="bg-transparent w-full outline-none px-3 py-2 rounded-md focus:bg-surface-element" /></td>
+                <td className="p-1"><input type="text" value={recipient.AttachmentFile} onChange={(e) => handleCellChange(index, 'AttachmentFile', e.target.value)} className="bg-transparent w-full outline-none px-3 py-2 rounded-md focus:bg-surface-element" /></td>
+                <td className="px-4 py-2 text-center">
+                  <span className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full ${getStatusClasses(recipient.Status)}`}>
+                    {recipient.Status || 'PENDING'}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
