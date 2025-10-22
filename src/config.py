@@ -9,15 +9,15 @@ load_dotenv()
 
 @dataclass
 class Settings:
-    smtp_server: str = "mail.ioit.acm.org"
+    smtp_server: str = ""
     smtp_port: int = 587
     use_ssl: bool = False
-    sender_email: str = "chair@ioit.acm.org"
+    sender_email: str = ""
     sender_password: str = ""
     recipients_csv: str = "recipients.csv"
     html_path: str = "email.html"
     subject_template: str = "Thank You, {name}!"
-    attachment_folder: str = "certificates/"
+    attachment_folder: str = "attachments/"
     log_folder: str = "logs/"
 
     @classmethod
