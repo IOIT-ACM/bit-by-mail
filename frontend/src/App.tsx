@@ -6,6 +6,7 @@ import RecipientTable from './components/RecipientTable';
 import StatusBar from './components/StatusBar';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAppStore } from './store/useAppStore';
+import { CampaignSummaryModal } from './components/shared/CampaignSummaryModal';
 import { EmailPreviewModal } from './components/shared/EmailPreviewModal';
 import { AnimatePresence } from 'framer-motion';
 
@@ -15,8 +16,7 @@ const App: React.FC = () => {
   const [editorWidth, setEditorWidth] = useState(40);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
-
-  const { previewRecipient, setPreviewRecipient } = useAppStore();
+  const { previewRecipient, setPreviewRecipient, showCampaignSummaryModal } = useAppStore();
 
   useEffect(() => {
     const handleResize = () => {
@@ -84,6 +84,7 @@ const App: React.FC = () => {
 
       <AnimatePresence>
         {previewRecipient && <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />}
+        {showCampaignSummaryModal && <CampaignSummaryModal />}
       </AnimatePresence>
     </div>
   );

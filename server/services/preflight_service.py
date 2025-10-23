@@ -32,6 +32,62 @@ class PreflightService:
         self.recipient_service = recipient_service
         self.template_service = template_service
 
+    def _replace_placeholders(
+        self, template_string: str, recipient_dict: Dict[str, Any]
+    ) -> str:
+        for key, value in recipient_dict.items():
+            placeholder = f"{{{{{key}}}}}"
+            template_string = template_string.replace(placeholder, str(value))
+        return template_string
+
+    def get_campaign_summary(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            recipients_df = pd.read_csv(self.recipient_service.recipients_path)
+        except FileNotFoundError:
+            recipients_df = pd.DataFrame(columns=["Status", "AttachmentFile"])
+
+        total_recipients = len(recipients_df)
+
+        recipients_to_send_df = recipients_df[
+            recipients_df["Status"].str.upper() != "SENT"
+        ]
+        recipients_to_send_count = len(recipients_to_send_df)
+
+        total_attachment_size = 0
+        attachment_folder = config.get("attachment_folder", "")
+        if (
+            config.get("send_attachments", True)
+            and attachment_folder
+            and os.path.isdir(attachment_folder)
+        ):
+            for _, row in recipients_to_send_df.iterrows():
+                attachment_file = str(row.get("AttachmentFile", "")).strip()
+                if attachment_file:
+                    file_path = os.path.join(attachment_folder, attachment_file)
+                    if os.path.exists(file_path) and os.path.isfile(file_path):
+                        total_attachment_size += os.path.getsize(file_path)
+
+        preview_subject = "No pending recipients to preview."
+        preview_body = "<p>No pending recipients to preview.</p>"
+        if not recipients_to_send_df.empty:
+            first_recipient = recipients_to_send_df.iloc[0].to_dict()
+            subject_template = config.get("subject_template", "")
+            html_template = self.template_service._read_file(
+                self.template_service.template_path
+            )
+            preview_subject = self._replace_placeholders(
+                subject_template, first_recipient
+            )
+            preview_body = self._replace_placeholders(html_template, first_recipient)
+
+        return {
+            "total_recipients": total_recipients,
+            "recipients_to_send": recipients_to_send_count,
+            "total_attachment_size_bytes": total_attachment_size,
+            "preview_subject": preview_subject,
+            "preview_body": preview_body,
+        }
+
     def _extract_placeholders(self, text: str) -> set:
         return set(re.findall(r"\{\{([^}]+)\}\}", text))
 

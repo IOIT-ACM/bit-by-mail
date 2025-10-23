@@ -126,7 +126,7 @@ const RecipientTableContent: React.FC<{
       </div>
       <div className="overflow-auto flex-grow -mr-3 pr-3" style={!isMaximized ? { maxHeight: '400px' } : {}}>
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-surface-card/80 backdrop-blur-sm">
+          <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-surface-card">
             <tr>
               <th scope="col" className="px-4 py-3 w-16 text-center">
                 #

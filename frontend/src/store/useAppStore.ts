@@ -4,6 +4,7 @@ import {
   Recipient,
   Config,
   LogEntry,
+  CampaignSummary,
   RecipientIssue,
 } from "../types";
 
@@ -29,6 +30,8 @@ interface AppActions {
   setProgress: (progress: number) => void;
   setRecipientIssues: (issues: Record<number, RecipientIssue>) => void;
   clearRecipientIssues: () => void;
+  setShowCampaignSummaryModal: (show: boolean) => void;
+  setCampaignSummary: (summary: CampaignSummary | null) => void;
 }
 
 const emptyConfig: Omit<Config, "sender_password"> = {
@@ -53,6 +56,8 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   previewRecipient: null,
   progress: 0,
   recipientIssues: {},
+  showCampaignSummaryModal: false,
+  campaignSummary: null,
 
   setConfig: (config) => set({ config }),
   setSenderPassword: (password) => set({ sender_password: password }),
@@ -89,4 +94,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   setProgress: (progress) => set({ progress }),
   setRecipientIssues: (issues) => set({ recipientIssues: issues }),
   clearRecipientIssues: () => set({ recipientIssues: {} }),
+  setShowCampaignSummaryModal: (show) =>
+    set({ showCampaignSummaryModal: show }),
+  setCampaignSummary: (summary) => set({ campaignSummary: summary }),
 }));

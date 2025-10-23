@@ -27,6 +27,14 @@ export interface RecipientIssue {
   message: string;
 }
 
+export interface CampaignSummary {
+  total_recipients: number;
+  recipients_to_send: number;
+  total_attachment_size_bytes: number;
+  preview_subject: string;
+  preview_body: string;
+}
+
 export interface AppState {
   config: Omit<Config, "sender_password">;
   sender_password: string;
@@ -39,4 +47,6 @@ export interface AppState {
   previewRecipient: Recipient | null;
   progress: number;
   recipientIssues: Record<number, RecipientIssue>;
+  showCampaignSummaryModal: boolean;
+  campaignSummary: CampaignSummary | null;
 }

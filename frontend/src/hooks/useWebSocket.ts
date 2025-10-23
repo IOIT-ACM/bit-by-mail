@@ -15,6 +15,8 @@ export const useWebSocket = () => {
     setProgress,
     setRecipientIssues,
     clearRecipientIssues,
+    setCampaignSummary,
+    setShowCampaignSummaryModal,
   } = useAppStore();
 
   const onMessage = useCallback(
@@ -114,6 +116,10 @@ export const useWebSocket = () => {
           }
           setRecipientIssues(issues);
           break;
+        case "campaign_summary":
+          setCampaignSummary(payload);
+          setShowCampaignSummaryModal(true);
+          break;
       }
     },
     [
@@ -126,6 +132,8 @@ export const useWebSocket = () => {
       setRecipientIssues,
       clearRecipientIssues,
       setConnectionStatus,
+      setCampaignSummary,
+      setShowCampaignSummaryModal,
     ],
   );
 

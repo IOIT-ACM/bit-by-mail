@@ -56,6 +56,12 @@ class ApiService {
     this.sendMessage("start_mailing", { config: fullConfig, recipients });
   }
 
+  getCampaignSummary() {
+    const { config, sender_password } = useAppStore.getState();
+    const fullConfig = { ...config, sender_password };
+    this.sendMessage("get_campaign_summary", fullConfig);
+  }
+
   runPreflightCheck(configOverride?: Config) {
     const { config, sender_password, clearLogs } = useAppStore.getState();
     clearLogs();

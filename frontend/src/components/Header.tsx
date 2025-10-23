@@ -37,7 +37,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSettings }) => {
 
   const handleSend = () => {
     if (isSending) return;
-    apiService.startMailing();
+    apiService.getCampaignSummary();
   };
 
   const handlePreflight = () => {

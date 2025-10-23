@@ -19,6 +19,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "save_recipients": self._handle_save_recipients,
             "start_mailing": self._handle_start_mailing,
             "preflight_check": self._handle_preflight_check,
+            "get_campaign_summary": self._handle_get_campaign_summary,
         }
 
     def on_close(self):
@@ -112,6 +113,17 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         result = self.preflight_service.run_checks(client_config)
         self.write_message(
             json.dumps({"action": "preflight_result", "payload": result.to_dict()})
+        )
+
+    async def _handle_get_campaign_summary(self, payload):
+        stored_config = await self.settings_service.get_config()
+        client_config = payload or {}
+        if not client_config.get("sender_password"):
+            client_config["sender_password"] = stored_config.get("sender_password")
+
+        summary = self.preflight_service.get_campaign_summary(client_config)
+        self.write_message(
+            json.dumps({"action": "campaign_summary", "payload": summary})
         )
 
     def check_origin(self, origin):
