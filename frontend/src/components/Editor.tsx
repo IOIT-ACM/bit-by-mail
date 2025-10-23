@@ -48,7 +48,7 @@ const EditorContent: React.FC<{
         <div>
           <h2 className="text-heading-3 font-medium text-text-primary">Email Content</h2>
           {!isMaximized && (
-            <p className="text-sm text-text-secondary mt-1">Use placeholders like <code className="text-xs bg-surface-element px-1 py-0.5 rounded">{"{Name}"}</code>. Changes are saved automatically.</p>
+            <p className="text-sm text-text-secondary mt-1">Use placeholders like <code className="text-xs bg-surface-element px-1 py-0.5 rounded">{"{{Name}}"}</code>. Changes are saved automatically.</p>
           )}
         </div>
         <button

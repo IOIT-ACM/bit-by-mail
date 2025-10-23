@@ -97,7 +97,7 @@ const RecipientTableContent: React.FC<{
             <tr>
               <th scope="col" className="px-4 py-3">Name</th>
               <th scope="col" className="px-4 py-3">Email</th>
-              <th scope="col" className="px-4 py-3">Certificate File</th>
+              <th scope="col" className="px-4 py-3">Attachment File</th>
               <th scope="col" className="px-4 py-3 text-center">Status</th>
             </tr>
           </thead>

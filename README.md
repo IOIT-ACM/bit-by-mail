@@ -84,4 +84,4 @@ Your `recipients.csv` file should have the following columns. You can upload thi
 - `AttachmentFile`: The filename of the attachment for this recipient (must exist in your configured attachment folder).
 - `Status`: The initial status, typically `PENDING`.
 
-Any other columns you add can be used as placeholders in your email template (e.g., a column named `EventName` can be used as `{EventName}`).
+Any other columns you add can be used as placeholders in your email template (e.g., a column named `EventName` can be used as `{{EventName}}`).

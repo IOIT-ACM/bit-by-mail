@@ -26,7 +26,7 @@ const emptyConfig: Omit<Config, "sender_password"> = {
   smtp_port: 587,
   sender_email: "",
   use_ssl: false,
-  subject_template: "Hello {Name}!",
+  subject_template: "Hello {{Name}}!",
   attachment_folder: "attachments/",
 };
 

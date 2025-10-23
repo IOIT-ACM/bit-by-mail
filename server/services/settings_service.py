@@ -14,7 +14,7 @@ class SettingsService:
             "smtp_port": 587,
             "sender_email": "",
             "use_ssl": False,
-            "subject_template": "Hello {Name}!",
+            "subject_template": "Hello {{Name}}!",
             "attachment_folder": "attachments/",
             "sender_password": "",
         }

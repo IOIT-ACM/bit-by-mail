@@ -1,5 +1,5 @@
 import os
-import string
+import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, cast
 import pandas as pd
@@ -29,6 +29,22 @@ class PreflightService:
         self.base_dir = base_dir
         self.recipient_service = recipient_service
         self.template_service = template_service
+
+    def _extract_placeholders(self, text: str) -> set:
+        return set(re.findall(r"\{\{([^}]+)\}\}", text))
+
+    def _extract_body_placeholders_with_lines(
+        self, html_content: str
+    ) -> Dict[str, List[int]]:
+        placeholders = {}
+        lines = html_content.splitlines()
+        for i, line in enumerate(lines):
+            found = re.findall(r"\{\{([^}]+)\}\}", line)
+            for placeholder in found:
+                if placeholder not in placeholders:
+                    placeholders[placeholder] = []
+                placeholders[placeholder].append(i + 1)
+        return placeholders
 
     def _check_config_variables(self, config: Dict[str, Any], result: PreflightResult):
         errors = []
@@ -82,65 +98,90 @@ class PreflightService:
         )
         subject_template = config.get("subject_template", "")
 
+        html_template = ""
+        try:
+            with open(self.template_service.template_path, "r", encoding="utf-8") as f:
+                html_template = f.read()
+        except Exception as e:
+            errors.append(f"Could not read HTML template file: {e}")
+            result.errors.extend(errors)
+            return
+
         try:
             recipients_df = pd.read_csv(self.recipient_service.recipients_path)
-
-            try:
-                placeholders = {
-                    field_name.lower()
-                    for _, field_name, _, _ in string.Formatter().parse(
-                        subject_template
-                    )
-                    if field_name is not None
-                }
-                csv_columns_lower = {col.lower() for col in recipients_df.columns}
-                missing_columns = placeholders - csv_columns_lower
-                if missing_columns:
-                    errors.append(
-                        f"Subject template requires column(s) not found in CSV: {', '.join(missing_columns)}"
-                    )
-            except ValueError as e:
-                warnings.append(f"Could not parse subject template: {e}")
-
-            if not errors:
-                result.successes.append(
-                    "Recipients CSV is readable and columns match subject template."
-                )
-
-            recipients_to_process = recipients_df[
-                recipients_df["Status"].str.upper() != "SENT"
-            ]
-            if not recipients_to_process.empty:
-                missing_attachments = False
-                for index, row in recipients_to_process.iterrows():
-                    row_num = cast(int, index) + 2
-                    cert_file = str(row.get("AttachmentFile", "")).strip()
-                    name = row.get("Name", f"Row {row_num}")
-
-                    if not cert_file:
-                        warnings.append(
-                            f"Row {row_num}: Recipient '{name}' has an empty 'AttachmentFile' field."
-                        )
-                        continue
-
-                    full_path = os.path.join(attachment_folder, cert_file)
-                    if not os.path.exists(full_path):
-                        warnings.append(
-                            f"Row {row_num}: Attachment '{cert_file}' for '{name}' not found."
-                        )
-                        missing_attachments = True
-
-                if not missing_attachments:
-                    result.successes.append(
-                        "All required attachment files for pending recipients were found."
-                    )
-
+            csv_columns = set(recipients_df.columns)
         except FileNotFoundError:
-            pass
+            return
         except (pd.errors.ParserError, Exception) as e:
             errors.append(
                 f"Error processing '{self.recipient_service.recipients_path}': {e}"
             )
+            result.errors.extend(errors)
+            return
+
+        missing_column_errors = []
+        subject_placeholders = self._extract_placeholders(subject_template)
+        missing_in_subject = subject_placeholders - csv_columns
+        for col in sorted(list(missing_in_subject)):
+            missing_column_errors.append(
+                f"Missing column '{{{{{col}}}}}' required by the email subject."
+            )
+
+        body_placeholders_with_lines = self._extract_body_placeholders_with_lines(
+            html_template
+        )
+        missing_in_body = set(body_placeholders_with_lines.keys()) - csv_columns
+        for col in sorted(list(missing_in_body)):
+            lines = body_placeholders_with_lines[col]
+            line_str = ", ".join(map(str, lines))
+            missing_column_errors.append(
+                f"Missing column '{{{{{col}}}}}' required by the email body on line(s): {line_str}."
+            )
+
+        if not missing_column_errors:
+            result.successes.append(
+                "Recipients CSV is readable and all columns required by templates are present."
+            )
+        else:
+            errors.extend(missing_column_errors)
+
+        if not recipients_df.empty:
+            any_pending_attachments_missing = False
+            all_attachments_found = True
+
+            for index, row in recipients_df.iterrows():
+                row_num = cast(int, index) + 2
+                cert_file = str(row.get("AttachmentFile", "")).strip()
+                name = row.get("Name", f"Row {row_num}")
+                status = str(row.get("Status", "")).strip().upper()
+
+                if not cert_file:
+                    warnings.append(
+                        f"Row {row_num}: Recipient '{name}' has an empty 'AttachmentFile' field."
+                    )
+                    continue
+
+                full_path = os.path.join(attachment_folder, cert_file)
+                if not os.path.exists(full_path):
+                    all_attachments_found = False
+                    if status == "SENT":
+                        warnings.append(
+                            f"Row {row_num}: Attachment '{cert_file}' for '{name}' is missing, but email was already marked as SENT."
+                        )
+                    else:
+                        errors.append(
+                            f"Row {row_num}: Attachment '{cert_file}' for '{name}' not found."
+                        )
+                        any_pending_attachments_missing = True
+
+            if all_attachments_found:
+                result.successes.append(
+                    "All attachment files listed in the CSV were found."
+                )
+            elif not any_pending_attachments_missing:
+                result.successes.append(
+                    "All required attachment files for pending recipients were found."
+                )
 
         result.errors.extend(errors)
         result.warnings.extend(warnings)

@@ -41,6 +41,12 @@ class MailerService:
             None, self._run_mailing_loop, config, recipients, html_template
         )
 
+    def _replace_placeholders(self, template_string, recipient_dict):
+        for key, value in recipient_dict.items():
+            placeholder = f"{{{{{key}}}}}"
+            template_string = template_string.replace(placeholder, str(value))
+        return template_string
+
     def _run_mailing_loop(self, config, recipients, html_template):
         recipients_df = pd.DataFrame()
         try:
@@ -103,12 +109,14 @@ class MailerService:
             msg = MIMEMultipart()
             msg["From"] = config["sender_email"]
             msg["To"] = email
-            msg["Subject"] = config["subject_template"].format(**recipient)
+            subject = self._replace_placeholders(config["subject_template"], recipient)
+            msg["Subject"] = subject
 
             self._broadcast_log(
                 "info", f"Composing email with subject: \"{msg['Subject']}\""
             )
-            msg.attach(MIMEText(html_template.format(**recipient), "html"))
+            body = self._replace_placeholders(html_template, recipient)
+            msg.attach(MIMEText(body, "html"))
 
             self._broadcast_log("info", f"Attaching file: {attachment_path}")
             with open(attachment_path, "rb") as attachment:
