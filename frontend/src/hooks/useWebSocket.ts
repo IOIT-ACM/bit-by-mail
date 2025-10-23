@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { apiService } from "../services/apiService";
+import { Recipient, RecipientIssue } from "../types";
 
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
@@ -11,6 +12,9 @@ export const useWebSocket = () => {
     setIsSending,
     clearLogs,
     setConnectionStatus,
+    setProgress,
+    setRecipientIssues,
+    clearRecipientIssues,
   } = useAppStore();
 
   const onMessage = useCallback(
@@ -39,14 +43,25 @@ export const useWebSocket = () => {
             message: `To: ${payload.email} - ${payload.details}`,
           });
           setRecipients(payload.recipients);
+
+          const updatedRecipients = payload.recipients as Recipient[];
+          const total = updatedRecipients.length;
+          if (total > 0) {
+            const processed = updatedRecipients.filter(
+              (r) => r.Status && r.Status.toUpperCase() !== "PENDING",
+            ).length;
+            setProgress((processed / total) * 100);
+          }
           break;
         case "log":
           addLog({ level: payload.level, message: payload.message });
           break;
         case "finish":
           setIsSending(false);
+          setProgress(100);
           break;
         case "preflight_result":
+          clearRecipientIssues();
           addLog({ level: "info", message: "--- PREFLIGHT CHECK RESULTS ---" });
 
           if (payload.successes && payload.successes.length > 0) {
@@ -82,10 +97,36 @@ export const useWebSocket = () => {
             });
           }
           addLog({ level: "info", message: "-----------------------------" });
+
+          const issues: Record<number, RecipientIssue> = {};
+          if (
+            payload.recipient_issues &&
+            Array.isArray(payload.recipient_issues)
+          ) {
+            payload.recipient_issues.forEach((issue: any) => {
+              if (typeof issue.index === "number") {
+                issues[issue.index] = {
+                  type: issue.type,
+                  message: issue.message,
+                };
+              }
+            });
+          }
+          setRecipientIssues(issues);
           break;
       }
     },
-    [setInitialData, setRecipients, addLog, setIsSending, clearLogs],
+    [
+      setInitialData,
+      setRecipients,
+      addLog,
+      setIsSending,
+      clearLogs,
+      setProgress,
+      setRecipientIssues,
+      clearRecipientIssues,
+      setConnectionStatus,
+    ],
   );
 
   useEffect(() => {

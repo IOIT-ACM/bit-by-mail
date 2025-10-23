@@ -29,8 +29,15 @@ const renderLog = (log: LogEntry, index: number) => (
   </div>
 );
 
-const LogViewerContent: React.FC<{ onToggleFullScreen: () => void; isFullScreen: boolean }> = ({ onToggleFullScreen, isFullScreen }) => {
-  const logs = useAppStore((state) => state.logs);
+const LogViewerContent: React.FC<{ onToggleFullScreen: () => void; isFullScreen: boolean }> = ({
+  onToggleFullScreen,
+  isFullScreen,
+}) => {
+  const { logs, isSending, progress } = useAppStore((state) => ({
+    logs: state.logs,
+    isSending: state.isSending,
+    progress: state.progress,
+  }));
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,7 +47,22 @@ const LogViewerContent: React.FC<{ onToggleFullScreen: () => void; isFullScreen:
   return (
     <>
       <div className="flex justify-between items-center mb-2 px-2">
-        <h3 className="text-sm font-medium text-text-secondary">Live Logs</h3>
+        <div className="flex items-center gap-4">
+          <h3 className="text-sm font-medium text-text-secondary">Live Logs</h3>
+          {isSending && (
+            <div className="flex items-center gap-2 w-64">
+              <div className="w-full bg-surface-element rounded-full h-2">
+                <div
+                  className="bg-accent-blue h-2 rounded-full transition-all duration-300 ease-linear"
+                  style={{ width: `${progress}%` }}
+                ></div>
+              </div>
+              <span className="text-xs text-text-secondary font-mono w-12 text-right">
+                {Math.round(progress)}%
+              </span>
+            </div>
+          )}
+        </div>
         <button
           onClick={onToggleFullScreen}
           className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"

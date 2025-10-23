@@ -16,7 +16,7 @@ const App: React.FC = () => {
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
 
-  const { previewRecipient, emailBody, config, setPreviewRecipient } = useAppStore();
+  const { previewRecipient, setPreviewRecipient } = useAppStore();
 
   useEffect(() => {
     const handleResize = () => {
@@ -83,16 +83,7 @@ const App: React.FC = () => {
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
 
       <AnimatePresence>
-        {previewRecipient && (
-          <EmailPreviewModal
-            recipient={previewRecipient}
-            emailBody={emailBody}
-            emailSubject={config.subject_template}
-            senderEmail={config.sender_email}
-            onClose={() => setPreviewRecipient(null)}
-            showAttachment={config.send_attachments}
-          />
-        )}
+        {previewRecipient && <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />}
       </AnimatePresence>
     </div>
   );

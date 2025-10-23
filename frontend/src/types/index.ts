@@ -22,6 +22,11 @@ export interface LogEntry {
   message: string;
 }
 
+export interface RecipientIssue {
+  type: "error" | "warning";
+  message: string;
+}
+
 export interface AppState {
   config: Omit<Config, "sender_password">;
   sender_password: string;
@@ -32,4 +37,6 @@ export interface AppState {
   isPasswordSet: boolean;
   connectionStatus: "connecting" | "open" | "closed";
   previewRecipient: Recipient | null;
+  progress: number;
+  recipientIssues: Record<number, RecipientIssue>;
 }

@@ -10,6 +10,7 @@ class PreflightResult:
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     successes: List[str] = field(default_factory=list)
+    recipient_issues: List[Dict[str, Any]] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
@@ -21,6 +22,7 @@ class PreflightResult:
             "errors": self.errors,
             "warnings": self.warnings,
             "successes": self.successes,
+            "recipient_issues": self.recipient_issues,
         }
 
 
@@ -158,8 +160,10 @@ class PreflightService:
                 status = str(row.get("Status", "")).strip().upper()
 
                 if not cert_file:
-                    warnings.append(
-                        f"Row {row_num}: Recipient '{name}' has an empty 'AttachmentFile' field."
+                    msg = f"Recipient '{name}' has an empty 'AttachmentFile' field."
+                    warnings.append(f"Row {row_num}: {msg}")
+                    result.recipient_issues.append(
+                        {"index": int(index), "type": "warning", "message": msg}
                     )
                     continue
 
@@ -167,12 +171,16 @@ class PreflightService:
                 if not os.path.exists(full_path):
                     all_attachments_found = False
                     if status == "SENT":
-                        warnings.append(
-                            f"Row {row_num}: Attachment '{cert_file}' for '{name}' is missing, but email was already marked as SENT."
+                        msg = f"Attachment '{cert_file}' for '{name}' is missing, but email was already marked as SENT."
+                        warnings.append(f"Row {row_num}: {msg}")
+                        result.recipient_issues.append(
+                            {"index": int(index), "type": "warning", "message": msg}
                         )
                     else:
-                        errors.append(
-                            f"Row {row_num}: Attachment '{cert_file}' for '{name}' not found."
+                        msg = f"Attachment '{cert_file}' for '{name}' not found."
+                        errors.append(f"Row {row_num}: {msg}")
+                        result.recipient_issues.append(
+                            {"index": int(index), "type": "error", "message": msg}
                         )
                         any_pending_attachments_missing = True
 

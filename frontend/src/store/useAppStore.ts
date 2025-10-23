@@ -1,5 +1,11 @@
 import { create } from "zustand";
-import { AppState, Recipient, Config, LogEntry } from "../types";
+import {
+  AppState,
+  Recipient,
+  Config,
+  LogEntry,
+  RecipientIssue,
+} from "../types";
 
 type ConnectionStatus = "connecting" | "open" | "closed";
 
@@ -20,6 +26,9 @@ interface AppActions {
     is_password_set: boolean;
   }) => void;
   setPreviewRecipient: (recipient: Recipient | null) => void;
+  setProgress: (progress: number) => void;
+  setRecipientIssues: (issues: Record<number, RecipientIssue>) => void;
+  clearRecipientIssues: () => void;
 }
 
 const emptyConfig: Omit<Config, "sender_password"> = {
@@ -42,10 +51,12 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   isPasswordSet: false,
   connectionStatus: "connecting",
   previewRecipient: null,
+  progress: 0,
+  recipientIssues: {},
 
   setConfig: (config) => set({ config }),
   setSenderPassword: (password) => set({ sender_password: password }),
-  setRecipients: (recipients) => set({ recipients }),
+  setRecipients: (recipients) => set({ recipients, recipientIssues: {} }),
   updateRecipient: (index, updatedRecipient) =>
     set((state) => {
       const newRecipients = [...state.recipients];
@@ -55,7 +66,13 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   setEmailBody: (emailBody) => set({ emailBody }),
   addLog: (log) => set((state) => ({ logs: [...state.logs.slice(-100), log] })),
   clearLogs: () => set({ logs: [] }),
-  setIsSending: (isSending) => set({ isSending }),
+  setIsSending: (isSending) => {
+    if (isSending) {
+      set({ isSending, progress: 0, recipientIssues: {} });
+    } else {
+      set({ isSending });
+    }
+  },
   setConnectionStatus: (status) => set({ connectionStatus: status }),
   setInitialData: (data) => {
     const { sender_password, ...restConfig } = data.config;
@@ -65,7 +82,11 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       recipients: data.recipients,
       emailBody: data.template,
       isPasswordSet: data.is_password_set,
+      recipientIssues: {},
     });
   },
   setPreviewRecipient: (recipient) => set({ previewRecipient: recipient }),
+  setProgress: (progress) => set({ progress }),
+  setRecipientIssues: (issues) => set({ recipientIssues: issues }),
+  clearRecipientIssues: () => set({ recipientIssues: {} }),
 }));

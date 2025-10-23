@@ -12,7 +12,7 @@ const RecipientTableContent: React.FC<{
   isMaximized: boolean;
   onToggleMaximize: () => void;
 }> = ({ isMaximized, onToggleMaximize }) => {
-  const { recipients, updateRecipient, setPreviewRecipient, config } = useAppStore();
+  const { recipients, updateRecipient, setPreviewRecipient, config, recipientIssues } = useAppStore();
   const showAttachments = config.send_attachments;
 
   useDebouncedEffect(
@@ -66,6 +66,20 @@ const RecipientTableContent: React.FC<{
     }
   };
 
+  const getRowClasses = (status: string, index: number) => {
+    const issue = recipientIssues[index];
+    if (issue?.type === 'error') {
+      return 'bg-status-danger-bg/20 hover:bg-status-danger-bg/30';
+    }
+    if (issue?.type === 'warning') {
+      return 'bg-accent-orange/20 hover:bg-accent-orange/30';
+    }
+    if (status?.toUpperCase() === 'ERROR') {
+      return 'bg-status-danger-bg/20 hover:bg-status-danger-bg/30';
+    }
+    return 'hover:bg-surface-element/50';
+  };
+
   const handleDownloadSample = () => {
     const csvContent =
       'Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING';
@@ -111,28 +125,39 @@ const RecipientTableContent: React.FC<{
         </div>
       </div>
       <div className="overflow-auto flex-grow -mr-3 pr-3" style={!isMaximized ? { maxHeight: '400px' } : {}}>
-        <table className="w-full text-sm text-left table-fixed">
+        <table className="w-full text-sm text-left">
           <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-surface-card/80 backdrop-blur-sm">
             <tr>
-              <th scope="col" className={`px-4 py-3 ${showAttachments ? 'w-1/3' : 'w-1/2'}`}>
+              <th scope="col" className="px-4 py-3 w-16 text-center">
+                #
+              </th>
+              <th scope="col" className="px-4 py-3">
                 Name
               </th>
-              <th scope="col" className={`px-4 py-3 ${showAttachments ? 'w-1/3' : 'w-1/2'}`}>
+              <th scope="col" className="px-4 py-3">
                 Email
               </th>
               {showAttachments && (
-                <th scope="col" className="px-4 py-3 w-1/3">
+                <th scope="col" className="px-4 py-3">
                   Attachment File
                 </th>
               )}
-              <th scope="col" className="px-4 py-3 w-[120px] text-center">
+              <th scope="col" className="px-4 py-3 w-32 text-center">
                 Status
               </th>
             </tr>
           </thead>
           <tbody>
             {recipients.map((recipient, index) => (
-              <tr key={index} className="border-b border-borders-primary hover:bg-surface-element/50 transition-colors">
+              <tr
+                key={index}
+                className={`border-b border-borders-primary transition-colors ${getRowClasses(
+                  recipient.Status,
+                  index
+                )}`}
+                title={recipientIssues[index]?.message}
+              >
+                <td className="px-4 py-2 text-center align-middle text-text-secondary">{index + 1}</td>
                 <td className="p-1 align-middle">
                   <EditableCell
                     value={recipient.Name}

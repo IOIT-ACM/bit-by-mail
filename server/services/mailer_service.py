@@ -106,9 +106,6 @@ class MailerService:
             subject = self._replace_placeholders(config["subject_template"], recipient)
             msg["Subject"] = subject
 
-            self._broadcast_log(
-                "info", f"Composing email with subject: \"{msg['Subject']}\""
-            )
             body = self._replace_placeholders(html_template, recipient)
             msg.attach(MIMEText(body, "html"))
 
@@ -124,7 +121,6 @@ class MailerService:
                 if not os.path.exists(attachment_path):
                     raise FileNotFoundError(f"Attachment not found: {attachment_path}")
 
-                self._broadcast_log("info", f"Attaching file: {attachment_path}")
                 with open(attachment_path, "rb") as attachment:
                     part = MIMEBase("application", "octet-stream")
                     part.set_payload(attachment.read())
@@ -135,10 +131,8 @@ class MailerService:
                 msg.attach(part)
 
             server.send_message(msg)
-            self._broadcast_log("success", f"Email successfully sent to {email}")
             return "SENT", "Email sent successfully."
         except Exception as e:
-            self._broadcast_log("error", f"Failed to send email to {email}: {e}")
             return "ERROR", str(e)
 
     @contextmanager
