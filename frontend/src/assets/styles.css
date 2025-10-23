@@ -6,10 +6,6 @@ body::-webkit-scrollbar {
   width: 0px;
 }
 
-* {
-  font-size: 14px;
-}
-
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;

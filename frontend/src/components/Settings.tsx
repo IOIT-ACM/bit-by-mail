@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { Config } from '../types';
 import { X } from 'lucide-react';
+import { Button } from './shared/Button';
+import { apiService } from '../services/apiService';
 
 interface SettingsProps {
-  sendMessage: (action: string, payload?: any) => void;
   onClose: () => void;
 }
 
-const Settings: React.FC<SettingsProps> = ({ sendMessage, onClose }) => {
-  const { config, setConfig, sender_password, setSenderPassword, isPasswordSet } = useAppStore();
+const Settings: React.FC<SettingsProps> = ({ onClose }) => {
+  const { config, sender_password, setSenderPassword, isPasswordSet } = useAppStore();
   const [formState, setFormState] = useState<Omit<Config, 'sender_password'>>(config);
 
   useEffect(() => {
@@ -30,10 +31,7 @@ const Settings: React.FC<SettingsProps> = ({ sendMessage, onClose }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const configToSave = { ...config, ...formState };
-    const fullConfigForBackend = { ...configToSave, sender_password };
-    setConfig(configToSave);
-    sendMessage('save_config', fullConfigForBackend);
+    apiService.saveAndTestConfig(formState, sender_password);
     onClose();
   };
 
@@ -63,9 +61,9 @@ const Settings: React.FC<SettingsProps> = ({ sendMessage, onClose }) => {
             <label htmlFor="use_ssl" className="ml-3 block text-sm text-text-secondary">Use SSL/TLS</label>
           </div>
           <div className="flex justify-end pt-2">
-            <button type="submit" className="h-10 px-6 rounded-button text-sm font-medium transition-colors duration-200 bg-accent-blue hover:bg-accent-blue/80 text-white">
+            <Button type="submit" variant="primary">
               Save Configuration
-            </button>
+            </Button>
           </div>
         </form>
       </div>

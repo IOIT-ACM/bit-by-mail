@@ -29,4 +29,5 @@ export interface AppState {
   logs: LogEntry[];
   isSending: boolean;
   isPasswordSet: boolean;
+  connectionStatus: "connecting" | "open" | "closed";
 }

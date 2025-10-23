@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { AppState, Recipient, Config, LogEntry } from "../types";
 
+type ConnectionStatus = "connecting" | "open" | "closed";
+
 interface AppActions {
   setConfig: (config: Omit<Config, "sender_password">) => void;
   setSenderPassword: (password: string) => void;
@@ -10,6 +12,7 @@ interface AppActions {
   addLog: (log: LogEntry) => void;
   clearLogs: () => void;
   setIsSending: (isSending: boolean) => void;
+  setConnectionStatus: (status: ConnectionStatus) => void;
   setInitialData: (data: {
     config: Config;
     recipients: Recipient[];
@@ -35,6 +38,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   logs: [],
   isSending: false,
   isPasswordSet: false,
+  connectionStatus: "connecting",
 
   setConfig: (config) => set({ config }),
   setSenderPassword: (password) => set({ sender_password: password }),
@@ -49,6 +53,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   addLog: (log) => set((state) => ({ logs: [...state.logs.slice(-100), log] })),
   clearLogs: () => set({ logs: [] }),
   setIsSending: (isSending) => set({ isSending }),
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
   setInitialData: (data) => {
     const { sender_password, ...restConfig } = data.config;
     set({

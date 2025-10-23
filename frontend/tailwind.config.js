@@ -50,10 +50,7 @@ module.exports = {
       },
       borderRadius: {
         card: "24px",
-        modal: "24px",
         button: "9999px",
-        "list-item": "16px",
-        avatar: "8px",
       },
       boxShadow: {
         card: "0 25px 50px -12px rgba(0, 0, 0, 0.4)",

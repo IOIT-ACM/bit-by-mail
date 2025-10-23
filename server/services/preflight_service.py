@@ -1,7 +1,7 @@
 import os
 import string
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Tuple, cast
+from typing import List, Dict, Any, cast
 import pandas as pd
 
 
@@ -9,22 +9,28 @@ import pandas as pd
 class PreflightResult:
     errors: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
+    successes: List[str] = field(default_factory=list)
 
     @property
     def ok(self) -> bool:
         return not self.errors
 
     def to_dict(self) -> Dict[str, Any]:
-        return {"ok": self.ok, "errors": self.errors, "warnings": self.warnings}
+        return {
+            "ok": self.ok,
+            "errors": self.errors,
+            "warnings": self.warnings,
+            "successes": self.successes,
+        }
 
 
 class PreflightService:
-    def __init__(self, base_dir: str):
+    def __init__(self, base_dir: str, recipient_service, template_service):
         self.base_dir = base_dir
-        self.recipients_csv = os.path.join(base_dir, "recipients.csv")
-        self.html_path = os.path.join(base_dir, "email.html")
+        self.recipient_service = recipient_service
+        self.template_service = template_service
 
-    def check_config_variables(self, config: Dict[str, Any]) -> List[str]:
+    def _check_config_variables(self, config: Dict[str, Any], result: PreflightResult):
         errors = []
         required_vars = ["smtp_server", "sender_email", "sender_password", "smtp_port"]
         for var in required_vars:
@@ -35,30 +41,41 @@ class PreflightService:
                 errors.append(
                     f"Default placeholder password for '{var}' is still present."
                 )
-        return errors
 
-    def check_paths(self, config: Dict[str, Any]) -> Tuple[List[str], bool]:
+        if not errors:
+            result.successes.append(
+                "Configuration variables (SMTP server, email, password, port) are present."
+            )
+        else:
+            result.errors.extend(errors)
+
+    def _check_paths(self, config: Dict[str, Any], result: PreflightResult) -> bool:
         errors = []
-        paths_ok = True
         attachment_folder = os.path.join(
             self.base_dir, config.get("attachment_folder", "")
         )
 
         paths_to_check = {
-            "Recipients CSV": self.recipients_csv,
-            "HTML Template": self.html_path,
+            "Recipients CSV": self.recipient_service.recipients_path,
+            "HTML Template": self.template_service.template_path,
             "Attachment Folder": attachment_folder,
         }
         for name, path in paths_to_check.items():
             if not path or not os.path.exists(path):
                 errors.append(f"{name} file/folder not found at '{path}'.")
-                paths_ok = False
 
-        return errors, paths_ok
+        if not errors:
+            result.successes.append(
+                "Recipients CSV, HTML template, and attachment folder all exist."
+            )
+            return True
+        else:
+            result.errors.extend(errors)
+            return False
 
-    def check_recipients_and_attachments(
-        self, config: Dict[str, Any]
-    ) -> Tuple[List[str], List[str]]:
+    def _check_recipients_and_attachments(
+        self, config: Dict[str, Any], result: PreflightResult
+    ):
         errors, warnings = [], []
         attachment_folder = os.path.join(
             self.base_dir, config.get("attachment_folder", "")
@@ -66,7 +83,7 @@ class PreflightService:
         subject_template = config.get("subject_template", "")
 
         try:
-            recipients_df = pd.read_csv(self.recipients_csv)
+            recipients_df = pd.read_csv(self.recipient_service.recipients_path)
 
             try:
                 placeholders = {
@@ -82,14 +99,19 @@ class PreflightService:
                     errors.append(
                         f"Subject template requires column(s) not found in CSV: {', '.join(missing_columns)}"
                     )
-            except Exception as e:
+            except ValueError as e:
                 warnings.append(f"Could not parse subject template: {e}")
 
+            if not errors:
+                result.successes.append(
+                    "Recipients CSV is readable and columns match subject template."
+                )
+
             recipients_to_process = recipients_df[
-                (recipients_df["Status"] != "SENT")
-                & (recipients_df["Status"] != "Sent")
+                recipients_df["Status"].str.upper() != "SENT"
             ]
             if not recipients_to_process.empty:
+                missing_attachments = False
                 for index, row in recipients_to_process.iterrows():
                     row_num = cast(int, index) + 2
                     cert_file = str(row.get("AttachmentFile", "")).strip()
@@ -106,27 +128,31 @@ class PreflightService:
                         warnings.append(
                             f"Row {row_num}: Attachment '{cert_file}' for '{name}' not found."
                         )
+                        missing_attachments = True
+
+                if not missing_attachments:
+                    result.successes.append(
+                        "All required attachment files for pending recipients were found."
+                    )
+
         except FileNotFoundError:
             pass
-        except Exception as e:
-            errors.append(f"Error processing '{self.recipients_csv}': {e}")
+        except (pd.errors.ParserError, Exception) as e:
+            errors.append(
+                f"Error processing '{self.recipient_service.recipients_path}': {e}"
+            )
 
-        return errors, warnings
+        result.errors.extend(errors)
+        result.warnings.extend(warnings)
 
     def run_checks(self, config: Dict[str, Any]) -> PreflightResult:
         result = PreflightResult()
 
-        result.errors.extend(self.check_config_variables(config))
+        self._check_config_variables(config, result)
 
-        path_errors, paths_ok = self.check_paths(config)
-        result.errors.extend(path_errors)
+        paths_ok = self._check_paths(config, result)
 
         if paths_ok:
-            (
-                recipient_errors,
-                recipient_warnings,
-            ) = self.check_recipients_and_attachments(config)
-            result.errors.extend(recipient_errors)
-            result.warnings.extend(recipient_warnings)
+            self._check_recipients_and_attachments(config, result)
 
         return result

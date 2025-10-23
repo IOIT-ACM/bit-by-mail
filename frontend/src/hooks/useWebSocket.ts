@@ -1,9 +1,17 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "../store/useAppStore";
+import { apiService } from "../services/apiService";
 
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
-  const { setInitialData, setRecipients, addLog, setIsSending } = useAppStore();
+  const {
+    setInitialData,
+    setRecipients,
+    addLog,
+    setIsSending,
+    clearLogs,
+    setConnectionStatus,
+  } = useAppStore();
 
   const onMessage = useCallback(
     (event: MessageEvent) => {
@@ -13,6 +21,8 @@ export const useWebSocket = () => {
       switch (action) {
         case "initial_data":
           setInitialData(payload);
+          clearLogs();
+          apiService.runPreflightCheck(payload.config);
           break;
         case "recipients_updated":
           setRecipients(payload);
@@ -38,63 +48,71 @@ export const useWebSocket = () => {
           break;
         case "preflight_result":
           addLog({ level: "info", message: "--- PREFLIGHT CHECK RESULTS ---" });
-          if (payload.ok) {
-            addLog({
-              level: "success",
-              message: "All preflight checks passed.",
-            });
-          } else {
-            addLog({
-              level: "error",
-              message:
-                "Preflight checks failed. Please review the errors below.",
-            });
+
+          if (payload.successes && payload.successes.length > 0) {
+            addLog({ level: "info", message: "CHECKS PASSED:" });
+            payload.successes.forEach((msg: string) =>
+              addLog({ level: "success", message: `+ ${msg}` }),
+            );
           }
+
           if (payload.errors && payload.errors.length > 0) {
             addLog({ level: "info", message: "ERRORS:" });
             payload.errors.forEach((err: string) =>
               addLog({ level: "error", message: `- ${err}` }),
             );
           }
+
           if (payload.warnings && payload.warnings.length > 0) {
             addLog({ level: "info", message: "WARNINGS:" });
             payload.warnings.forEach((warn: string) =>
-              addLog({ level: "warn", message: `- ${warn}` }),
+              addLog({ level: "warn", message: `! ${warn}` }),
             );
+          }
+
+          if (payload.ok) {
+            addLog({
+              level: "success",
+              message: "Preflight complete. System is ready.",
+            });
+          } else {
+            addLog({
+              level: "error",
+              message: "Preflight failed. Please resolve the errors above.",
+            });
           }
           addLog({ level: "info", message: "-----------------------------" });
           break;
-        case "notify":
-          break;
       }
     },
-    [setInitialData, setRecipients, addLog, setIsSending],
+    [setInitialData, setRecipients, addLog, setIsSending, clearLogs],
   );
 
   useEffect(() => {
-    const socket = new WebSocket(`ws://${window.location.host}/ws`);
+    const isDevelopment = process.env.NODE_ENV === "development";
+    const wsHost = isDevelopment ? "localhost:8888" : window.location.host;
+    const socket = new WebSocket(`ws://${wsHost}/ws`);
     ws.current = socket;
+    apiService.setSocket(socket);
 
     socket.onopen = () => {
       console.log("WebSocket Connected");
-      socket.send(JSON.stringify({ action: "get_initial_data" }));
+      setConnectionStatus("open");
+      apiService.sendMessage("get_initial_data");
     };
-    socket.onclose = () => console.log("WebSocket Disconnected");
-    socket.onerror = (error) => console.error("WebSocket Error:", error);
+    socket.onclose = () => {
+      console.log("WebSocket Disconnected");
+      setConnectionStatus("closed");
+    };
+    socket.onerror = (error) => {
+      console.error("WebSocket Error:", error);
+      setConnectionStatus("closed");
+    };
     socket.onmessage = onMessage;
 
     return () => {
       socket.close();
+      apiService.setSocket(null);
     };
-  }, [onMessage]);
-
-  const sendMessage = useCallback((action: string, payload?: any) => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ action, payload }));
-    } else {
-      console.error("WebSocket is not connected.");
-    }
-  }, []);
-
-  return { sendMessage };
+  }, [onMessage, setConnectionStatus]);
 };

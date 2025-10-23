@@ -1,9 +1,10 @@
 import os
 import tornado.web
 import tornado.ioloop
-from .handlers.main_handler import MainHandler
 from .handlers.websocket_handler import WebSocketHandler
-from .services.config_service import ConfigService
+from .services.settings_service import SettingsService
+from .services.recipient_service import RecipientService
+from .services.template_service import TemplateService
 from .services.mailer_service import MailerService
 from .services.preflight_service import PreflightService
 
@@ -12,18 +13,24 @@ def make_app():
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     static_path = os.path.join(base_dir, "frontend/dist")
 
-    config_service = ConfigService(base_dir)
-    preflight_service = PreflightService(base_dir)
+    settings_service = SettingsService(base_dir)
+    recipient_service = RecipientService(base_dir)
+    template_service = TemplateService(base_dir)
+    preflight_service = PreflightService(base_dir, recipient_service, template_service)
     websocket_manager = set()
 
     ioloop = tornado.ioloop.IOLoop.current()
-    mailer_service = MailerService(config_service, websocket_manager, ioloop)
+    mailer_service = MailerService(
+        template_service, recipient_service, websocket_manager, ioloop
+    )
 
     settings = {
         "static_path": static_path,
         "template_path": static_path,
-        "debug": True,
-        "config_service": config_service,
+        "debug": os.environ.get("DEBUG") == "1",
+        "settings_service": settings_service,
+        "recipient_service": recipient_service,
+        "template_service": template_service,
         "mailer_service": mailer_service,
         "preflight_service": preflight_service,
         "websocket_manager": websocket_manager,
@@ -32,7 +39,6 @@ def make_app():
     return tornado.web.Application(
         [
             (r"/ws", WebSocketHandler),
-            (r"/", MainHandler),
             (
                 r"/(.*)",
                 tornado.web.StaticFileHandler,

@@ -4,8 +4,20 @@ import os
 import sys
 from server.server import make_app
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 def main():
+    if not os.environ.get("SECRET_KEY"):
+        print("\n--- FATAL ERROR ---")
+        print("The 'SECRET_KEY' environment variable is not set.")
+        print("This key is required for encrypting and decrypting credentials.")
+        print("Please set it before running the application.")
+        print("-------------------\n")
+        sys.exit(1)
+
     app = make_app()
 
     static_path = app.settings.get("static_path") or ""

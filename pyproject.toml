@@ -6,4 +6,6 @@ requires-python = ">=3.9"
 dependencies = [
     "tornado>=6.4",
     "pandas>=2.0.0",
+    "cryptography>=42.0.0",
+	"python-dotenv>=1.1.1",
 ]

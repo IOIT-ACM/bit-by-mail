@@ -8,7 +8,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 
 const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
-  const { sendMessage } = useWebSocket();
+  useWebSocket();
   const [editorWidth, setEditorWidth] = useState(40);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
@@ -55,11 +55,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header onToggleSettings={() => setShowSettings(true)} sendMessage={sendMessage} />
+      <Header onToggleSettings={() => setShowSettings(true)} />
       <main className="flex-grow max-w-[2000px] w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col">
         <div ref={mainContentRef} className="flex-grow flex flex-col lg:flex-row items-stretch">
           <div className="min-w-0 lg:pr-4 mb-8 lg:mb-0" style={isLargeScreen ? { width: `${editorWidth}%` } : {}}>
-            <Editor sendMessage={sendMessage} />
+            <Editor />
           </div>
           <div
             onMouseDown={handleMouseDown}
@@ -68,14 +68,14 @@ const App: React.FC = () => {
             <div className="w-1 h-16 bg-borders-primary rounded-full group-hover:bg-accent-blue transition-colors"></div>
           </div>
           <div className="flex-1 min-w-0 lg:pl-4">
-            <RecipientTable sendMessage={sendMessage} />
+            <RecipientTable />
           </div>
         </div>
         <div className="mt-8">
           <StatusBar />
         </div>
       </main>
-      {showSettings && <Settings sendMessage={sendMessage} onClose={() => setShowSettings(false)} />}
+      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
     </div>
   );
 };

@@ -11,8 +11,11 @@ from contextlib import contextmanager
 
 
 class MailerService:
-    def __init__(self, config_service, websocket_connections, ioloop):
-        self.config_service = config_service
+    def __init__(
+        self, template_service, recipient_service, websocket_connections, ioloop
+    ):
+        self.template_service = template_service
+        self.recipient_service = recipient_service
         self.websockets = websocket_connections
         self.ioloop = ioloop
         self._is_running = False
@@ -32,7 +35,7 @@ class MailerService:
         self._is_running = True
         self._stop_requested = False
 
-        html_template = await self.config_service.get_template()
+        html_template = await self.template_service.get_template()
 
         self.ioloop.run_in_executor(
             None, self._run_mailing_loop, config, recipients, html_template
@@ -45,8 +48,7 @@ class MailerService:
 
             recipients_df = pd.DataFrame(recipients)
             recipients_to_process = recipients_df[
-                (recipients_df["Status"] != "SENT")
-                & (recipients_df["Status"] != "Sent")
+                recipients_df["Status"].str.upper() != "SENT"
             ]
 
             if recipients_to_process.empty:
@@ -79,7 +81,7 @@ class MailerService:
             )
         finally:
             if not recipients_df.empty:
-                self.config_service._write_recipients_from_json(
+                self.recipient_service.write_recipients_from_json(
                     recipients_df.to_dict(orient="records")
                 )
             self._is_running = False
