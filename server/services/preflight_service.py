@@ -44,7 +44,7 @@ class PreflightService:
         try:
             recipients_df = pd.read_csv(self.recipient_service.recipients_path)
         except FileNotFoundError:
-            recipients_df = pd.DataFrame(columns=["Status", "AttachmentFile"])
+            recipients_df = pd.DataFrame({"Status": [], "AttachmentFile": []})
 
         total_recipients = len(recipients_df)
 
@@ -205,49 +205,79 @@ class PreflightService:
         else:
             errors.extend(missing_column_errors)
 
-        if not recipients_df.empty and send_attachments:
+        if not recipients_df.empty:
             any_pending_attachments_missing = False
             all_attachments_found = True
 
             for index, row in recipients_df.iterrows():
                 row_num = cast(int, index) + 2
-                cert_file = str(row.get("AttachmentFile", "")).strip()
-                name = row.get("Name", f"Row {row_num}")
+                name = str(row.get("Name", "")).strip()
+                email = str(row.get("Email", "")).strip()
                 status = str(row.get("Status", "")).strip().upper()
 
-                if not cert_file:
-                    msg = f"Recipient '{name}' has an empty 'AttachmentFile' field."
-                    warnings.append(f"Row {row_num}: {msg}")
+                if not name:
+                    msg = "Recipient has an empty 'Name' field."
+                    errors.append(f"Row {row_num}: {msg}")
                     result.recipient_issues.append(
-                        {"index": int(index), "type": "warning", "message": msg}
+                        {"index": cast(int, index), "type": "error", "message": msg}
                     )
-                    continue
 
-                full_path = os.path.join(attachment_folder, cert_file)
-                if not os.path.exists(full_path):
-                    all_attachments_found = False
-                    if status == "SENT":
-                        msg = f"Attachment '{cert_file}' for '{name}' is missing, but email was already marked as SENT."
+                if not email:
+                    msg = f"Recipient '{name or f'Row {row_num}'}' has an empty 'Email' field."
+                    errors.append(f"Row {row_num}: {msg}")
+                    result.recipient_issues.append(
+                        {"index": cast(int, index), "type": "error", "message": msg}
+                    )
+
+                if send_attachments:
+                    cert_file = str(row.get("AttachmentFile", "")).strip()
+                    name_for_msg = name or f"Row {row_num}"
+
+                    if not cert_file:
+                        msg = f"Recipient '{name_for_msg}' has an empty 'AttachmentFile' field."
                         warnings.append(f"Row {row_num}: {msg}")
                         result.recipient_issues.append(
-                            {"index": int(index), "type": "warning", "message": msg}
+                            {
+                                "index": cast(int, index),
+                                "type": "warning",
+                                "message": msg,
+                            }
                         )
                     else:
-                        msg = f"Attachment '{cert_file}' for '{name}' not found."
-                        errors.append(f"Row {row_num}: {msg}")
-                        result.recipient_issues.append(
-                            {"index": int(index), "type": "error", "message": msg}
-                        )
-                        any_pending_attachments_missing = True
+                        full_path = os.path.join(attachment_folder, cert_file)
+                        if not os.path.exists(full_path):
+                            all_attachments_found = False
+                            if status == "SENT":
+                                msg = f"Attachment '{cert_file}' for '{name_for_msg}' is missing, but email was already marked as SENT."
+                                warnings.append(f"Row {row_num}: {msg}")
+                                result.recipient_issues.append(
+                                    {
+                                        "index": cast(int, index),
+                                        "type": "warning",
+                                        "message": msg,
+                                    }
+                                )
+                            else:
+                                msg = f"Attachment '{cert_file}' for '{name_for_msg}' not found."
+                                errors.append(f"Row {row_num}: {msg}")
+                                result.recipient_issues.append(
+                                    {
+                                        "index": cast(int, index),
+                                        "type": "error",
+                                        "message": msg,
+                                    }
+                                )
+                                any_pending_attachments_missing = True
 
-            if all_attachments_found:
-                result.successes.append(
-                    "All attachment files listed in the CSV were found."
-                )
-            elif not any_pending_attachments_missing:
-                result.successes.append(
-                    "All required attachment files for pending recipients were found."
-                )
+            if send_attachments:
+                if all_attachments_found:
+                    result.successes.append(
+                        "All attachment files listed in the CSV were found."
+                    )
+                elif not any_pending_attachments_missing:
+                    result.successes.append(
+                        "All required attachment files for pending recipients were found."
+                    )
 
         result.errors.extend(errors)
         result.warnings.extend(warnings)

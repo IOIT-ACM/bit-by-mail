@@ -69,7 +69,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       return { recipients: newRecipients };
     }),
   setEmailBody: (emailBody) => set({ emailBody }),
-  addLog: (log) => set((state) => ({ logs: [...state.logs.slice(-100), log] })),
+  addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
   clearLogs: () => set({ logs: [] }),
   setIsSending: (isSending) => {
     if (isSending) {
