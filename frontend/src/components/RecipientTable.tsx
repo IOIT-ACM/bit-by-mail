@@ -6,12 +6,14 @@ import { useDebouncedEffect } from '../hooks/useDebouncedEffect';
 import { apiService } from '../services/apiService';
 import { Button } from './shared/Button';
 import { MaximizableView } from './shared/MaximizableView';
+import { EditableCell } from './shared/EditableCell';
 
 const RecipientTableContent: React.FC<{
   isMaximized: boolean;
   onToggleMaximize: () => void;
 }> = ({ isMaximized, onToggleMaximize }) => {
-  const { recipients, updateRecipient } = useAppStore();
+  const { recipients, updateRecipient, setPreviewRecipient, config } = useAppStore();
+  const showAttachments = config.send_attachments;
 
   useDebouncedEffect(
     () => {
@@ -41,22 +43,37 @@ const RecipientTableContent: React.FC<{
     updateRecipient(index, { ...recipient, [field]: value });
   };
 
+  const handleViewEmail = (recipient: Recipient) => {
+    setPreviewRecipient(recipient);
+  };
+
+  const handleViewAttachment = (filename: string) => {
+    if (filename) {
+      window.open(`/attachments/${filename}`, '_blank');
+    }
+  };
+
   const getStatusClasses = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'SENT': return 'bg-status-success-bg text-status-success-text';
-      case 'ERROR': return 'bg-status-danger-bg text-status-danger-text';
-      case 'SKIPPED': return 'bg-status-info-bg text-status-info-text';
-      default: return 'bg-surface-element text-text-secondary';
+      case 'SENT':
+        return 'bg-status-success-bg text-status-success-text';
+      case 'ERROR':
+        return 'bg-status-danger-bg text-status-danger-text';
+      case 'SKIPPED':
+        return 'bg-status-info-bg text-status-info-text';
+      default:
+        return 'bg-surface-element text-text-secondary';
     }
   };
 
   const handleDownloadSample = () => {
-    const csvContent = "Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING";
+    const csvContent =
+      'Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING';
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "sample_recipients.csv");
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample_recipients.csv');
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -67,14 +84,19 @@ const RecipientTableContent: React.FC<{
   return (
     <div className="p-2 flex flex-col h-full overflow-hidden">
       <div className="flex justify-between items-center mb-4">
-        <div className="flex items-center gap-2">
-          <h2 className="text-heading-3 font-medium text-text-primary">Recipients ({recipients.length})</h2>
-          <button
-            onClick={onToggleMaximize}
-            className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
-          >
-            {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
-          </button>
+        <div>
+          <div className="flex items-center gap-2">
+            <h2 className="text-heading-3 font-medium text-text-primary">Recipients ({recipients.length})</h2>
+            <button
+              onClick={onToggleMaximize}
+              className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+            >
+              {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
+            </button>
+          </div>
+          {!showAttachments && (
+            <p className="text-sm text-text-secondary italic mt-1">Attachments disabled for this mail campaign.</p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button onClick={handleDownloadSample} variant="secondary">
@@ -88,27 +110,57 @@ const RecipientTableContent: React.FC<{
           </Button>
         </div>
       </div>
-      <div
-        className="overflow-auto flex-grow -mr-3 pr-3"
-        style={!isMaximized ? { maxHeight: '400px' } : {}}
-      >
-        <table className="w-full text-sm text-left">
+      <div className="overflow-auto flex-grow -mr-3 pr-3" style={!isMaximized ? { maxHeight: '400px' } : {}}>
+        <table className="w-full text-sm text-left table-fixed">
           <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-surface-card/80 backdrop-blur-sm">
             <tr>
-              <th scope="col" className="px-4 py-3">Name</th>
-              <th scope="col" className="px-4 py-3">Email</th>
-              <th scope="col" className="px-4 py-3">Attachment File</th>
-              <th scope="col" className="px-4 py-3 text-center">Status</th>
+              <th scope="col" className={`px-4 py-3 ${showAttachments ? 'w-1/3' : 'w-1/2'}`}>
+                Name
+              </th>
+              <th scope="col" className={`px-4 py-3 ${showAttachments ? 'w-1/3' : 'w-1/2'}`}>
+                Email
+              </th>
+              {showAttachments && (
+                <th scope="col" className="px-4 py-3 w-1/3">
+                  Attachment File
+                </th>
+              )}
+              <th scope="col" className="px-4 py-3 w-[120px] text-center">
+                Status
+              </th>
             </tr>
           </thead>
           <tbody>
             {recipients.map((recipient, index) => (
               <tr key={index} className="border-b border-borders-primary hover:bg-surface-element/50 transition-colors">
-                <td className="p-1"><input type="text" value={recipient.Name} onChange={(e) => handleCellChange(index, 'Name', e.target.value)} className="bg-transparent w-full outline-none px-3 py-2 rounded-md focus:bg-surface-element" /></td>
-                <td className="p-1"><input type="text" value={recipient.Email} onChange={(e) => handleCellChange(index, 'Email', e.target.value)} className="bg-transparent w-full outline-none px-3 py-2 rounded-md focus:bg-surface-element" /></td>
-                <td className="p-1"><input type="text" value={recipient.AttachmentFile} onChange={(e) => handleCellChange(index, 'AttachmentFile', e.target.value)} className="bg-transparent w-full outline-none px-3 py-2 rounded-md focus:bg-surface-element" /></td>
-                <td className="px-4 py-2 text-center">
-                  <span className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full ${getStatusClasses(recipient.Status)}`}>
+                <td className="p-1 align-middle">
+                  <EditableCell
+                    value={recipient.Name}
+                    onSave={(newValue) => handleCellChange(index, 'Name', newValue)}
+                    onView={() => handleViewEmail(recipient)}
+                  />
+                </td>
+                <td className="p-1 align-middle">
+                  <EditableCell
+                    value={recipient.Email}
+                    onSave={(newValue) => handleCellChange(index, 'Email', newValue)}
+                  />
+                </td>
+                {showAttachments && (
+                  <td className="p-1 align-middle">
+                    <EditableCell
+                      value={recipient.AttachmentFile}
+                      onSave={(newValue) => handleCellChange(index, 'AttachmentFile', newValue)}
+                      onView={() => handleViewAttachment(recipient.AttachmentFile)}
+                    />
+                  </td>
+                )}
+                <td className="px-4 py-2 text-center align-middle">
+                  <span
+                    className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full ${getStatusClasses(
+                      recipient.Status
+                    )}`}
+                  >
                     {recipient.Status || 'PENDING'}
                   </span>
                 </td>
@@ -124,9 +176,7 @@ const RecipientTableContent: React.FC<{
 const RecipientTable: React.FC = () => {
   return (
     <MaximizableView layoutId="recipient-table-container">
-      {({ isMaximized, onToggle }) => (
-        <RecipientTableContent isMaximized={isMaximized} onToggleMaximize={onToggle} />
-      )}
+      {({ isMaximized, onToggle }) => <RecipientTableContent isMaximized={isMaximized} onToggleMaximize={onToggle} />}
     </MaximizableView>
   );
 };

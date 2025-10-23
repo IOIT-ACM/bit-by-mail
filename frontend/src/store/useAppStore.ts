@@ -19,6 +19,7 @@ interface AppActions {
     template: string;
     is_password_set: boolean;
   }) => void;
+  setPreviewRecipient: (recipient: Recipient | null) => void;
 }
 
 const emptyConfig: Omit<Config, "sender_password"> = {
@@ -27,7 +28,8 @@ const emptyConfig: Omit<Config, "sender_password"> = {
   sender_email: "",
   use_ssl: false,
   subject_template: "Hello {{Name}}!",
-  attachment_folder: "attachments/",
+  attachment_folder: "",
+  send_attachments: true,
 };
 
 export const useAppStore = create<AppState & AppActions>((set) => ({
@@ -39,6 +41,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   isSending: false,
   isPasswordSet: false,
   connectionStatus: "connecting",
+  previewRecipient: null,
 
   setConfig: (config) => set({ config }),
   setSenderPassword: (password) => set({ sender_password: password }),
@@ -64,4 +67,5 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       isPasswordSet: data.is_password_set,
     });
   },
+  setPreviewRecipient: (recipient) => set({ previewRecipient: recipient }),
 }));

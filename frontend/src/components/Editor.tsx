@@ -42,6 +42,50 @@ const EditorContent: React.FC<{
     window.open(url, '_blank');
   };
 
+  const isLikelyHtml = (text: string): boolean => {
+    // A simple check for common HTML block or structural tags.
+    const htmlRegex = /<\s*\/?\s*(html|body|div|p|h[1-6]|table|ul|ol|a|img|br)\b/i;
+    return htmlRegex.test(text);
+  };
+
+  const preparePreviewContent = (content: string): string => {
+    if (isLikelyHtml(content)) {
+      return content;
+    }
+    // For plain text, wrap in <pre> to preserve formatting and add some basic styling.
+    return `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            font-size: 16px;
+            line-height: 1.6;
+            margin: 20px;
+            color: #333;
+            word-wrap: break-word;
+          }
+          pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            margin: 0;
+            font-family: inherit;
+            font-size: inherit;
+          }
+        </style>
+      </head>
+      <body>
+        <pre>${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
+      </body>
+      </html>
+    `;
+  };
+
+  const previewContent = preparePreviewContent(emailBody);
+
   return (
     <>
       <div className="flex justify-between items-center mb-4">
@@ -78,7 +122,7 @@ const EditorContent: React.FC<{
             <div className="flex-1 flex flex-col min-h-0">
               <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">Preview</h3>
               <iframe
-                srcDoc={emailBody}
+                srcDoc={previewContent}
                 title="Email Preview"
                 className="w-full h-full bg-white border border-borders-primary rounded-lg"
                 sandbox="allow-same-origin"
@@ -109,7 +153,7 @@ const EditorContent: React.FC<{
                     </button>
                   </div>
                   <iframe
-                    srcDoc={emailBody}
+                    srcDoc={previewContent}
                     title="Email Preview"
                     className="w-full h-full flex-grow bg-white"
                     sandbox="allow-same-origin"

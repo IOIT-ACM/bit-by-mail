@@ -6,6 +6,7 @@ export interface Config {
   use_ssl: boolean;
   subject_template: string;
   attachment_folder: string;
+  send_attachments: boolean;
 }
 
 export interface Recipient {
@@ -30,4 +31,5 @@ export interface AppState {
   isSending: boolean;
   isPasswordSet: boolean;
   connectionStatus: "connecting" | "open" | "closed";
+  previewRecipient: Recipient | null;
 }

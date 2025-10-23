@@ -5,6 +5,9 @@ import Editor from './components/Editor';
 import RecipientTable from './components/RecipientTable';
 import StatusBar from './components/StatusBar';
 import { useWebSocket } from './hooks/useWebSocket';
+import { useAppStore } from './store/useAppStore';
+import { EmailPreviewModal } from './components/shared/EmailPreviewModal';
+import { AnimatePresence } from 'framer-motion';
 
 const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -12,6 +15,8 @@ const App: React.FC = () => {
   const [editorWidth, setEditorWidth] = useState(40);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
+
+  const { previewRecipient, emailBody, config, setPreviewRecipient } = useAppStore();
 
   useEffect(() => {
     const handleResize = () => {
@@ -76,6 +81,19 @@ const App: React.FC = () => {
         </div>
       </main>
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+
+      <AnimatePresence>
+        {previewRecipient && (
+          <EmailPreviewModal
+            recipient={previewRecipient}
+            emailBody={emailBody}
+            emailSubject={config.subject_template}
+            senderEmail={config.sender_email}
+            onClose={() => setPreviewRecipient(null)}
+            showAttachment={config.send_attachments}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

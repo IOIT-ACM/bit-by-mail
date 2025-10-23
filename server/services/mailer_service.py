@@ -96,16 +96,10 @@ class MailerService:
 
     def _process_recipient(self, server, config, html_template, recipient):
         email = recipient.get("Email")
-        attachment_file = recipient.get("AttachmentFile")
-
-        if not email or not attachment_file:
-            return "SKIPPED", "Missing email or attachment file name."
+        if not email:
+            return "SKIPPED", "Missing email address."
 
         try:
-            attachment_path = os.path.join(config["attachment_folder"], attachment_file)
-            if not os.path.exists(attachment_path):
-                raise FileNotFoundError(f"Attachment not found: {attachment_path}")
-
             msg = MIMEMultipart()
             msg["From"] = config["sender_email"]
             msg["To"] = email
@@ -118,15 +112,27 @@ class MailerService:
             body = self._replace_placeholders(html_template, recipient)
             msg.attach(MIMEText(body, "html"))
 
-            self._broadcast_log("info", f"Attaching file: {attachment_path}")
-            with open(attachment_path, "rb") as attachment:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(attachment.read())
-            encoders.encode_base64(part)
-            part.add_header(
-                "Content-Disposition", f"attachment; filename= {attachment_file}"
-            )
-            msg.attach(part)
+            send_attachments = config.get("send_attachments", True)
+            if send_attachments:
+                attachment_file = recipient.get("AttachmentFile")
+                if not attachment_file:
+                    return "SKIPPED", "Attachment file name is missing."
+
+                attachment_path = os.path.join(
+                    config["attachment_folder"], attachment_file
+                )
+                if not os.path.exists(attachment_path):
+                    raise FileNotFoundError(f"Attachment not found: {attachment_path}")
+
+                self._broadcast_log("info", f"Attaching file: {attachment_path}")
+                with open(attachment_path, "rb") as attachment:
+                    part = MIMEBase("application", "octet-stream")
+                    part.set_payload(attachment.read())
+                encoders.encode_base64(part)
+                part.add_header(
+                    "Content-Disposition", f"attachment; filename= {attachment_file}"
+                )
+                msg.attach(part)
 
             server.send_message(msg)
             self._broadcast_log("success", f"Email successfully sent to {email}")

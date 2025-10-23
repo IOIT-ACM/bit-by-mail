@@ -54,11 +54,20 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
             <InputField name="sender_password" type="password" value={sender_password} onChange={(e) => setSenderPassword(e.target.value)} placeholder={isPasswordSet ? "Leave blank to use saved password" : "Sender Password"} />
             <div className="md:col-span-2">
               <InputField name="attachment_folder" value={formState.attachment_folder} onChange={handleChange} placeholder="Attachment Folder Path" />
+              <p className="mt-1.5 px-1 text-xs text-text-tertiary">
+                Must be an absolute path on the server where this application is running.
+              </p>
             </div>
           </div>
-          <div className="flex items-center">
-            <input type="checkbox" name="use_ssl" checked={formState.use_ssl} onChange={handleChange} id="use_ssl" className="h-4 w-4 rounded bg-surface-element border-borders-secondary text-accent-blue focus:ring-accent-blue" />
-            <label htmlFor="use_ssl" className="ml-3 block text-sm text-text-secondary">Use SSL/TLS</label>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input type="checkbox" name="use_ssl" checked={formState.use_ssl} onChange={handleChange} id="use_ssl" className="h-4 w-4 rounded bg-surface-element border-borders-secondary text-accent-blue focus:ring-accent-blue" />
+              <label htmlFor="use_ssl" className="ml-3 block text-sm text-text-secondary">Use SSL/TLS</label>
+            </div>
+            <div className="flex items-center">
+              <input type="checkbox" name="send_attachments" checked={formState.send_attachments} onChange={handleChange} id="send_attachments" className="h-4 w-4 rounded bg-surface-element border-borders-secondary text-accent-blue focus:ring-accent-blue" />
+              <label htmlFor="send_attachments" className="ml-3 block text-sm text-text-secondary">Send attachments</label>
+            </div>
           </div>
           <div className="flex justify-end pt-2">
             <Button type="submit" variant="primary">

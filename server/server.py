@@ -2,6 +2,7 @@ import os
 import tornado.web
 import tornado.ioloop
 from .handlers.websocket_handler import WebSocketHandler
+from .handlers.attachment_handler import AttachmentHandler
 from .services.settings_service import SettingsService
 from .services.recipient_service import RecipientService
 from .services.template_service import TemplateService
@@ -39,6 +40,11 @@ def make_app():
     return tornado.web.Application(
         [
             (r"/ws", WebSocketHandler),
+            (
+                r"/attachments/(.*)",
+                AttachmentHandler,
+                {"settings_service": settings_service, "base_dir": base_dir},
+            ),
             (
                 r"/(.*)",
                 tornado.web.StaticFileHandler,

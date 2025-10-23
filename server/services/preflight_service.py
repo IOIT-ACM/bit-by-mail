@@ -67,18 +67,21 @@ class PreflightService:
 
     def _check_paths(self, config: Dict[str, Any], result: PreflightResult) -> bool:
         errors = []
-        attachment_folder = os.path.join(
-            self.base_dir, config.get("attachment_folder", "")
-        )
+        attachment_folder = config.get("attachment_folder", "")
 
-        paths_to_check = {
+        files_to_check = {
             "Recipients CSV": self.recipient_service.recipients_path,
             "HTML Template": self.template_service.template_path,
-            "Attachment Folder": attachment_folder,
         }
-        for name, path in paths_to_check.items():
+        for name, path in files_to_check.items():
             if not path or not os.path.exists(path):
-                errors.append(f"{name} file/folder not found at '{path}'.")
+                errors.append(f"{name} file not found at '{path}'.")
+
+        if config.get("send_attachments", True):
+            if not attachment_folder or not os.path.isdir(attachment_folder):
+                errors.append(
+                    f"Attachment Folder not found or is not a directory at '{attachment_folder}'."
+                )
 
         if not errors:
             result.successes.append(
@@ -93,10 +96,9 @@ class PreflightService:
         self, config: Dict[str, Any], result: PreflightResult
     ):
         errors, warnings = [], []
-        attachment_folder = os.path.join(
-            self.base_dir, config.get("attachment_folder", "")
-        )
+        attachment_folder = config.get("attachment_folder", "")
         subject_template = config.get("subject_template", "")
+        send_attachments = config.get("send_attachments", True)
 
         html_template = ""
         try:
@@ -145,7 +147,7 @@ class PreflightService:
         else:
             errors.extend(missing_column_errors)
 
-        if not recipients_df.empty:
+        if not recipients_df.empty and send_attachments:
             any_pending_attachments_missing = False
             all_attachments_found = True
 

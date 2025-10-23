@@ -6,17 +6,25 @@ from . import crypto_service
 
 class SettingsService:
     def __init__(self, base_dir):
+        self.base_dir = base_dir
         self.settings_path = os.path.join(base_dir, "settings.json")
 
+        default_attachment_folder = os.path.join(self.base_dir, "attachments")
+        if not os.path.exists(default_attachment_folder):
+            os.makedirs(default_attachment_folder)
+
     def _read_config(self):
+        default_attachment_folder = os.path.join(self.base_dir, "attachments")
+
         defaults = {
             "smtp_server": "",
             "smtp_port": 587,
             "sender_email": "",
             "use_ssl": False,
             "subject_template": "Hello {{Name}}!",
-            "attachment_folder": "attachments/",
+            "attachment_folder": default_attachment_folder,
             "sender_password": "",
+            "send_attachments": True,
         }
         if not os.path.exists(self.settings_path):
             return defaults
@@ -48,6 +56,9 @@ class SettingsService:
             ),
             "attachment_folder": data.get(
                 "attachment_folder", current_config["attachment_folder"]
+            ),
+            "send_attachments": data.get(
+                "send_attachments", current_config["send_attachments"]
             ),
         }
 
