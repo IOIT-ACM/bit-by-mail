@@ -39,6 +39,8 @@ export interface Campaign {
   id: string;
   name: string;
   subject: string;
+  createdAt: string;
+  recipientCount: number;
 }
 
 export interface AppState {

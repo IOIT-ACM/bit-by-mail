@@ -61,7 +61,7 @@ export const EditableCell: React.FC<EditableCellProps> = ({ value, onSave, onVie
       <span className="truncate block">{value || <span className="italic text-text-tertiary">empty</span>}</span>
       <div
         className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-surface-element-hover p-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={(e) => e.stopPropagation()} // Prevent cell click from triggering edit mode
+        onClick={(e) => e.stopPropagation()}
       >
         {onView && (
           <button onClick={onView} className="p-1 text-text-secondary hover:text-text-primary rounded" title="View">

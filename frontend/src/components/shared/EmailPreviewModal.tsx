@@ -74,6 +74,8 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
 
   const finalSubject = replacePlaceholders(subjectTemplate, previewRecipient);
   const finalBody = replacePlaceholders(emailBody, previewRecipient);
+  const showAttachment = config.send_attachments && previewRecipient.AttachmentFile;
+  const attachmentUrl = showAttachment ? `/attachments/${previewRecipient.AttachmentFile}` : '';
 
   const backdropVariants = {
     hidden: { opacity: 0 },
@@ -115,7 +117,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
       </button>
 
       <motion.div
-        className="relative w-full h-full max-w-5xl bg-surface-card border border-borders-primary rounded-card shadow-card flex flex-col"
+        className="relative w-full h-full max-w-7xl bg-surface-card border border-borders-primary rounded-card shadow-card flex flex-col"
         variants={modalVariants}
         initial="hidden"
         animate="visible"
@@ -142,11 +144,11 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
           <p className="text-sm text-text-primary">
             <strong>Subject:</strong> {finalSubject}
           </p>
-          {config.send_attachments && previewRecipient.AttachmentFile && (
+          {showAttachment && (
             <p className="text-sm text-text-secondary flex items-center gap-2 pt-1">
               <strong>Attachment:</strong>
               <a
-                href={`/attachments/${previewRecipient.AttachmentFile}`}
+                href={attachmentUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 text-accent-blue hover:underline"
@@ -157,14 +159,26 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
             </p>
           )}
         </div>
-        <div className="flex-grow p-4 pt-0 min-h-0">
-          <iframe
-            key={currentIndex}
-            srcDoc={finalBody}
-            title="Email Preview"
-            className="w-full h-full bg-white border border-borders-primary rounded-lg"
-            sandbox="allow-same-origin"
-          />
+        <div className={`flex-grow p-4 pt-0 min-h-0 ${showAttachment ? 'grid grid-cols-1 md:grid-cols-2 gap-4' : ''}`}>
+          <div className="w-full h-full min-h-0">
+            <iframe
+              key={`${currentIndex}-email`}
+              srcDoc={finalBody}
+              title="Email Preview"
+              className="w-full h-full bg-white border border-borders-primary rounded-lg"
+              sandbox="allow-same-origin"
+            />
+          </div>
+          {showAttachment && (
+            <div className="w-full h-full min-h-0 hidden md:block">
+              <iframe
+                key={`${currentIndex}-attachment`}
+                src={attachmentUrl}
+                title="Attachment Preview"
+                className="w-full h-full bg-white border border-borders-primary rounded-lg"
+              />
+            </div>
+          )}
         </div>
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 mb-2 px-4 py-1.5 bg-surface-header/80 backdrop-blur-sm rounded-full text-sm text-text-secondary font-mono">
           {currentIndex + 1} / {recipients.length}

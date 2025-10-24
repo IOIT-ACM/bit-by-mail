@@ -109,7 +109,7 @@ const LogViewerContent: React.FC<{ isMaximized: boolean; onToggleMaximize: () =>
           >
             <div
               className={`overflow-y-auto bg-surface-element rounded-b-lg p-3 font-mono text-xs w-full ${
-                isMaximized ? 'flex-grow' : 'h-52'
+                isMaximized ? 'flex-grow' : 'h-40'
               }`}
             >
               {logs.map(renderLog)}

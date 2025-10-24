@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { Recipient } from '../types';
-import { Maximize, Minimize } from 'lucide-react';
+import { Maximize, Minimize, Eye } from 'lucide-react';
 import { useDebouncedEffect } from '../hooks/useDebouncedEffect';
 import { apiService } from '../services/apiService';
 import { MaximizableView } from './shared/MaximizableView';
@@ -95,8 +95,9 @@ const RecipientTableContent: React.FC<{
       </button>
       <div className="overflow-auto flex-grow -mr-3 pr-3">
         <table className="w-full text-sm text-left">
-          <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-surface-card">
+          <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-[#1e1e2a] z-10">
             <tr>
+              <th scope="col" className="px-4 py-3 w-12 text-center"></th>
               <th scope="col" className="px-4 py-3 w-16 text-center">
                 #
               </th>
@@ -126,12 +127,20 @@ const RecipientTableContent: React.FC<{
                 )}`}
                 title={recipientIssues[index]?.message}
               >
+                <td className="px-4 py-2 text-center align-middle">
+                  <button
+                    onClick={() => handleViewEmail(recipient)}
+                    className="p-1 text-text-secondary hover:text-text-primary rounded-full hover:bg-surface-element-hover transition-colors"
+                    title="Preview Email"
+                  >
+                    <Eye size={16} />
+                  </button>
+                </td>
                 <td className="px-4 py-2 text-center align-middle text-text-secondary">{index + 1}</td>
                 <td className="p-1 align-middle">
                   <EditableCell
                     value={recipient.Name}
                     onSave={(newValue) => handleCellChange(index, 'Name', newValue)}
-                    onView={() => handleViewEmail(recipient)}
                   />
                 </td>
                 <td className="p-1 align-middle">

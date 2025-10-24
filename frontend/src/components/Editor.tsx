@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Code, Eye, Expand, Maximize, Minimize } from 'lucide-react';
+import { Code, Eye, Expand, Maximize, Minimize, Braces } from 'lucide-react';
 import { MonacoEditorWrapper } from './shared/MonacoEditorWrapper';
 import { MaximizableView } from './shared/MaximizableView';
 import { useDebouncedEffect } from '../hooks/useDebouncedEffect';
@@ -25,12 +25,45 @@ const TabButton: React.FC<{
   </button>
 );
 
+const PlaceholderList: React.FC = () => {
+  const { activeCampaignData } = useAppStore();
+  const recipients = activeCampaignData?.recipients ?? [];
+  const availablePlaceholders = recipients.length > 0 ? Object.keys(recipients[0]) : [];
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
+  if (availablePlaceholders.length === 0) {
+    return (
+      <p className="text-sm text-text-tertiary italic">
+        No recipients uploaded yet. Upload a CSV file to see available placeholders.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {availablePlaceholders.map(placeholder => (
+        <code
+          key={placeholder}
+          className="text-xs bg-black/30 px-2 py-1 rounded cursor-pointer hover:bg-accent-blue/50 transition-colors"
+          title={`Click to copy {{${placeholder}}}`}
+          onClick={() => handleCopy(`{{${placeholder}}}`)}
+        >
+          {`{{${placeholder}}}`}
+        </code>
+      ))}
+    </div>
+  );
+};
+
 const EditorContent: React.FC<{
   isMaximized: boolean;
   onToggleMaximize: () => void;
 }> = ({ isMaximized, onToggleMaximize }) => {
   const { activeCampaignId, campaigns, activeCampaignData, setActiveCampaignData, updateCampaign } = useAppStore();
-  const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
+  const [activeTab, setActiveTab] = useState<'code' | 'preview' | 'placeholders'>('code');
 
   const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
   const emailBody = activeCampaignData?.emailBody ?? '';
@@ -99,9 +132,6 @@ const EditorContent: React.FC<{
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className="text-heading-3 font-medium text-text-primary">Email Content</h2>
-          {!isMaximized && (
-            <p className="text-sm text-text-secondary mt-1">Use placeholders like <code className="text-xs bg-surface-element px-1 py-0.5 rounded">{"{{Name}}"}</code>. Changes are saved automatically.</p>
-          )}
         </div>
         <button
           onClick={onToggleMaximize}
@@ -122,10 +152,16 @@ const EditorContent: React.FC<{
       <div className="flex-grow flex flex-col md:flex-row gap-4 min-h-0">
         {isMaximized ? (
           <>
-            <div className="flex-1 flex flex-col min-h-0">
-              <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">Code</h3>
-              <div className="w-full h-full bg-surface-element border border-borders-primary rounded-lg overflow-hidden">
-                <MonacoEditorWrapper value={emailBody} onChange={handleBodyChange} />
+            <div className="flex-1 flex flex-col min-h-0 gap-4">
+              <div className="flex-grow flex flex-col min-h-0">
+                <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">Code</h3>
+                <div className="w-full flex-grow bg-surface-element border border-borders-primary rounded-lg overflow-hidden">
+                  <MonacoEditorWrapper value={emailBody} onChange={handleBodyChange} />
+                </div>
+              </div>
+              <div className="flex-shrink-0 p-3 bg-surface-element border border-borders-primary rounded-lg">
+                <h4 className="text-sm font-medium text-text-secondary mb-2">Available Placeholders</h4>
+                <PlaceholderList />
               </div>
             </div>
             <div className="flex-1 flex flex-col min-h-0">
@@ -143,6 +179,7 @@ const EditorContent: React.FC<{
             <div className="flex items-center border-b border-borders-primary">
               <TabButton label="Code" icon={<Code size={16} />} isActive={activeTab === 'code'} onClick={() => setActiveTab('code')} />
               <TabButton label="Preview" icon={<Eye size={16} />} isActive={activeTab === 'preview'} onClick={() => setActiveTab('preview')} />
+              <TabButton label="Placeholders" icon={<Braces size={16} />} isActive={activeTab === 'placeholders'} onClick={() => setActiveTab('placeholders')} />
             </div>
             <div className="flex-grow relative mt-4" style={{ minHeight: '300px' }}>
               {activeTab === 'code' && (
@@ -167,6 +204,12 @@ const EditorContent: React.FC<{
                     className="w-full h-full flex-grow bg-white"
                     sandbox="allow-same-origin"
                   />
+                </div>
+              )}
+              {activeTab === 'placeholders' && (
+                <div className="absolute inset-0 bg-surface-element border border-borders-primary rounded-b-lg rounded-tr-lg overflow-auto p-4">
+                  <h4 className="text-sm font-medium text-text-secondary mb-3">Available Placeholders</h4>
+                  <PlaceholderList />
                 </div>
               )}
             </div>

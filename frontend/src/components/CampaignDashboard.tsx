@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { apiService } from '../services/apiService';
 import { Button } from './shared/Button';
-import { Plus, Mail, Settings, FileUp, TestTube, Send, Maximize, Minimize } from 'lucide-react';
+import { Plus, Mail, Settings, FileUp, TestTube, Send, Maximize, Minimize, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MaximizableView } from './shared/MaximizableView';
 import { SelectionPopup } from './shared/SelectionPopup';
@@ -59,6 +59,7 @@ export const CampaignDashboard: React.FC = () => {
     setSelectedCampaignIds,
     clearCampaignSelection,
     selectAllCampaigns,
+    setActiveCampaignId,
   } = useAppStore();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCampaignName, setNewCampaignName] = useState('');
@@ -173,11 +174,17 @@ export const CampaignDashboard: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
         e.preventDefault();
         selectAllCampaigns();
+      } else if (e.key === 'Enter' && selectedCampaignIds.size === 1) {
+        e.preventDefault();
+        const id = selectedCampaignIds.values().next().value;
+        setActiveCampaignId(id);
+        apiService.getCampaignData(id);
+        window.history.pushState({}, '', `?c=${id}`);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [clearCampaignSelection, selectAllCampaigns]);
+  }, [clearCampaignSelection, selectAllCampaigns, selectedCampaignIds, setActiveCampaignId]);
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center p-4 md:p-8 lg:p-12">
@@ -248,21 +255,34 @@ export const CampaignDashboard: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                     onClick={(e) => handleCardClick(e, campaign.id)}
-                    className={`bg-surface-card backdrop-blur-xl border rounded-card p-6 cursor-pointer hover:bg-surface-card/80 transition-all duration-200 ${
+                    className={`bg-surface-card backdrop-blur-xl border rounded-card p-6 cursor-pointer hover:bg-surface-card/80 transition-all duration-200 flex flex-col ${
                       isSelected ? 'border-accent-blue ring-2 ring-accent-blue/50' : 'border-borders-primary hover:border-accent-blue/50'
                     }`}
                   >
-                    <div className="flex items-center gap-4 mb-3">
-                      <div className="w-10 h-10 flex items-center justify-center bg-accent-blue/10 rounded-full text-accent-blue">
-                        <Mail size={20} />
+                    <div className="flex-grow">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 flex items-center justify-center bg-accent-blue/10 rounded-full text-accent-blue">
+                          <Mail size={20} />
+                        </div>
+                        <h2 className="text-lg font-medium text-text-primary truncate">
+                          {campaign.name}
+                        </h2>
                       </div>
-                      <h2 className="text-lg font-medium text-text-primary truncate">
-                        {campaign.name}
-                      </h2>
+                      <p className="text-sm text-text-secondary truncate mt-3">
+                        <strong>Subject:</strong> {campaign.subject}
+                      </p>
                     </div>
-                    <p className="text-sm text-text-secondary truncate">
-                      <strong>Subject:</strong> {campaign.subject}
-                    </p>
+                    <div className="mt-4 pt-4 border-t border-borders-primary/50 flex justify-between items-center text-xs text-text-tertiary">
+                      <span className="font-medium flex items-center gap-1.5">
+                        <Users size={14} />
+                        {campaign.recipientCount > 0
+                          ? `${campaign.recipientCount} Recipients`
+                          : 'No active recipients'}
+                      </span>
+                      <span>
+                        {new Date(campaign.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </motion.div>
                 );
               })}
