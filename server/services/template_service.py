@@ -3,8 +3,13 @@ from tornado.ioloop import IOLoop
 
 
 class TemplateService:
-    def __init__(self, base_dir):
-        self.template_path = os.path.join(base_dir, "email.html")
+    def __init__(self, campaign_service):
+        self.campaign_service = campaign_service
+
+    def get_template_path(self, campaign_id):
+        return os.path.join(
+            self.campaign_service.get_campaign_path(campaign_id), "template.html"
+        )
 
     def _read_file(self, path):
         if not os.path.exists(path):
@@ -16,12 +21,14 @@ class TemplateService:
         with open(path, "w", encoding="utf-8") as f:
             f.write(content)
 
-    async def get_template(self):
+    async def get_template(self, campaign_id):
+        template_path = self.get_template_path(campaign_id)
         return await IOLoop.current().run_in_executor(
-            None, self._read_file, self.template_path
+            None, self._read_file, template_path
         )
 
-    async def save_template(self, content):
+    async def save_template(self, campaign_id, content):
+        template_path = self.get_template_path(campaign_id)
         await IOLoop.current().run_in_executor(
-            None, self._write_file, self.template_path, content
+            None, self._write_file, template_path, content
         )

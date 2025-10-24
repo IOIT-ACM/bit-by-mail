@@ -21,11 +21,22 @@ const replacePlaceholders = (template: string, data: Recipient): string => {
 };
 
 export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose }) => {
-  const { recipients, previewRecipient, setPreviewRecipient, emailBody, config } = useAppStore();
+  const {
+    activeCampaignData,
+    previewRecipient,
+    setPreviewRecipient,
+    config,
+    campaigns,
+    activeCampaignId,
+  } = useAppStore();
+
+  const recipients = activeCampaignData?.recipients ?? [];
+  const emailBody = activeCampaignData?.emailBody ?? '';
+  const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
+  const subjectTemplate = activeCampaign?.subject ?? '';
 
   const currentIndex = useMemo(() => {
     if (!previewRecipient) return -1;
-    // Find recipient by reference, assuming the list is stable while preview is open
     return recipients.findIndex(r => r === previewRecipient);
   }, [recipients, previewRecipient]);
 
@@ -55,13 +66,13 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [currentIndex, recipients.length]); // Re-bind if index or list changes
+  }, [currentIndex, recipients.length]);
 
   if (!previewRecipient) {
     return null;
   }
 
-  const finalSubject = replacePlaceholders(config.subject_template, previewRecipient);
+  const finalSubject = replacePlaceholders(subjectTemplate, previewRecipient);
   const finalBody = replacePlaceholders(emailBody, previewRecipient);
 
   const backdropVariants = {
@@ -86,7 +97,6 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
         onClick={onClose}
       />
 
-      {/* Navigation Buttons */}
       <button
         onClick={goToPrevious}
         disabled={currentIndex <= 0}
@@ -149,7 +159,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
         </div>
         <div className="flex-grow p-4 pt-0 min-h-0">
           <iframe
-            key={currentIndex} // Add key to force re-render on recipient change
+            key={currentIndex}
             srcDoc={finalBody}
             title="Email Preview"
             className="w-full h-full bg-white border border-borders-primary rounded-lg"

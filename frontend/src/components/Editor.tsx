@@ -29,11 +29,21 @@ const EditorContent: React.FC<{
   isMaximized: boolean;
   onToggleMaximize: () => void;
 }> = ({ isMaximized, onToggleMaximize }) => {
-  const { config, emailBody, setConfig, setEmailBody } = useAppStore();
+  const { activeCampaignId, campaigns, activeCampaignData, setActiveCampaignData, updateCampaign } = useAppStore();
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
 
+  const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
+  const emailBody = activeCampaignData?.emailBody ?? '';
+  const subject = activeCampaign?.subject ?? '';
+
   const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setConfig({ ...config, subject_template: e.target.value });
+    if (activeCampaignId) {
+      updateCampaign(activeCampaignId, { subject: e.target.value });
+    }
+  };
+
+  const handleBodyChange = (newBody: string) => {
+    setActiveCampaignData({ ...activeCampaignData!, emailBody: newBody });
   };
 
   const handleFullscreenPreview = () => {
@@ -43,7 +53,6 @@ const EditorContent: React.FC<{
   };
 
   const isLikelyHtml = (text: string): boolean => {
-    // A simple check for common HTML block or structural tags.
     const htmlRegex = /<\s*\/?\s*(html|body|div|p|h[1-6]|table|ul|ol|a|img|br)\b/i;
     return htmlRegex.test(text);
   };
@@ -52,7 +61,6 @@ const EditorContent: React.FC<{
     if (isLikelyHtml(content)) {
       return content;
     }
-    // For plain text, wrap in <pre> to preserve formatting and add some basic styling.
     return `
       <!DOCTYPE html>
       <html lang="en">
@@ -105,10 +113,11 @@ const EditorContent: React.FC<{
       <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">Email Subject</h3>
       <input
         type="text"
-        value={config.subject_template}
+        value={subject}
         onChange={handleSubjectChange}
         placeholder="Email Subject Template"
         className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:border-accent-blue transition-colors mb-4 flex-shrink-0"
+        maxLength={100}
       />
       <div className="flex-grow flex flex-col md:flex-row gap-4 min-h-0">
         {isMaximized ? (
@@ -116,7 +125,7 @@ const EditorContent: React.FC<{
             <div className="flex-1 flex flex-col min-h-0">
               <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">Code</h3>
               <div className="w-full h-full bg-surface-element border border-borders-primary rounded-lg overflow-hidden">
-                <MonacoEditorWrapper value={emailBody} onChange={setEmailBody} />
+                <MonacoEditorWrapper value={emailBody} onChange={handleBodyChange} />
               </div>
             </div>
             <div className="flex-1 flex flex-col min-h-0">
@@ -138,7 +147,7 @@ const EditorContent: React.FC<{
             <div className="flex-grow relative mt-4" style={{ minHeight: '300px' }}>
               {activeTab === 'code' && (
                 <div className="absolute inset-0 bg-surface-element border border-borders-primary rounded-b-lg rounded-tr-lg overflow-hidden">
-                  <MonacoEditorWrapper value={emailBody} onChange={setEmailBody} />
+                  <MonacoEditorWrapper value={emailBody} onChange={handleBodyChange} />
                 </div>
               )}
               {activeTab === 'preview' && (
@@ -169,15 +178,27 @@ const EditorContent: React.FC<{
 };
 
 const Editor: React.FC = () => {
-  const { config, emailBody } = useAppStore();
+  const { activeCampaignId, campaigns, activeCampaignData } = useAppStore();
+  const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
 
   useDebouncedEffect(
     () => {
-      apiService.saveTemplate(emailBody);
-      apiService.saveConfig({ subject_template: config.subject_template });
+      if (activeCampaignId && activeCampaignData) {
+        apiService.saveTemplate(activeCampaignId, activeCampaignData.emailBody);
+      }
     },
     1500,
-    [emailBody, config.subject_template]
+    [activeCampaignId, activeCampaignData?.emailBody]
+  );
+
+  useDebouncedEffect(
+    () => {
+      if (activeCampaignId && activeCampaign) {
+        apiService.updateCampaign(activeCampaignId, { subject: activeCampaign.subject });
+      }
+    },
+    1500,
+    [activeCampaignId, activeCampaign?.subject]
   );
 
   return (

@@ -16,59 +16,112 @@ class ApiService {
     }
   }
 
-  saveTemplate(emailBody: string) {
-    this.sendMessage("save_template", emailBody);
+  getCampaigns() {
+    this.sendMessage("get_campaigns");
   }
 
-  saveConfig(config: Partial<Config>) {
+  getCampaignData(campaignId: string) {
+    this.sendMessage("get_campaign_data", { campaign_id: campaignId });
+  }
+
+  createCampaign(name: string) {
+    this.sendMessage("create_campaign", { name });
+  }
+
+  updateCampaign(
+    campaignId: string,
+    updates: { name?: string; subject?: string },
+  ) {
+    this.sendMessage("update_campaign", { campaign_id: campaignId, updates });
+  }
+
+  deleteCampaign(campaignId: string) {
+    this.sendMessage("delete_campaign", { campaign_id: campaignId });
+  }
+
+  deleteCampaigns(campaignIds: string[]) {
+    this.sendMessage("delete_campaigns", { campaign_ids: campaignIds });
+  }
+
+  saveTemplate(campaignId: string, emailBody: string) {
+    this.sendMessage("save_template", {
+      campaign_id: campaignId,
+      content: emailBody,
+    });
+  }
+
+  saveConfig(config: Partial<Omit<Config, "subject_template">>) {
     const { config: currentConfig, sender_password } = useAppStore.getState();
     const fullConfig = { ...currentConfig, ...config, sender_password };
     this.sendMessage("save_config", fullConfig);
   }
 
-  saveAndTestConfig(config: Omit<Config, "sender_password">, password: string) {
-    const { setConfig, clearLogs } = useAppStore.getState();
+  saveAndTestConfig(
+    config: Omit<Config, "sender_password" | "subject_template">,
+    password: string,
+  ) {
+    const { setConfig, clearLogs, activeCampaignId } = useAppStore.getState();
     const fullConfig = { ...config, sender_password: password };
 
     setConfig(config);
     this.sendMessage("save_config", fullConfig);
 
-    clearLogs();
-    this.sendMessage("preflight_check", fullConfig);
+    if (activeCampaignId) {
+      clearLogs();
+      this.sendMessage("preflight_check", {
+        campaign_id: activeCampaignId,
+        config: fullConfig,
+      });
+    }
   }
 
-  saveRecipients(recipients: Recipient[]) {
-    this.sendMessage("save_recipients", recipients);
+  saveRecipients(campaignId: string, recipients: Recipient[]) {
+    this.sendMessage("save_recipients", {
+      campaign_id: campaignId,
+      recipients,
+    });
   }
 
-  uploadRecipients(base64Content: string) {
-    this.sendMessage("upload_recipients", base64Content);
+  uploadRecipients(campaignId: string, base64Content: string) {
+    this.sendMessage("upload_recipients", {
+      campaign_id: campaignId,
+      content: base64Content,
+    });
   }
 
-  startMailing() {
-    const { config, recipients, sender_password, clearLogs, setIsSending } =
+  startMailing(campaignId: string) {
+    const { config, sender_password, clearLogs, setIsSending } =
       useAppStore.getState();
-    if (recipients.length === 0) return;
-
     clearLogs();
     setIsSending(true);
     const fullConfig = { ...config, sender_password };
-    this.sendMessage("start_mailing", { config: fullConfig, recipients });
+    this.sendMessage("start_mailing", {
+      campaign_id: campaignId,
+      config: fullConfig,
+    });
   }
 
-  getCampaignSummary() {
+  getCampaignSummary(campaignId: string) {
     const { config, sender_password } = useAppStore.getState();
     const fullConfig = { ...config, sender_password };
-    this.sendMessage("get_campaign_summary", fullConfig);
+    this.sendMessage("get_campaign_summary", {
+      campaign_id: campaignId,
+      config: fullConfig,
+    });
   }
 
-  runPreflightCheck(configOverride?: Config) {
-    const { config, sender_password, clearLogs } = useAppStore.getState();
+  runPreflightCheck(campaignId: string, configOverride?: Config) {
+    const { config, sender_password, clearLogs, setIsLogCollapsed } =
+      useAppStore.getState();
     clearLogs();
+    setIsLogCollapsed(false);
     const fullConfig = configOverride
       ? configOverride
       : { ...config, sender_password };
-    this.sendMessage("preflight_check", fullConfig);
+    this.sendMessage("preflight_check", {
+      campaign_id: campaignId,
+      config: fullConfig,
+    });
   }
 }
 

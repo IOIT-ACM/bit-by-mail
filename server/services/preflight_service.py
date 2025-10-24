@@ -40,16 +40,23 @@ class PreflightService:
             template_string = template_string.replace(placeholder, str(value))
         return template_string
 
-    def get_campaign_summary(self, config: Dict[str, Any]) -> Dict[str, Any]:
+    async def get_campaign_summary(
+        self, campaign_id: str, config: Dict[str, Any], subject_template: str
+    ) -> Dict[str, Any]:
         try:
-            recipients_df = pd.read_csv(self.recipient_service.recipients_path)
+            recipients_df = pd.DataFrame(
+                await self.recipient_service.get_recipients(campaign_id)
+            ).fillna("")
         except FileNotFoundError:
             recipients_df = pd.DataFrame({"Status": [], "AttachmentFile": []})
+
+        if "Status" not in recipients_df.columns:
+            recipients_df["Status"] = "PENDING"
 
         total_recipients = len(recipients_df)
 
         recipients_to_send_df = recipients_df[
-            recipients_df["Status"].str.upper() != "SENT"
+            recipients_df["Status"].astype(str).str.upper() != "SENT"
         ]
         recipients_to_send_count = len(recipients_to_send_df)
 
@@ -71,10 +78,7 @@ class PreflightService:
         preview_body = "<p>No pending recipients to preview.</p>"
         if not recipients_to_send_df.empty:
             first_recipient = recipients_to_send_df.iloc[0].to_dict()
-            subject_template = config.get("subject_template", "")
-            html_template = self.template_service._read_file(
-                self.template_service.template_path
-            )
+            html_template = await self.template_service.get_template(campaign_id)
             preview_subject = self._replace_placeholders(
                 subject_template, first_recipient
             )
@@ -123,17 +127,24 @@ class PreflightService:
         else:
             result.errors.extend(errors)
 
-    def _check_paths(self, config: Dict[str, Any], result: PreflightResult) -> bool:
+    async def _check_paths(
+        self, campaign_id: str, config: Dict[str, Any], result: PreflightResult
+    ) -> bool:
         errors = []
         attachment_folder = config.get("attachment_folder", "")
 
-        files_to_check = {
-            "Recipients CSV": self.recipient_service.recipients_path,
-            "HTML Template": self.template_service.template_path,
-        }
-        for name, path in files_to_check.items():
-            if not path or not os.path.exists(path):
-                errors.append(f"{name} file not found at '{path}'.")
+        recipients_path = self.recipient_service.get_recipients_path(campaign_id)
+        template_path = self.template_service.get_template_path(campaign_id)
+
+        if not os.path.exists(recipients_path):
+            result.warnings.append(
+                f"Recipients CSV file not found for this campaign at '{recipients_path}'. A new one can be uploaded."
+            )
+
+        if not os.path.exists(template_path):
+            errors.append(
+                f"HTML Template file not found for this campaign at '{template_path}'."
+            )
 
         if config.get("send_attachments", True):
             if not attachment_folder or not os.path.isdir(attachment_folder):
@@ -142,40 +153,42 @@ class PreflightService:
                 )
 
         if not errors:
-            result.successes.append(
-                "Recipients CSV, HTML template, and attachment folder all exist."
-            )
+            result.successes.append("HTML template and attachment folder all exist.")
             return True
         else:
             result.errors.extend(errors)
             return False
 
-    def _check_recipients_and_attachments(
-        self, config: Dict[str, Any], result: PreflightResult
+    async def _check_recipients_and_attachments(
+        self,
+        campaign_id: str,
+        config: Dict[str, Any],
+        subject_template: str,
+        result: PreflightResult,
     ):
         errors, warnings = [], []
         attachment_folder = config.get("attachment_folder", "")
-        subject_template = config.get("subject_template", "")
         send_attachments = config.get("send_attachments", True)
 
-        html_template = ""
-        try:
-            with open(self.template_service.template_path, "r", encoding="utf-8") as f:
-                html_template = f.read()
-        except Exception as e:
-            errors.append(f"Could not read HTML template file: {e}")
+        html_template = await self.template_service.get_template(campaign_id)
+        if not html_template:
+            errors.append(f"Could not read or empty HTML template file for campaign.")
             result.errors.extend(errors)
             return
 
         try:
-            recipients_df = pd.read_csv(self.recipient_service.recipients_path)
+            recipients_df = pd.DataFrame(
+                await self.recipient_service.get_recipients(campaign_id)
+            ).fillna("")
+            if recipients_df.empty:
+                warnings.append("Recipient list is empty for this campaign.")
+                result.warnings.extend(warnings)
+                return
             csv_columns = set(recipients_df.columns)
         except FileNotFoundError:
             return
         except (pd.errors.ParserError, Exception) as e:
-            errors.append(
-                f"Error processing '{self.recipient_service.recipients_path}': {e}"
-            )
+            errors.append(f"Error processing recipients file for campaign: {e}")
             result.errors.extend(errors)
             return
 
@@ -282,14 +295,18 @@ class PreflightService:
         result.errors.extend(errors)
         result.warnings.extend(warnings)
 
-    def run_checks(self, config: Dict[str, Any]) -> PreflightResult:
+    async def run_checks(
+        self, campaign_id: str, config: Dict[str, Any], subject_template: str
+    ) -> PreflightResult:
         result = PreflightResult()
 
         self._check_config_variables(config, result)
 
-        paths_ok = self._check_paths(config, result)
+        paths_ok = await self._check_paths(campaign_id, config, result)
 
         if paths_ok:
-            self._check_recipients_and_attachments(config, result)
+            await self._check_recipients_and_attachments(
+                campaign_id, config, subject_template, result
+            )
 
         return result

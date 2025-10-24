@@ -1,8 +1,8 @@
-import React from 'react';
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Maximize, Minimize } from 'lucide-react';
+import { ChevronDown, ChevronUp, Maximize, Minimize } from 'lucide-react';
 import { LogEntry } from '../types';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MaximizableView } from './shared/MaximizableView';
 
 const getLogColor = (level: string) => {
@@ -29,25 +29,38 @@ const renderLog = (log: LogEntry, index: number) => (
   </div>
 );
 
-const LogViewerContent: React.FC<{ onToggleFullScreen: () => void; isFullScreen: boolean }> = ({
-  onToggleFullScreen,
-  isFullScreen,
+const LogViewerContent: React.FC<{ isMaximized: boolean; onToggleMaximize: () => void }> = ({
+  isMaximized,
+  onToggleMaximize,
 }) => {
-  const { logs, isSending, progress } = useAppStore((state) => ({
+  const { logs, isSending, progress, isLogCollapsed, setIsLogCollapsed } = useAppStore((state) => ({
     logs: state.logs,
     isSending: state.isSending,
     progress: state.progress,
+    isLogCollapsed: state.isLogCollapsed,
+    setIsLogCollapsed: state.setIsLogCollapsed,
   }));
   const logsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [logs]);
+    if (isMaximized) {
+      setIsLogCollapsed(false);
+    }
+  }, [isMaximized, setIsLogCollapsed]);
+
+  useEffect(() => {
+    if (!isLogCollapsed) {
+      logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs, isLogCollapsed]);
 
   return (
     <>
-      <div className="flex justify-between items-center mb-2 px-2">
-        <div className="flex items-center gap-4">
+      <div className="flex justify-between items-center p-2">
+        <div
+          className="flex items-center gap-4 flex-grow cursor-pointer"
+          onClick={() => !isMaximized && setIsLogCollapsed(!isLogCollapsed)}
+        >
           <h3 className="text-sm font-medium text-text-secondary">Live Logs</h3>
           {isSending && (
             <div className="flex items-center gap-2 w-64">
@@ -63,17 +76,48 @@ const LogViewerContent: React.FC<{ onToggleFullScreen: () => void; isFullScreen:
             </div>
           )}
         </div>
-        <button
-          onClick={onToggleFullScreen}
-          className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
-        >
-          {isFullScreen ? <Minimize size={16} /> : <Maximize size={16} />}
-        </button>
+        <div className="flex items-center">
+          {!isMaximized && (
+            <button
+              onClick={() => setIsLogCollapsed(!isLogCollapsed)}
+              className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+            >
+              {isLogCollapsed ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+          )}
+          <button
+            onClick={onToggleMaximize}
+            className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+          >
+            {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
+          </button>
+        </div>
       </div>
-      <div className={`overflow-y-auto bg-surface-element rounded-lg p-3 font-mono text-xs ${isFullScreen ? 'flex-grow' : 'h-52'}`}>
-        {logs.map(renderLog)}
-        <div ref={logsEndRef} />
-      </div>
+      <AnimatePresence initial={false}>
+        {!isLogCollapsed && (
+          <motion.div
+            key="content"
+            initial="collapsed"
+            animate="open"
+            exit="collapsed"
+            variants={{
+              open: { opacity: 1, height: 'auto' },
+              collapsed: { opacity: 0, height: 0 },
+            }}
+            transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
+            className={`overflow-hidden ${isMaximized ? 'flex-grow flex' : ''}`}
+          >
+            <div
+              className={`overflow-y-auto bg-surface-element rounded-b-lg p-3 font-mono text-xs w-full ${
+                isMaximized ? 'flex-grow' : 'h-52'
+              }`}
+            >
+              {logs.map(renderLog)}
+              <div ref={logsEndRef} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 };
@@ -82,7 +126,7 @@ const StatusBar: React.FC = () => {
   return (
     <MaximizableView layoutId="log-viewer-container">
       {({ isMaximized, onToggle }) => (
-        <LogViewerContent isFullScreen={isMaximized} onToggleFullScreen={onToggle} />
+        <LogViewerContent isMaximized={isMaximized} onToggleMaximize={onToggle} />
       )}
     </MaximizableView>
   );

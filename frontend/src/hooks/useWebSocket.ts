@@ -17,6 +17,9 @@ export const useWebSocket = () => {
     clearRecipientIssues,
     setCampaignSummary,
     setShowCampaignSummaryModal,
+    setActiveCampaignData,
+    setCampaigns,
+    setActiveCampaignId,
   } = useAppStore();
 
   const onMessage = useCallback(
@@ -27,11 +30,29 @@ export const useWebSocket = () => {
       switch (action) {
         case "initial_data":
           setInitialData(payload);
+          break;
+        case "campaigns_list":
+          setCampaigns(payload);
+          break;
+        case "campaign_created":
+          setActiveCampaignId(payload.id);
+          apiService.getCampaignData(payload.id);
+          window.history.pushState({}, "", `?c=${payload.id}`);
+          break;
+        case "campaign_data":
+          setActiveCampaignData({
+            emailBody: payload.emailBody,
+            recipients: payload.recipients,
+          });
           clearLogs();
-          apiService.runPreflightCheck(payload.config);
+          apiService.runPreflightCheck(payload.campaign_id, payload.config);
           break;
         case "recipients_updated":
           setRecipients(payload);
+          const { activeCampaignId } = useAppStore.getState();
+          if (activeCampaignId) {
+            apiService.runPreflightCheck(activeCampaignId);
+          }
           break;
         case "status_update":
           const statusLevelMap: { [key: string]: string } = {
@@ -134,6 +155,9 @@ export const useWebSocket = () => {
       setConnectionStatus,
       setCampaignSummary,
       setShowCampaignSummaryModal,
+      setActiveCampaignData,
+      setCampaigns,
+      setActiveCampaignId,
     ],
   );
 
@@ -147,7 +171,7 @@ export const useWebSocket = () => {
     socket.onopen = () => {
       console.log("WebSocket Connected");
       setConnectionStatus("open");
-      apiService.sendMessage("get_initial_data");
+      apiService.getCampaigns();
     };
     socket.onclose = () => {
       console.log("WebSocket Disconnected");

@@ -1,22 +1,19 @@
 import os
-import json
 import smtplib
 import pandas as pd
-import tornado.websocket
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from contextlib import contextmanager
+from datetime import datetime
 
 
 class MailerService:
-    def __init__(
-        self, template_service, recipient_service, websocket_connections, ioloop
-    ):
+    def __init__(self, template_service, recipient_service, websocket_manager, ioloop):
         self.template_service = template_service
         self.recipient_service = recipient_service
-        self.websockets = websocket_connections
+        self.websockets = websocket_manager
         self.ioloop = ioloop
         self._is_running = False
         self._stop_requested = False
@@ -28,17 +25,24 @@ class MailerService:
         if self._is_running:
             self._stop_requested = True
 
-    async def start_mailing(self, config, recipients):
+    async def start_mailing(self, campaign_id, config, subject):
         if self._is_running:
             return
 
         self._is_running = True
         self._stop_requested = False
 
-        html_template = await self.template_service.get_template()
+        html_template = await self.template_service.get_template(campaign_id)
+        recipients = await self.recipient_service.get_recipients(campaign_id)
 
         self.ioloop.run_in_executor(
-            None, self._run_mailing_loop, config, recipients, html_template
+            None,
+            self._run_mailing_loop,
+            campaign_id,
+            config,
+            subject,
+            recipients,
+            html_template,
         )
 
     def _replace_placeholders(self, template_string, recipient_dict):
@@ -47,14 +51,23 @@ class MailerService:
             template_string = template_string.replace(placeholder, str(value))
         return template_string
 
-    def _run_mailing_loop(self, config, recipients, html_template):
+    def _run_mailing_loop(
+        self, campaign_id, config, subject, recipients, html_template
+    ):
         recipients_df = pd.DataFrame()
         try:
             self._broadcast_log("info", "Mailing process started.")
 
             recipients_df = pd.DataFrame(recipients)
+            if recipients_df.empty:
+                self._broadcast_log("info", "Recipient list is empty.")
+                return
+
+            if "Status" not in recipients_df.columns:
+                recipients_df["Status"] = "PENDING"
+
             recipients_to_process = recipients_df[
-                recipients_df["Status"].str.upper() != "SENT"
+                recipients_df["Status"].astype(str).str.upper() != "SENT"
             ]
 
             if recipients_to_process.empty:
@@ -69,7 +82,7 @@ class MailerService:
 
                     recipient = recipient_row.to_dict()
                     status, details = self._process_recipient(
-                        server, config, html_template, recipient
+                        server, config, subject, html_template, recipient
                     )
 
                     recipients_df.loc[index, "Status"] = status
@@ -88,13 +101,29 @@ class MailerService:
         finally:
             if not recipients_df.empty:
                 self.recipient_service.write_recipients_from_json(
-                    recipients_df.to_dict(orient="records")
+                    campaign_id, recipients_df.to_dict(orient="records")
                 )
+
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                report_filename = f"report_{timestamp}.csv"
+                report_path = os.path.join(
+                    self.recipient_service.campaign_service.get_campaign_path(
+                        campaign_id
+                    ),
+                    report_filename,
+                )
+                recipients_df.to_csv(report_path, index=False)
+                self._broadcast_log(
+                    "info", f"Generated final report: {report_filename}"
+                )
+
             self._is_running = False
             self._stop_requested = False
             self._broadcast_finish()
 
-    def _process_recipient(self, server, config, html_template, recipient):
+    def _process_recipient(
+        self, server, config, subject_template, html_template, recipient
+    ):
         email = recipient.get("Email")
         if not email:
             return "SKIPPED", "Missing email address."
@@ -103,7 +132,7 @@ class MailerService:
             msg = MIMEMultipart()
             msg["From"] = config["sender_email"]
             msg["To"] = email
-            subject = self._replace_placeholders(config["subject_template"], recipient)
+            subject = self._replace_placeholders(subject_template, recipient)
             msg["Subject"] = subject
 
             body = self._replace_placeholders(html_template, recipient)
@@ -198,14 +227,7 @@ class MailerService:
                 self._broadcast_log("success", "Connection closed.")
 
     def _broadcast(self, message):
-        self.ioloop.add_callback(self._safe_write_message, message)
-
-    def _safe_write_message(self, message):
-        for ws in self.websockets:
-            try:
-                ws.write_message(json.dumps(message))
-            except tornado.websocket.WebSocketClosedError:
-                print("Attempted to write to a closed WebSocket.")
+        self.ioloop.add_callback(self.websockets.broadcast, message)
 
     def _broadcast_log(self, level, message):
         self._broadcast(

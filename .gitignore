@@ -10,8 +10,7 @@ frontend/dist/
 npm-debug.log
 
 # Data
-data/uploads/
-data/attachments/
+data
 settings.json
 
 scripts

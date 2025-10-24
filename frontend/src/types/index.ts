@@ -35,11 +35,15 @@ export interface CampaignSummary {
   preview_body: string;
 }
 
+export interface Campaign {
+  id: string;
+  name: string;
+  subject: string;
+}
+
 export interface AppState {
-  config: Omit<Config, "sender_password">;
+  config: Omit<Config, "sender_password" | "subject_template">;
   sender_password: string;
-  recipients: Recipient[];
-  emailBody: string;
   logs: LogEntry[];
   isSending: boolean;
   isPasswordSet: boolean;
@@ -49,4 +53,12 @@ export interface AppState {
   recipientIssues: Record<number, RecipientIssue>;
   showCampaignSummaryModal: boolean;
   campaignSummary: CampaignSummary | null;
+  campaigns: Campaign[];
+  activeCampaignId: string | null;
+  activeCampaignData: {
+    emailBody: string;
+    recipients: Recipient[];
+  } | null;
+  selectedCampaignIds: Set<string>;
+  isLogCollapsed: boolean;
 }

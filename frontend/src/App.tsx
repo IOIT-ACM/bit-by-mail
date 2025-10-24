@@ -9,6 +9,10 @@ import { useAppStore } from './store/useAppStore';
 import { CampaignSummaryModal } from './components/shared/CampaignSummaryModal';
 import { EmailPreviewModal } from './components/shared/EmailPreviewModal';
 import { AnimatePresence } from 'framer-motion';
+import { CampaignDashboard } from './components/CampaignDashboard';
+import { apiService } from './services/apiService';
+import { Button } from './components/shared/Button';
+import { Download, Upload } from 'lucide-react';
 
 const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -16,7 +20,29 @@ const App: React.FC = () => {
   const [editorWidth, setEditorWidth] = useState(40);
   const mainContentRef = useRef<HTMLDivElement>(null);
   const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth >= 1024);
-  const { previewRecipient, setPreviewRecipient, showCampaignSummaryModal } = useAppStore();
+  const {
+    previewRecipient,
+    setPreviewRecipient,
+    showCampaignSummaryModal,
+    activeCampaignId,
+    activeCampaignData,
+    campaigns,
+    setActiveCampaignId,
+  } = useAppStore();
+  const initialUrlCheckDone = useRef(false);
+  const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
+
+  useEffect(() => {
+    if (campaigns.length > 0 && !initialUrlCheckDone.current) {
+      const params = new URLSearchParams(window.location.search);
+      const campaignIdFromUrl = params.get('c');
+      if (campaignIdFromUrl && campaigns.some(c => c.id === campaignIdFromUrl)) {
+        setActiveCampaignId(campaignIdFromUrl);
+        apiService.getCampaignData(campaignIdFromUrl);
+      }
+      initialUrlCheckDone.current = true;
+    }
+  }, [campaigns, setActiveCampaignId]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -58,12 +84,69 @@ const App: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
   }, []);
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && activeCampaignId) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target?.result as string;
+        const base64Content = btoa(text);
+        apiService.uploadRecipients(activeCampaignId, base64Content);
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const handleDownloadSample = () => {
+    const csvContent =
+      'Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING';
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'sample_recipients.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  if (!activeCampaignId) {
+    return <CampaignDashboard />;
+  }
+
+  if (!activeCampaignData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-text-secondary">
+        Loading campaign data...
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col">
       <Header onToggleSettings={() => setShowSettings(true)} />
-      <main className="flex-grow max-w-[2000px] w-full mx-auto p-4 md:p-6 lg:p-8 flex flex-col">
-        <div ref={mainContentRef} className="flex-grow flex flex-col lg:flex-row items-stretch">
-          <div className="min-w-0 lg:pr-4 mb-8 lg:mb-0" style={isLargeScreen ? { width: `${editorWidth}%` } : {}}>
+      <main className="flex-grow max-w-[2000px] w-full mx-auto p-4 flex flex-col min-h-0">
+        <div className="flex-shrink-0 flex justify-between items-center mb-4 flex-wrap gap-4">
+          <h1 className="text-3xl font-bold text-text-primary tracking-tight">
+            {activeCampaign?.name}
+          </h1>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleDownloadSample} variant="secondary">
+              <Download size={16} />
+              <span>Sample Data</span>
+            </Button>
+            <input type="file" id="csv-upload" accept=".csv" onChange={handleFileUpload} className="hidden" />
+            <Button as="label" htmlFor="csv-upload" variant="success" className="cursor-pointer">
+              <Upload size={16} />
+              <span>Upload Data</span>
+            </Button>
+          </div>
+        </div>
+
+        <div ref={mainContentRef} className="flex-grow flex flex-col lg:flex-row items-stretch min-h-0">
+          <div className="min-w-0 lg:pr-4 mb-8 lg:mb-0 flex flex-col" style={isLargeScreen ? { width: `${editorWidth}%` } : {}}>
             <Editor />
           </div>
           <div
@@ -72,11 +155,11 @@ const App: React.FC = () => {
           >
             <div className="w-1 h-16 bg-borders-primary rounded-full group-hover:bg-accent-blue transition-colors"></div>
           </div>
-          <div className="flex-1 min-w-0 lg:pl-4">
+          <div className="flex-1 min-w-0 lg:pl-4 flex flex-col">
             <RecipientTable />
           </div>
         </div>
-        <div className="mt-8">
+        <div className="flex-shrink-0 mt-8">
           <StatusBar />
         </div>
       </main>

@@ -6,24 +6,24 @@ import {
   LogEntry,
   CampaignSummary,
   RecipientIssue,
+  Campaign,
 } from "../types";
 
 type ConnectionStatus = "connecting" | "open" | "closed";
 
 interface AppActions {
-  setConfig: (config: Omit<Config, "sender_password">) => void;
+  setConfig: (
+    config: Omit<Config, "sender_password" | "subject_template">,
+  ) => void;
   setSenderPassword: (password: string) => void;
   setRecipients: (recipients: Recipient[]) => void;
-  updateRecipient: (index: number, recipient: Recipient) => void;
-  setEmailBody: (body: string) => void;
   addLog: (log: LogEntry) => void;
   clearLogs: () => void;
   setIsSending: (isSending: boolean) => void;
   setConnectionStatus: (status: ConnectionStatus) => void;
   setInitialData: (data: {
-    config: Config;
-    recipients: Recipient[];
-    template: string;
+    campaigns: Campaign[];
+    config: Omit<Config, "sender_password" | "subject_template">;
     is_password_set: boolean;
   }) => void;
   setPreviewRecipient: (recipient: Recipient | null) => void;
@@ -32,23 +32,32 @@ interface AppActions {
   clearRecipientIssues: () => void;
   setShowCampaignSummaryModal: (show: boolean) => void;
   setCampaignSummary: (summary: CampaignSummary | null) => void;
+  setCampaigns: (campaigns: Campaign[]) => void;
+  setActiveCampaignId: (id: string | null) => void;
+  setActiveCampaignData: (
+    data: { emailBody: string; recipients: Recipient[] } | null,
+  ) => void;
+  updateCampaign: (id: string, updates: Partial<Campaign>) => void;
+  setSelectedCampaignIds: (ids: Set<string>) => void;
+  clearCampaignSelection: () => void;
+  toggleCampaignSelection: (id: string) => void;
+  selectSingleCampaign: (id: string) => void;
+  selectAllCampaigns: () => void;
+  setIsLogCollapsed: (isCollapsed: boolean) => void;
 }
 
-const emptyConfig: Omit<Config, "sender_password"> = {
+const emptyConfig: Omit<Config, "sender_password" | "subject_template"> = {
   smtp_server: "",
   smtp_port: 587,
   sender_email: "",
   use_ssl: false,
-  subject_template: "Hello {{Name}}!",
   attachment_folder: "",
   send_attachments: true,
 };
 
-export const useAppStore = create<AppState & AppActions>((set) => ({
+export const useAppStore = create<AppState & AppActions>((set, get) => ({
   config: emptyConfig,
   sender_password: "",
-  recipients: [],
-  emailBody: "",
   logs: [],
   isSending: false,
   isPasswordSet: false,
@@ -58,17 +67,23 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   recipientIssues: {},
   showCampaignSummaryModal: false,
   campaignSummary: null,
+  campaigns: [],
+  activeCampaignId: null,
+  activeCampaignData: null,
+  selectedCampaignIds: new Set(),
+  isLogCollapsed: false,
 
   setConfig: (config) => set({ config }),
   setSenderPassword: (password) => set({ sender_password: password }),
-  setRecipients: (recipients) => set({ recipients, recipientIssues: {} }),
-  updateRecipient: (index, updatedRecipient) =>
-    set((state) => {
-      const newRecipients = [...state.recipients];
-      newRecipients[index] = updatedRecipient;
-      return { recipients: newRecipients };
-    }),
-  setEmailBody: (emailBody) => set({ emailBody }),
+  setRecipients: (recipients) => {
+    const { activeCampaignData } = get();
+    if (activeCampaignData) {
+      set({
+        activeCampaignData: { ...activeCampaignData, recipients },
+        recipientIssues: {},
+      });
+    }
+  },
   addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
   clearLogs: () => set({ logs: [] }),
   setIsSending: (isSending) => {
@@ -80,12 +95,10 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   },
   setConnectionStatus: (status) => set({ connectionStatus: status }),
   setInitialData: (data) => {
-    const { sender_password, ...restConfig } = data.config;
     set({
-      config: restConfig,
+      campaigns: data.campaigns,
+      config: data.config,
       sender_password: "",
-      recipients: data.recipients,
-      emailBody: data.template,
       isPasswordSet: data.is_password_set,
       recipientIssues: {},
     });
@@ -97,4 +110,48 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   setShowCampaignSummaryModal: (show) =>
     set({ showCampaignSummaryModal: show }),
   setCampaignSummary: (summary) => set({ campaignSummary: summary }),
+  setCampaigns: (campaigns) => set({ campaigns }),
+  setActiveCampaignId: (id) => {
+    if (id === null) {
+      set({ activeCampaignId: null, activeCampaignData: null, logs: [] });
+    } else {
+      set({
+        activeCampaignId: id,
+        activeCampaignData: null,
+        selectedCampaignIds: new Set(),
+      });
+    }
+  },
+  setActiveCampaignData: (data) => set({ activeCampaignData: data }),
+  updateCampaign: (id, updates) =>
+    set((state) => ({
+      campaigns: state.campaigns.map((c) =>
+        c.id === id ? { ...c, ...updates } : c,
+      ),
+    })),
+  setSelectedCampaignIds: (ids) => set({ selectedCampaignIds: ids }),
+  clearCampaignSelection: () => set({ selectedCampaignIds: new Set() }),
+  toggleCampaignSelection: (id) =>
+    set((state) => {
+      const newSelection = new Set(state.selectedCampaignIds);
+      if (newSelection.has(id)) {
+        newSelection.delete(id);
+      } else {
+        newSelection.add(id);
+      }
+      return { selectedCampaignIds: newSelection };
+    }),
+  selectSingleCampaign: (id) =>
+    set((state) => {
+      const currentSelection = state.selectedCampaignIds;
+      if (currentSelection.size === 1 && currentSelection.has(id)) {
+        return { selectedCampaignIds: new Set() };
+      }
+      return { selectedCampaignIds: new Set([id]) };
+    }),
+  selectAllCampaigns: () =>
+    set((state) => ({
+      selectedCampaignIds: new Set(state.campaigns.map((c) => c.id)),
+    })),
+  setIsLogCollapsed: (isCollapsed) => set({ isLogCollapsed: isCollapsed }),
 }));

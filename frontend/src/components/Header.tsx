@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Settings, TestTube, Send, Loader, Wifi, WifiOff } from 'lucide-react';
+import { Settings, TestTube, Send, Loader, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
 import { Button } from './shared/Button';
 import { apiService } from '../services/apiService';
 
@@ -33,24 +33,45 @@ const ConnectionStatus: React.FC = () => {
 };
 
 const Header: React.FC<HeaderProps> = ({ onToggleSettings }) => {
-  const { isSending } = useAppStore();
+  const { isSending, activeCampaignId, setActiveCampaignId } = useAppStore();
 
   const handleSend = () => {
-    if (isSending) return;
-    apiService.getCampaignSummary();
+    if (isSending || !activeCampaignId) return;
+    apiService.getCampaignSummary(activeCampaignId);
   };
 
   const handlePreflight = () => {
-    apiService.runPreflightCheck();
+    if (!activeCampaignId) return;
+    apiService.runPreflightCheck(activeCampaignId);
+  };
+
+  const handleBackToCampaigns = () => {
+    setActiveCampaignId(null);
+    window.history.pushState({}, '', window.location.pathname);
   };
 
   return (
     <header className="sticky top-0 z-30 bg-surface-header backdrop-blur-xl border-b border-borders-primary">
-      <div className="max-w-[2000px] w-full mx-auto flex justify-between items-center h-20 px-4 md:px-6 lg:px-8">
-        <h1 className="text-heading-2 font-bold text-text-primary tracking-tight flex items-center gap-3">
-          <img src="https://ioit-acm.github.io/planner/acm.png" height={40} width={40} alt="Logo" />
-          bit-by-mail
-        </h1>
+      <div className="max-w-[2000px] w-full mx-auto flex justify-between items-center h-20 px-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleBackToCampaigns}
+            className="p-2 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+            title="Back to Campaigns"
+          >
+            <ArrowLeft size={20} />
+          </button>
+          <div className="flex items-center gap-3">
+            <img
+              src="https://ioit.acm.org/static/img/assets/acm.png"
+              alt="ACM Logo"
+              className="h-8 w-8"
+            />
+            <h1 className="text-heading-2 font-bold text-text-primary tracking-tight">
+              bit-by-mail
+            </h1>
+          </div>
+        </div>
         <div className="flex items-center gap-3">
           <ConnectionStatus />
           <Button

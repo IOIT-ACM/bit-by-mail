@@ -29,7 +29,7 @@ const SummaryItem: React.FC<{ icon: React.ReactNode; label: string; value: strin
 );
 
 export const CampaignSummaryModal: React.FC = () => {
-  const { campaignSummary, setShowCampaignSummaryModal } = useAppStore();
+  const { campaignSummary, setShowCampaignSummaryModal, activeCampaignId } = useAppStore();
 
   if (!campaignSummary) return null;
 
@@ -38,7 +38,9 @@ export const CampaignSummaryModal: React.FC = () => {
   };
 
   const handleConfirmSend = () => {
-    apiService.startMailing();
+    if (activeCampaignId) {
+      apiService.startMailing(activeCampaignId);
+    }
     handleClose();
   };
 
@@ -84,7 +86,6 @@ export const CampaignSummaryModal: React.FC = () => {
         </div>
 
         <div className="flex-grow p-4 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
-          {/* Left Column: Summary */}
           <div className="lg:col-span-1 flex flex-col gap-4">
             <h3 className="text-lg font-medium text-text-primary px-1">Summary</h3>
             <SummaryItem icon={<Users size={20} />} label="Total Recipients" value={campaignSummary.total_recipients} />
@@ -114,7 +115,6 @@ export const CampaignSummaryModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Preview */}
           <div className="lg:col-span-2 flex flex-col min-h-0">
             <h3 className="text-lg font-medium text-text-primary px-1 mb-2">Preview for First Recipient</h3>
             <div className="p-3 bg-surface-element rounded-lg mb-4">
