@@ -46,4 +46,25 @@ make run-prod
 ## Configuration
 
 - Initial SMTP and application settings are configured through the web UI after starting the application.
-- A `settings.json` file will be created in your project root to store your configuration.
+
+## Application Screenshots
+
+### Dashboard
+
+![Dashboard](docs/dashboard.png)
+
+### Editor
+
+![Editor](docs/editor.png)
+
+### Email Editor
+
+![Email Editor](docs/email_editor.png)
+
+### Email Preview
+
+![Email Preview](docs/email_preview.png)
+
+### Settings
+
+![Settings](docs/settings.png)
