@@ -4,6 +4,7 @@ import { Config } from '../types';
 import { X } from 'lucide-react';
 import { Button } from './shared/Button';
 import { apiService } from '../services/apiService';
+import { toast } from 'sonner';
 
 interface SettingsProps {
   onClose: () => void;
@@ -35,6 +36,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     apiService.saveAndTestConfig(formState, sender_password);
+    toast.success('Configuration saved. Running preflight check.');
     onClose();
   };
 

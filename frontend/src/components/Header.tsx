@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { Settings, TestTube, Send, Loader, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
 import { Button } from './shared/Button';
 import { apiService } from '../services/apiService';
+import { toast } from 'sonner';
 
 interface HeaderProps {
   onToggleSettings: () => void;
@@ -42,6 +43,7 @@ const Header: React.FC<HeaderProps> = ({ onToggleSettings }) => {
 
   const handlePreflight = () => {
     if (!activeCampaignId) return;
+    toast.info('Running preflight check...');
     apiService.runPreflightCheck(activeCampaignId);
   };
 

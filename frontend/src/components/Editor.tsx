@@ -5,6 +5,7 @@ import { MonacoEditorWrapper } from './shared/MonacoEditorWrapper';
 import { MaximizableView } from './shared/MaximizableView';
 import { useDebouncedEffect } from '../hooks/useDebouncedEffect';
 import { apiService } from '../services/apiService';
+import { toast } from 'sonner';
 
 const TabButton: React.FC<{
   label: string;
@@ -30,8 +31,10 @@ const PlaceholderList: React.FC = () => {
   const recipients = activeCampaignData?.recipients ?? [];
   const availablePlaceholders = recipients.length > 0 ? Object.keys(recipients[0]) : [];
 
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
+  const handleCopy = (placeholderName: string) => {
+    const textToCopy = `{{${placeholderName}}}`;
+    navigator.clipboard.writeText(textToCopy);
+    toast.success(`Placeholder "${placeholderName}" copied to clipboard`);
   };
 
   if (availablePlaceholders.length === 0) {
@@ -49,7 +52,7 @@ const PlaceholderList: React.FC = () => {
           key={placeholder}
           className="text-xs bg-black/30 px-2 py-1 rounded cursor-pointer hover:bg-accent-blue/50 transition-colors"
           title={`Click to copy {{${placeholder}}}`}
-          onClick={() => handleCopy(`{{${placeholder}}}`)}
+          onClick={() => handleCopy(placeholder)}
         >
           {`{{${placeholder}}}`}
         </code>

@@ -1,59 +1,66 @@
 import asyncio
-import signal
 import os
 import sys
-from server.server import make_app
+import json
+from cryptography.fernet import Fernet
+from src.bit_by_mail.server.server import make_app
 
-from dotenv import load_dotenv
 
-load_dotenv()
+def setup_environment():
+    """
+    Ensures the SECRET_KEY is set, which is required by the crypto_service.
+    This logic is borrowed from your cli.py for consistency.
+    """
+    settings_path = os.path.join(os.getcwd(), "settings.json")
+    settings_data = {}
+    secret_key = None
+
+    if os.path.exists(settings_path):
+        try:
+            with open(settings_path, "r") as f:
+                settings_data = json.load(f)
+                secret_key = settings_data.get("SECRET_KEY")
+        except (json.JSONDecodeError, IOError):
+            settings_data = {}
+
+    if not secret_key:
+        print("SECRET_KEY not found in settings.json. Generating a new one...")
+        secret_key = Fernet.generate_key().decode()
+        settings_data["SECRET_KEY"] = secret_key
+        try:
+            with open(settings_path, "w") as f:
+                json.dump(settings_data, f, indent=2)
+            print("New SECRET_KEY saved to settings.json")
+        except IOError as e:
+            print(f"FATAL: Could not write to settings.json: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    os.environ["SECRET_KEY"] = secret_key
 
 
 def main():
-    if not os.environ.get("SECRET_KEY"):
-        print("\n--- FATAL ERROR ---")
-        print("The 'SECRET_KEY' environment variable is not set.")
-        print("This key is required for encrypting and decrypting credentials.")
-        print("Please set it before running the application.")
-        print("-------------------\n")
-        sys.exit(1)
+    """
+    Development server entry point.
+    Enables Tornado's debug mode for auto-reloading on code changes.
+    """
+    setup_environment()
 
     app = make_app()
 
-    static_path = app.settings.get("static_path") or ""
-    index_html_path = os.path.join(static_path, "index.html")
-    if not os.path.exists(index_html_path):
-        print("\n--- ERROR ---")
-        print(
-            "Frontend has not been built. The 'frontend/dist/index.html' file is missing."
-        )
-        print("Please run 'make build' before running the server in production mode.")
-        print("For development, use the 'make dev' command.")
-        print("-------------\n")
-        sys.exit(1)
+    app.settings["debug"] = True
 
     port = 8888
     app.listen(port)
-    print(f"Server is running on http://localhost:{port}")
 
-    loop = asyncio.get_event_loop()
-
-    def shutdown_handler():
-        print("Shutting down server...")
-        mailer_service = app.settings.get("mailer_service")
-        if mailer_service:
-            mailer_service.stop()
-        loop.stop()
-
-    signal.signal(signal.SIGINT, lambda sig, frame: shutdown_handler())
-    signal.signal(signal.SIGTERM, lambda sig, frame: shutdown_handler())
+    print("====================================================")
+    print(f"Backend development server running on http://localhost:{port}")
+    print("Tornado auto-reloading is enabled.")
+    print("====================================================")
 
     try:
-        loop.run_forever()
+        asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
-        pass
-    finally:
-        shutdown_handler()
+        print("\nShutting down server.")
 
 
 if __name__ == "__main__":

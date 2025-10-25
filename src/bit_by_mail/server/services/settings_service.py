@@ -9,19 +9,15 @@ class SettingsService:
         self.base_dir = base_dir
         self.settings_path = os.path.join(self.base_dir, "settings.json")
 
-        default_attachment_folder = os.path.join(self.base_dir, "attachments")
-        if not os.path.exists(default_attachment_folder):
-            os.makedirs(default_attachment_folder)
-
     def _read_config(self):
-        default_attachment_folder = os.path.join(self.base_dir, "attachments")
+        desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")
 
         defaults = {
             "smtp_server": "",
             "smtp_port": 587,
             "sender_email": "",
             "use_ssl": False,
-            "attachment_folder": default_attachment_folder,
+            "attachment_folder": desktop_path,
             "sender_password": "",
             "send_attachments": True,
         }

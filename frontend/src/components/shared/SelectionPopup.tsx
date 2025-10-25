@@ -4,6 +4,7 @@ import { Trash2, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../../store/useAppStore';
 import { apiService } from '../../services/apiService';
 import { Button } from './Button';
+import { toast } from 'sonner';
 
 export const SelectionPopup: React.FC = () => {
   const { selectedCampaignIds, campaigns, setActiveCampaignId, clearCampaignSelection } = useAppStore();
@@ -30,6 +31,11 @@ export const SelectionPopup: React.FC = () => {
 
     if (window.confirm(confirmationMessage)) {
       apiService.deleteCampaigns(Array.from(selectedCampaignIds));
+      toast.success(
+        selectedCount === 1
+          ? `Campaign "${campaignNames}" deleted`
+          : `${selectedCount} campaigns deleted`
+      );
       clearCampaignSelection();
     }
   };

@@ -6,6 +6,7 @@ import { Plus, Mail, Settings, FileUp, TestTube, Send, Maximize, Minimize, Users
 import { motion, AnimatePresence } from 'framer-motion';
 import { MaximizableView } from './shared/MaximizableView';
 import { SelectionPopup } from './shared/SelectionPopup';
+import { toast } from 'sonner';
 
 const InfoStep: React.FC<{ icon: React.ReactNode; title: string; children: React.ReactNode }> = ({ icon, title, children }) => (
   <div className="flex items-start gap-4">
@@ -73,8 +74,10 @@ export const CampaignDashboard: React.FC = () => {
 
   const handleCreateCampaign = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newCampaignName.trim()) {
-      apiService.createCampaign(newCampaignName.trim());
+    const campaignName = newCampaignName.trim();
+    if (campaignName) {
+      apiService.createCampaign(campaignName);
+      toast.success(`Campaign "${campaignName}" created`);
       setNewCampaignName('');
       setShowCreateModal(false);
     }

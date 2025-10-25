@@ -12,7 +12,6 @@ class AttachmentHandler(tornado.web.RequestHandler):
         config = await self.settings_service.get_config()
         attachment_folder = config.get("attachment_folder", "attachments")
 
-        # Security: prevent directory traversal
         if ".." in filename or filename.startswith("/"):
             raise tornado.web.HTTPError(403, "Forbidden")
 
@@ -21,10 +20,8 @@ class AttachmentHandler(tornado.web.RequestHandler):
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
             raise tornado.web.HTTPError(404, "File not found")
 
-        # Set headers to serve the file
         content_type, _ = mimetypes.guess_type(file_path)
         self.set_header("Content-Type", content_type or "application/octet-stream")
-        # Use 'inline' to suggest browser to display it if possible, instead of downloading
         self.set_header(
             "Content-Disposition", f'inline; filename="{os.path.basename(filename)}"'
         )

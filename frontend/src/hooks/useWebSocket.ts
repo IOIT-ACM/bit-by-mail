@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { apiService } from "../services/apiService";
 import { Recipient, RecipientIssue } from "../types";
+import { toast } from "sonner";
 
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
@@ -49,6 +50,7 @@ export const useWebSocket = () => {
           break;
         case "recipients_updated":
           setRecipients(payload);
+          toast.success(`${payload.length} recipients loaded successfully`);
           const { activeCampaignId } = useAppStore.getState();
           if (activeCampaignId) {
             apiService.runPreflightCheck(activeCampaignId);
@@ -114,6 +116,7 @@ export const useWebSocket = () => {
               message: "Preflight complete. System is ready.",
             });
           } else {
+            toast.error("Preflight failed. See logs for details.");
             addLog({
               level: "error",
               message: "Preflight failed. Please resolve the errors above.",
