@@ -1,11 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "bit-by-mail"
 version = "1.0.0"
-description = "Tornado backend for the bulk mailer application."
+description = "A simple, self-hosted bulk mailing application with a web-based UI."
+readme = "README.md"
 requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+  { name = "Aditya Godse", email = "adimail2404@gmail.com" },
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Communications :: Email",
+]
 dependencies = [
     "tornado>=6.4",
     "pandas>=2.0.0",
     "cryptography>=42.0.0",
-	"python-dotenv>=1.1.1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/IOIT-ACM/bit-by-mail"
+
+[project.scripts]
+bit-by-mail = "bit_by_mail.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+bit_by_mail = ["frontend/dist/**"]

@@ -21,3 +21,7 @@ recipients.csv
 # IDE
 .vscode/
 .idea/
+
+# Build
+dist
+*.egg-info

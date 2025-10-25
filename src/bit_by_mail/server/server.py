@@ -1,6 +1,8 @@
 import os
 import tornado.web
 import tornado.ioloop
+import importlib.resources
+
 from .handlers.websocket_handler import WebSocketHandler, WebSocketManager
 from .handlers.attachment_handler import AttachmentHandler
 from .services.settings_service import SettingsService
@@ -12,8 +14,16 @@ from .services.campaign_service import CampaignService
 
 
 def make_app():
-    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    static_path = os.path.join(base_dir, "frontend/dist")
+    try:
+        static_path_ref = importlib.resources.files("bit_by_mail").joinpath(
+            "frontend/dist"
+        )
+        static_path = str(static_path_ref)
+    except AttributeError:
+        with importlib.resources.path("bit_by_mail", "") as p:
+            static_path = os.path.join(p, "frontend/dist")
+
+    base_dir = os.getcwd()
 
     settings_service = SettingsService(base_dir)
     campaign_service = CampaignService(base_dir)
@@ -30,7 +40,7 @@ def make_app():
     settings = {
         "static_path": static_path,
         "template_path": static_path,
-        "debug": os.environ.get("DEBUG") == "1",
+        "debug": False,
         "settings_service": settings_service,
         "recipient_service": recipient_service,
         "template_service": template_service,

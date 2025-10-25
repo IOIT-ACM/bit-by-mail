@@ -1,0 +1,3 @@
+graft src/bit_by_mail/frontend/dist
+include pyproject.toml
+include README.md
