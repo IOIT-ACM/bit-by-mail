@@ -14,6 +14,7 @@ export interface Recipient {
   Email: string;
   AttachmentFile: string;
   Status: string;
+  SentTimestamp?: string | undefined;
   [key: string]: string;
 }
 
@@ -51,7 +52,10 @@ export interface AppState {
   isPasswordSet: boolean;
   connectionStatus: "connecting" | "open" | "closed";
   previewRecipient: Recipient | null;
-  progress: number;
+  progress: {
+    sent: number;
+    total: number;
+  };
   recipientIssues: Record<number, RecipientIssue>;
   showCampaignSummaryModal: boolean;
   campaignSummary: CampaignSummary | null;
@@ -62,5 +66,6 @@ export interface AppState {
     recipients: Recipient[];
   } | null;
   selectedCampaignIds: Set<string>;
+  selectedRecipientIndices: Set<number>;
   isLogCollapsed: boolean;
 }

@@ -89,24 +89,28 @@ class ApiService {
     });
   }
 
-  startMailing(campaignId: string) {
-    const { config, sender_password, clearLogs, setIsSending } =
-      useAppStore.getState();
+  startMailing(campaignId: string, indices?: number[]) {
+    const { config, sender_password, clearLogs } = useAppStore.getState();
     clearLogs();
-    setIsSending(true);
     const fullConfig = { ...config, sender_password };
     this.sendMessage("start_mailing", {
       campaign_id: campaignId,
       config: fullConfig,
+      recipient_indices: indices,
     });
   }
 
-  getCampaignSummary(campaignId: string) {
+  stopMailing() {
+    this.sendMessage("stop_mailing");
+  }
+
+  getCampaignSummary(campaignId: string, indices?: number[]) {
     const { config, sender_password } = useAppStore.getState();
     const fullConfig = { ...config, sender_password };
     this.sendMessage("get_campaign_summary", {
       campaign_id: campaignId,
       config: fullConfig,
+      recipient_indices: indices,
     });
   }
 

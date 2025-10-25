@@ -24,6 +24,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "upload_recipients": self._handle_upload_recipients,
             "save_recipients": self._handle_save_recipients,
             "start_mailing": self._handle_start_mailing,
+            "stop_mailing": self._handle_stop_mailing,
             "preflight_check": self._handle_preflight_check,
             "get_campaign_summary": self._handle_get_campaign_summary,
         }
@@ -171,6 +172,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_start_mailing(self, payload):
         campaign_id = payload.get("campaign_id")
+        recipient_indices = payload.get("recipient_indices")
         if not campaign_id:
             return
 
@@ -197,7 +199,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 (c["subject"] for c in campaigns if c["id"] == campaign_id), ""
             )
 
-            await self.mailer_service.start_mailing(campaign_id, client_config, subject)
+            await self.mailer_service.start_mailing(
+                campaign_id, client_config, subject, recipient_indices
+            )
+
+    async def _handle_stop_mailing(self, _):
+        self.mailer_service.stop()
 
     async def _handle_preflight_check(self, payload):
         campaign_id = payload.get("campaign_id")
@@ -221,6 +228,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_get_campaign_summary(self, payload):
         campaign_id = payload.get("campaign_id")
+        recipient_indices = payload.get("recipient_indices")
         if not campaign_id:
             return
 
@@ -233,7 +241,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         subject = next((c["subject"] for c in campaigns if c["id"] == campaign_id), "")
 
         summary = await self.preflight_service.get_campaign_summary(
-            campaign_id, client_config, subject
+            campaign_id, client_config, subject, recipient_indices
         )
         self.write_message(
             json.dumps({"action": "campaign_summary", "payload": summary})

@@ -1,7 +1,7 @@
 import os
 import re
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, cast
+from typing import List, Dict, Any, cast, Optional
 import pandas as pd
 
 
@@ -41,7 +41,11 @@ class PreflightService:
         return template_string
 
     async def get_campaign_summary(
-        self, campaign_id: str, config: Dict[str, Any], subject_template: str
+        self,
+        campaign_id: str,
+        config: Dict[str, Any],
+        subject_template: str,
+        recipient_indices: Optional[List[int]] = None,
     ) -> Dict[str, Any]:
         try:
             recipients_df = pd.DataFrame(
@@ -49,6 +53,9 @@ class PreflightService:
             ).fillna("")
         except FileNotFoundError:
             recipients_df = pd.DataFrame({"Status": [], "AttachmentFile": []})
+
+        if recipient_indices is not None:
+            recipients_df = recipients_df.iloc[recipient_indices]
 
         if "Status" not in recipients_df.columns:
             recipients_df["Status"] = "PENDING"
@@ -110,22 +117,33 @@ class PreflightService:
 
     def _check_config_variables(self, config: Dict[str, Any], result: PreflightResult):
         errors = []
+        warnings = []
         required_vars = ["smtp_server", "sender_email", "sender_password", "smtp_port"]
+
+        is_partially_configured = bool(config.get("smtp_server")) or bool(
+            config.get("sender_email")
+        )
+
         for var in required_vars:
             value = config.get(var)
             if not value:
-                errors.append(f"Configuration value '{var}' is not set.")
+                message = f"Configuration value '{var}' is not set."
+                if is_partially_configured:
+                    errors.append(message)
+                else:
+                    warnings.append(message)
             elif var == "sender_password" and value == "<your-app-password>":
                 errors.append(
                     f"Default placeholder password for '{var}' is still present."
                 )
 
-        if not errors:
+        if not errors and not warnings:
             result.successes.append(
                 "Configuration variables (SMTP server, email, password, port) are present."
             )
-        else:
-            result.errors.extend(errors)
+
+        result.errors.extend(errors)
+        result.warnings.extend(warnings)
 
     async def _check_paths(
         self, campaign_id: str, config: Dict[str, Any], result: PreflightResult
