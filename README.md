@@ -1,41 +1,94 @@
 # bit-by-mail
 
-A simple, self-hosted bulk mailing application.
+A simple, self-hosted bulk mailing application with a modern web UI.
 
-## Prerequisites
+## Features
+
+- **Web-Based UI:** Manage campaigns, recipients, and email templates from your browser.
+- **Live Preview:** Instantly see how your emails will look with placeholder substitution for each recipient.
+- **Preflight Checks:** Validate your configuration, recipient data, and attachments before sending to catch errors early.
+- **Live Logging:** Monitor the mailing process in real-time directly in the UI.
+- **Self-Hosted:** Your data, your server. Keep your mailing lists and configurations private.
+
+## Installation & Usage
+
+1.  **Install the package from PyPI:**
+
+    ```bash
+    pip install bit-by-mail
+    ```
+
+2.  **Run the application:**
+
+    ```bash
+    bit-by-mail
+    ```
+
+3.  **Open your browser:**
+    Navigate to `http://localhost:8888` to access the web UI and configure your first campaign.
+
+## Application Screenshots
+
+### Dashboard
+
+![Dashboard](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/dashboard.png)
+
+### Editor
+
+![Editor](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/editor.png)
+
+### Email Editor
+
+![Email Editor](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/email_editor.png)
+
+### Email Preview
+
+![Email Preview](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/email_preview.png)
+
+### Settings
+
+![Settings](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/settings.png)
+
+---
+
+## For Developers
+
+### Development Setup
+
+If you want to contribute to the project, you'll need to set up the development environment.
+
+**Prerequisites:**
 
 - Python 3.9+
-- Node.js 16+ and npm
+- Node.js 20+ and npm
 
-## Setup
-
-1.  **Install all dependencies:**
+1.  **Clone the repository and install dependencies:**
     This command sets up the Python virtual environment and installs both backend and frontend dependencies.
+
     ```bash
+    git clone https://github.com/IOIT-ACM/bit-by-mail.git
+    cd bit-by-mail
     make install
     ```
 
-## Development
+2.  **Run the development servers:**
+    For local development with live reloading, run the frontend and backend servers in separate terminals.
 
-For local development with live reloading for both the frontend and backend.
+    - **Backend Server:**
 
-1.  **Start the backend server:**
-    In your first terminal, run:
+      ```bash
+      make dev-backend
+      ```
 
-    ```bash
-    make dev-backend
-    ```
+      The backend will be available at `http://localhost:8888`.
 
-    The backend will be available at `http://localhost:8888`.
+    - **Frontend Server:**
+      ```bash
+      make dev-frontend
+      ```
+      This will open the application in your browser at `http://localhost:3000`, which proxies requests to the backend.
 
-2.  **Start the frontend server:**
-    In a second terminal, run:
-    ```bash
-    make dev-frontend
-    ```
-    This will open the application in your browser at `http://localhost:3000`.
-
-## Production
+### Building for Production
 
 To build the frontend, create a Python package, and run it like a final user would:
 
@@ -43,28 +96,4 @@ To build the frontend, create a Python package, and run it like a final user wou
 make run-prod
 ```
 
-## Configuration
-
-- Initial SMTP and application settings are configured through the web UI after starting the application.
-
-## Application Screenshots
-
-### Dashboard
-
-![Dashboard](docs/dashboard.png)
-
-### Editor
-
-![Editor](docs/editor.png)
-
-### Email Editor
-
-![Email Editor](docs/email_editor.png)
-
-### Email Preview
-
-![Email Preview](docs/email_preview.png)
-
-### Settings
-
-![Settings](docs/settings.png)
+This command is useful for testing the final packaged application locally before publishing.
