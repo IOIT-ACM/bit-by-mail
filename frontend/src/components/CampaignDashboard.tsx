@@ -361,6 +361,13 @@ export const CampaignDashboard: React.FC = () => {
           className="font-medium text-text-primary hover:text-accent-blue underline"
         >
           Aditya Godse
+        </a> for <a
+          href="https://ioit.acm.org/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-text-primary hover:text-accent-blue underline"
+        >
+          IOIT ACM
         </a>
       </footer>
     </div>
