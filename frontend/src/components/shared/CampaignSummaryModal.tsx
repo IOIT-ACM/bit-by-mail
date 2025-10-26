@@ -29,7 +29,7 @@ const SummaryItem: React.FC<{ icon: React.ReactNode; label: string; value: strin
 );
 
 export const CampaignSummaryModal: React.FC = () => {
-  const { campaignSummary, setShowCampaignSummaryModal, activeCampaignId } = useAppStore();
+  const { campaignSummary, setShowCampaignSummaryModal, activeCampaignId, selectedRecipientIndices, clearRecipientSelection } = useAppStore();
 
   if (!campaignSummary) return null;
 
@@ -39,7 +39,11 @@ export const CampaignSummaryModal: React.FC = () => {
 
   const handleConfirmSend = () => {
     if (activeCampaignId) {
-      apiService.startMailing(activeCampaignId);
+      const indices = selectedRecipientIndices.size > 0 ? Array.from(selectedRecipientIndices) : undefined;
+      apiService.startMailing(activeCampaignId, indices);
+      if (selectedRecipientIndices.size > 0) {
+        clearRecipientSelection();
+      }
     }
     handleClose();
   };

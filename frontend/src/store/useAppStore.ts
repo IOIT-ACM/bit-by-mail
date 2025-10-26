@@ -27,7 +27,7 @@ interface AppActions {
     is_password_set: boolean;
   }) => void;
   setPreviewRecipient: (recipient: Recipient | null) => void;
-  setProgress: (progress: number) => void;
+  setProgress: (sent: number, total: number) => void;
   setRecipientIssues: (issues: Record<number, RecipientIssue>) => void;
   clearRecipientIssues: () => void;
   setShowCampaignSummaryModal: (show: boolean) => void;
@@ -44,6 +44,11 @@ interface AppActions {
   selectSingleCampaign: (id: string) => void;
   selectAllCampaigns: () => void;
   setIsLogCollapsed: (isCollapsed: boolean) => void;
+  toggleRecipientSelection: (index: number) => void;
+  clearRecipientSelection: () => void;
+  selectAllRecipients: () => void;
+  deleteSelectedRecipients: () => void;
+  updateStatusForSelectedRecipients: (status: "SENT" | "PENDING") => void;
 }
 
 const emptyConfig: Omit<Config, "sender_password" | "subject_template"> = {
@@ -63,7 +68,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   isPasswordSet: false,
   connectionStatus: "connecting",
   previewRecipient: null,
-  progress: 0,
+  progress: { sent: 0, total: 0 },
   recipientIssues: {},
   showCampaignSummaryModal: false,
   campaignSummary: null,
@@ -71,6 +76,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   activeCampaignId: null,
   activeCampaignData: null,
   selectedCampaignIds: new Set(),
+  selectedRecipientIndices: new Set(),
   isLogCollapsed: false,
 
   setConfig: (config) => set({ config }),
@@ -81,6 +87,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       set({
         activeCampaignData: { ...activeCampaignData, recipients },
         recipientIssues: {},
+        selectedRecipientIndices: new Set(),
       });
     }
   },
@@ -88,7 +95,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   clearLogs: () => set({ logs: [] }),
   setIsSending: (isSending) => {
     if (isSending) {
-      set({ isSending, progress: 0, recipientIssues: {} });
+      set({ isSending, progress: { sent: 0, total: 0 }, recipientIssues: {} });
     } else {
       set({ isSending });
     }
@@ -104,7 +111,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
     });
   },
   setPreviewRecipient: (recipient) => set({ previewRecipient: recipient }),
-  setProgress: (progress) => set({ progress }),
+  setProgress: (sent, total) => set({ progress: { sent, total } }),
   setRecipientIssues: (issues) => set({ recipientIssues: issues }),
   clearRecipientIssues: () => set({ recipientIssues: {} }),
   setShowCampaignSummaryModal: (show) =>
@@ -119,6 +126,7 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
         activeCampaignId: id,
         activeCampaignData: null,
         selectedCampaignIds: new Set(),
+        selectedRecipientIndices: new Set(),
       });
     }
   },
@@ -154,4 +162,61 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       selectedCampaignIds: new Set(state.campaigns.map((c) => c.id)),
     })),
   setIsLogCollapsed: (isCollapsed) => set({ isLogCollapsed: isCollapsed }),
+  toggleRecipientSelection: (index) =>
+    set((state) => {
+      const newSelection = new Set(state.selectedRecipientIndices);
+      if (newSelection.has(index)) {
+        newSelection.delete(index);
+      } else {
+        newSelection.add(index);
+      }
+      return { selectedRecipientIndices: newSelection };
+    }),
+  clearRecipientSelection: () => set({ selectedRecipientIndices: new Set() }),
+  selectAllRecipients: () =>
+    set((state) => {
+      const allIndices = new Set(
+        state.activeCampaignData?.recipients.map((_, i) => i) || [],
+      );
+      return { selectedRecipientIndices: allIndices };
+    }),
+  deleteSelectedRecipients: () =>
+    set((state) => {
+      if (!state.activeCampaignData) return {};
+      const newRecipients = state.activeCampaignData.recipients.filter(
+        (_, index) => !state.selectedRecipientIndices.has(index),
+      );
+      return {
+        activeCampaignData: {
+          ...state.activeCampaignData,
+          recipients: newRecipients,
+        },
+        selectedRecipientIndices: new Set(),
+      };
+    }),
+  updateStatusForSelectedRecipients: (status) =>
+    set((state) => {
+      if (!state.activeCampaignData) return {};
+      const newRecipients = state.activeCampaignData.recipients.map(
+        (recipient, index) => {
+          if (state.selectedRecipientIndices.has(index)) {
+            const newRecipient = { ...recipient, Status: status };
+            if (status === "SENT" && recipient.Status !== "SENT") {
+              newRecipient.SentTimestamp = new Date().toISOString();
+            } else if (status === "PENDING") {
+              newRecipient.SentTimestamp = undefined;
+            }
+            return newRecipient;
+          }
+          return recipient;
+        },
+      );
+      return {
+        activeCampaignData: {
+          ...state.activeCampaignData,
+          recipients: newRecipients,
+        },
+        selectedRecipientIndices: new Set(),
+      };
+    }),
 }));

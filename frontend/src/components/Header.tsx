@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppStore } from '../store/useAppStore';
-import { Settings, TestTube, Send, Loader, Wifi, WifiOff, ArrowLeft } from 'lucide-react';
+import { Settings, TestTube, Send, Loader, Wifi, WifiOff, ArrowLeft, XCircle } from 'lucide-react';
 import { Button } from './shared/Button';
 import { apiService } from '../services/apiService';
 import { toast } from 'sonner';
@@ -34,10 +34,11 @@ const ConnectionStatus: React.FC = () => {
 };
 
 const Header: React.FC<HeaderProps> = ({ onToggleSettings }) => {
-  const { isSending, activeCampaignId, setActiveCampaignId } = useAppStore();
+  const { isSending, activeCampaignId, setActiveCampaignId, clearRecipientSelection } = useAppStore();
 
   const handleSend = () => {
     if (isSending || !activeCampaignId) return;
+    clearRecipientSelection();
     apiService.getCampaignSummary(activeCampaignId);
   };
 
@@ -45,6 +46,12 @@ const Header: React.FC<HeaderProps> = ({ onToggleSettings }) => {
     if (!activeCampaignId) return;
     toast.info('Running preflight check...');
     apiService.runPreflightCheck(activeCampaignId);
+  };
+
+  const handleStop = () => {
+    if (!isSending) return;
+    apiService.stopMailing();
+    toast.warning('Stop request sent. The process will halt after the current email.');
   };
 
   const handleBackToCampaigns = () => {
@@ -91,14 +98,17 @@ const Header: React.FC<HeaderProps> = ({ onToggleSettings }) => {
             <TestTube size={16} />
             <span className="hidden sm:inline">Preflight</span>
           </Button>
-          <Button
-            onClick={handleSend}
-            disabled={isSending}
-            variant="primary"
-          >
-            {isSending ? <Loader size={16} className="animate-spin" /> : <Send size={16} />}
-            <span>{isSending ? 'Sending...' : 'Start Sending'}</span>
-          </Button>
+          {isSending ? (
+            <Button onClick={handleStop} variant="danger">
+              <XCircle size={16} />
+              <span>Stop Sending</span>
+            </Button>
+          ) : (
+            <Button onClick={handleSend} variant="primary">
+              <Send size={16} />
+              <span>Start Sending</span>
+            </Button>
+          )}
         </div>
       </div>
     </header>

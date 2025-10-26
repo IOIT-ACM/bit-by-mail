@@ -74,9 +74,8 @@ class CampaignService:
     def _get_campaigns_with_details(self):
         campaigns = self._read_manifest()
         for campaign in campaigns:
-            recipients_path = os.path.join(
-                self.get_campaign_path(campaign["id"]), "recipients.csv"
-            )
+            campaign_path = self.get_campaign_path(campaign["id"])
+            recipients_path = os.path.join(campaign_path, "recipients.csv")
             count = 0
             if os.path.exists(recipients_path):
                 try:
@@ -86,6 +85,23 @@ class CampaignService:
                 except Exception:
                     count = 0
             campaign["recipientCount"] = int(count)
+
+            try:
+                reports = [
+                    f
+                    for f in os.listdir(campaign_path)
+                    if f.startswith("report_") and f.endswith(".csv")
+                ]
+                if reports:
+                    latest_report = sorted(reports, reverse=True)[0]
+                    campaign["latestReportUrl"] = (
+                        f"/reports/{campaign['id']}/{latest_report}"
+                    )
+                else:
+                    campaign["latestReportUrl"] = None
+            except FileNotFoundError:
+                campaign["latestReportUrl"] = None
+
         return campaigns
 
     async def get_campaigns(self):

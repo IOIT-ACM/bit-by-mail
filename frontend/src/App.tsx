@@ -13,6 +13,7 @@ import { CampaignDashboard } from './components/CampaignDashboard';
 import { apiService } from './services/apiService';
 import { Button } from './components/shared/Button';
 import { Download, Upload } from 'lucide-react';
+import { RecipientActionPopup } from './components/shared/RecipientActionPopup';
 
 const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -169,6 +170,7 @@ const App: React.FC = () => {
         {previewRecipient && <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />}
         {showCampaignSummaryModal && <CampaignSummaryModal />}
       </AnimatePresence>
+      <RecipientActionPopup />
     </div>
   );
 };

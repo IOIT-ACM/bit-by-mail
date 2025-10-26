@@ -54,6 +54,8 @@ const LogViewerContent: React.FC<{ isMaximized: boolean; onToggleMaximize: () =>
     }
   }, [logs, isLogCollapsed]);
 
+  const percentage = progress.total > 0 ? (progress.sent / progress.total) * 100 : 0;
+
   return (
     <>
       <div className="flex justify-between items-center p-2">
@@ -62,16 +64,16 @@ const LogViewerContent: React.FC<{ isMaximized: boolean; onToggleMaximize: () =>
           onClick={() => !isMaximized && setIsLogCollapsed(!isLogCollapsed)}
         >
           <h3 className="text-sm font-medium text-text-secondary">Live Logs</h3>
-          {isSending && (
+          {isSending && progress.total > 0 && (
             <div className="flex items-center gap-2 w-64">
               <div className="w-full bg-surface-element rounded-full h-2">
                 <div
                   className="bg-accent-blue h-2 rounded-full transition-all duration-300 ease-linear"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${percentage}%` }}
                 ></div>
               </div>
-              <span className="text-xs text-text-secondary font-mono w-12 text-right">
-                {Math.round(progress)}%
+              <span className="text-xs text-text-secondary font-mono w-24 text-right">
+                {progress.sent} / {progress.total}
               </span>
             </div>
           )}

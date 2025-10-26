@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { apiService } from '../services/apiService';
 import { Button } from './shared/Button';
-import { Plus, Mail, Settings, FileUp, TestTube, Send, Maximize, Minimize, Users } from 'lucide-react';
+import { Plus, Mail, Settings, FileUp, TestTube, Send, Maximize, Minimize, Users, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MaximizableView } from './shared/MaximizableView';
 import { SelectionPopup } from './shared/SelectionPopup';
@@ -275,16 +275,30 @@ export const CampaignDashboard: React.FC = () => {
                         <strong>Subject:</strong> {campaign.subject}
                       </p>
                     </div>
-                    <div className="mt-4 pt-4 border-t border-borders-primary/50 flex justify-between items-center text-xs text-text-tertiary">
-                      <span className="font-medium flex items-center gap-1.5">
-                        <Users size={14} />
-                        {campaign.recipientCount > 0
-                          ? `${campaign.recipientCount} Recipients`
-                          : 'No active recipients'}
-                      </span>
-                      <span>
-                        {new Date(campaign.createdAt).toLocaleDateString()}
-                      </span>
+
+                    <div className="mt-4 pt-4 border-t border-borders-primary/50 flex flex-col gap-3 text-xs text-text-tertiary">
+                      {campaign.latestReportUrl && (
+                        <a
+                          href={campaign.latestReportUrl}
+                          download
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full flex items-center justify-center gap-2 h-9 px-4 rounded-button text-xs font-medium transition-colors duration-200 bg-surface-element hover:bg-surface-element-hover text-text-secondary"
+                        >
+                          <Download size={14} />
+                          <span>Download Latest Report</span>
+                        </a>
+                      )}
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium flex items-center gap-1.5">
+                          <Users size={14} />
+                          {campaign.recipientCount > 0
+                            ? `${campaign.recipientCount} Recipients`
+                            : 'No active recipients'}
+                        </span>
+                        <span>
+                          {new Date(campaign.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
                     </div>
                   </motion.div>
                 );

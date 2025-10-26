@@ -56,6 +56,10 @@ export const useWebSocket = () => {
             apiService.runPreflightCheck(activeCampaignId);
           }
           break;
+        case "mailing_started":
+          setIsSending(true);
+          setProgress(0, payload.total_to_send);
+          break;
         case "status_update":
           const statusLevelMap: { [key: string]: string } = {
             SENT: "success",
@@ -68,22 +72,13 @@ export const useWebSocket = () => {
             message: `To: ${payload.email} - ${payload.details}`,
           });
           setRecipients(payload.recipients);
-
-          const updatedRecipients = payload.recipients as Recipient[];
-          const total = updatedRecipients.length;
-          if (total > 0) {
-            const processed = updatedRecipients.filter(
-              (r) => r.Status && r.Status.toUpperCase() !== "PENDING",
-            ).length;
-            setProgress((processed / total) * 100);
-          }
+          setProgress(payload.sent_count, payload.total_to_send);
           break;
         case "log":
           addLog({ level: payload.level, message: payload.message });
           break;
         case "finish":
           setIsSending(false);
-          setProgress(100);
           break;
         case "preflight_result":
           clearRecipientIssues();
@@ -143,6 +138,18 @@ export const useWebSocket = () => {
         case "campaign_summary":
           setCampaignSummary(payload);
           setShowCampaignSummaryModal(true);
+          break;
+        case "report_generated":
+          toast.success("Report generated and download started.");
+          const link = document.createElement("a");
+          link.href = payload.url;
+          link.setAttribute(
+            "download",
+            payload.url.split("/").pop() || "report.csv",
+          );
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
           break;
       }
     },

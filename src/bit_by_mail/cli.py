@@ -2,43 +2,41 @@ import asyncio
 import signal
 import os
 import sys
-import json
 from cryptography.fernet import Fernet
 from .server.server import make_app
 
 
 def main():
-    settings_path = os.path.join(os.getcwd(), "settings.json")
+    data_dir = os.path.join(os.getcwd(), "data")
+    key_path = os.path.join(data_dir, "fernet.key")
     secret_key = None
-    settings_data = {}
 
-    if os.path.exists(settings_path):
-        try:
-            with open(settings_path, "r") as f:
-                settings_data = json.load(f)
-                secret_key = settings_data.get("SECRET_KEY")
-        except (json.JSONDecodeError, IOError):
-            settings_data = {}
+    try:
+        os.makedirs(data_dir, exist_ok=True)
 
-    if not secret_key:
-        secret_key = Fernet.generate_key().decode()
-        settings_data["SECRET_KEY"] = secret_key
-        try:
-            with open(settings_path, "w") as f:
-                json.dump(settings_data, f, indent=2)
-        except IOError as e:
-            print(f"\n--- FATAL ERROR ---")
-            print(f"Could not write to settings.json: {e}")
-            print("Please check file permissions.")
-            print("-------------------\n")
-            sys.exit(1)
+        if os.path.exists(key_path):
+            with open(key_path, "r") as f:
+                secret_key = f.read().strip()
+
+        if not secret_key:
+            secret_key = Fernet.generate_key().decode()
+            with open(key_path, "w") as f:
+                f.write(secret_key)
+
+    except IOError as e:
+        print(f"\n--- FATAL ERROR ---")
+        print(f"Could not read or write the secret key at: {key_path}")
+        print(f"Error: {e}")
+        print("Please check file permissions for the 'data' directory.")
+        print("-------------------\n")
+        sys.exit(1)
 
     os.environ["SECRET_KEY"] = secret_key
 
     if not os.environ.get("SECRET_KEY"):
         print("\n--- FATAL ERROR ---")
         print("The 'SECRET_KEY' could not be configured.")
-        print("Please ensure settings.json is writable.")
+        print("Please ensure the 'data/fernet.key' file is readable.")
         print("-------------------\n")
         sys.exit(1)
 

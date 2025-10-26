@@ -7,6 +7,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from contextlib import contextmanager
 from datetime import datetime
+from typing import List, Optional
 
 
 class MailerService:
@@ -25,7 +26,13 @@ class MailerService:
         if self._is_running:
             self._stop_requested = True
 
-    async def start_mailing(self, campaign_id, config, subject):
+    async def start_mailing(
+        self,
+        campaign_id,
+        config,
+        subject,
+        recipient_indices: Optional[List[int]] = None,
+    ):
         if self._is_running:
             return
 
@@ -43,6 +50,7 @@ class MailerService:
             subject,
             recipients,
             html_template,
+            recipient_indices,
         )
 
     def _replace_placeholders(self, template_string, recipient_dict):
@@ -52,7 +60,13 @@ class MailerService:
         return template_string
 
     def _run_mailing_loop(
-        self, campaign_id, config, subject, recipients, html_template
+        self,
+        campaign_id,
+        config,
+        subject,
+        recipients,
+        html_template,
+        recipient_indices,
     ):
         recipients_df = pd.DataFrame()
         try:
@@ -65,14 +79,27 @@ class MailerService:
 
             if "Status" not in recipients_df.columns:
                 recipients_df["Status"] = "PENDING"
+            if "SentTimestamp" not in recipients_df.columns:
+                recipients_df["SentTimestamp"] = ""
+            recipients_df["SentTimestamp"] = recipients_df["SentTimestamp"].fillna("")
 
-            recipients_to_process = recipients_df[
-                recipients_df["Status"].astype(str).str.upper() != "SENT"
-            ]
+            if recipient_indices is not None:
+                selected_recipients = recipients_df.iloc[recipient_indices]
+                recipients_to_process = selected_recipients[
+                    selected_recipients["Status"].astype(str).str.upper() != "SENT"
+                ]
+            else:
+                recipients_to_process = recipients_df[
+                    recipients_df["Status"].astype(str).str.upper() != "SENT"
+                ]
 
             if recipients_to_process.empty:
                 self._broadcast_log("info", "No pending recipients to process.")
                 return
+
+            sent_count = 0
+            total_to_send = len(recipients_to_process)
+            self._broadcast_mailing_started(total_to_send)
 
             with self._smtp_connect(config) as server:
                 for index, recipient_row in recipients_to_process.iterrows():
@@ -81,16 +108,22 @@ class MailerService:
                         break
 
                     recipient = recipient_row.to_dict()
-                    status, details = self._process_recipient(
+                    status, details, timestamp = self._process_recipient(
                         server, config, subject, html_template, recipient
                     )
 
                     recipients_df.loc[index, "Status"] = status
+                    if timestamp:
+                        recipients_df.loc[index, "SentTimestamp"] = timestamp
+
+                    sent_count += 1
                     self._broadcast_status(
                         recipient["Email"],
                         status,
                         details,
                         recipients_df.to_dict(orient="records"),
+                        sent_count,
+                        total_to_send,
                     )
 
             self._broadcast_log("success", "Mailing process finished.")
@@ -116,6 +149,8 @@ class MailerService:
                 self._broadcast_log(
                     "info", f"Generated final report: {report_filename}"
                 )
+                report_url = f"/reports/{campaign_id}/{report_filename}"
+                self._broadcast_report_ready(report_url)
 
             self._is_running = False
             self._stop_requested = False
@@ -126,7 +161,7 @@ class MailerService:
     ):
         email = recipient.get("Email")
         if not email:
-            return "SKIPPED", "Missing email address."
+            return "SKIPPED", "Missing email address.", None
 
         try:
             msg = MIMEMultipart()
@@ -142,7 +177,7 @@ class MailerService:
             if send_attachments:
                 attachment_file = recipient.get("AttachmentFile")
                 if not attachment_file:
-                    return "SKIPPED", "Attachment file name is missing."
+                    return "SKIPPED", "Attachment file name is missing.", None
 
                 attachment_path = os.path.join(
                     config["attachment_folder"], attachment_file
@@ -160,9 +195,10 @@ class MailerService:
                 msg.attach(part)
 
             server.send_message(msg)
-            return "SENT", "Email sent successfully."
+            timestamp = datetime.now().isoformat()
+            return "SENT", "Email sent successfully.", timestamp
         except Exception as e:
-            return "ERROR", str(e)
+            return "ERROR", str(e), None
 
     @contextmanager
     def _smtp_connect(self, config):
@@ -234,7 +270,14 @@ class MailerService:
             {"action": "log", "payload": {"level": level, "message": message}}
         )
 
-    def _broadcast_status(self, email, status, details, recipients):
+    def _broadcast_mailing_started(self, total_to_send):
+        self._broadcast(
+            {"action": "mailing_started", "payload": {"total_to_send": total_to_send}}
+        )
+
+    def _broadcast_status(
+        self, email, status, details, recipients, sent_count, total_to_send
+    ):
         self._broadcast(
             {
                 "action": "status_update",
@@ -243,9 +286,14 @@ class MailerService:
                     "status": status,
                     "details": details,
                     "recipients": recipients,
+                    "sent_count": sent_count,
+                    "total_to_send": total_to_send,
                 },
             }
         )
 
     def _broadcast_finish(self):
         self._broadcast({"action": "finish"})
+
+    def _broadcast_report_ready(self, url):
+        self._broadcast({"action": "report_generated", "payload": {"url": url}})

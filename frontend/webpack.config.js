@@ -59,6 +59,14 @@ module.exports = (env, argv) => {
       open: true,
       port: 3000,
       historyApiFallback: true,
+      proxy: [
+        {
+          context: ["/attachments", "/reports", "/ws"],
+          target: "http://localhost:8888",
+          ws: true,
+          changeOrigin: true,
+        },
+      ],
     },
   };
 };

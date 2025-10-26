@@ -89,38 +89,37 @@ class ApiService {
     });
   }
 
-  startMailing(campaignId: string) {
-    const { config, sender_password, clearLogs, setIsSending } =
-      useAppStore.getState();
+  startMailing(campaignId: string, indices?: number[]) {
+    const { config, clearLogs } = useAppStore.getState();
     clearLogs();
-    setIsSending(true);
-    const fullConfig = { ...config, sender_password };
     this.sendMessage("start_mailing", {
       campaign_id: campaignId,
-      config: fullConfig,
+      config: config,
+      recipient_indices: indices,
     });
   }
 
-  getCampaignSummary(campaignId: string) {
-    const { config, sender_password } = useAppStore.getState();
-    const fullConfig = { ...config, sender_password };
+  stopMailing() {
+    this.sendMessage("stop_mailing");
+  }
+
+  getCampaignSummary(campaignId: string, indices?: number[]) {
+    const { config } = useAppStore.getState();
     this.sendMessage("get_campaign_summary", {
       campaign_id: campaignId,
-      config: fullConfig,
+      config: config,
+      recipient_indices: indices,
     });
   }
 
   runPreflightCheck(campaignId: string, configOverride?: Config) {
-    const { config, sender_password, clearLogs, setIsLogCollapsed } =
-      useAppStore.getState();
+    const { config, clearLogs, setIsLogCollapsed } = useAppStore.getState();
     clearLogs();
     setIsLogCollapsed(false);
-    const fullConfig = configOverride
-      ? configOverride
-      : { ...config, sender_password };
+    const configPayload = configOverride ? configOverride : config;
     this.sendMessage("preflight_check", {
       campaign_id: campaignId,
-      config: fullConfig,
+      config: configPayload,
     });
   }
 }

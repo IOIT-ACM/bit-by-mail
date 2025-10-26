@@ -4,11 +4,29 @@ import tornado.web
 
 
 class AttachmentHandler(tornado.web.RequestHandler):
-    def initialize(self, settings_service, base_dir):
+    def initialize(self, settings_service, recipient_service, base_dir):
         self.settings_service = settings_service
+        self.recipient_service = recipient_service
         self.base_dir = base_dir
 
-    async def get(self, filename):
+    async def get(self, campaign_id, recipient_index_str):
+        try:
+            recipient_index = int(recipient_index_str)
+        except ValueError:
+            raise tornado.web.HTTPError(400, "Invalid recipient index")
+
+        recipients = await self.recipient_service.get_recipients(campaign_id)
+        if not (0 <= recipient_index < len(recipients)):
+            raise tornado.web.HTTPError(404, "Recipient not found")
+
+        recipient = recipients[recipient_index]
+        filename = recipient.get("AttachmentFile")
+
+        if not filename:
+            raise tornado.web.HTTPError(
+                404, "Attachment filename not specified for this recipient"
+            )
+
         config = await self.settings_service.get_config()
         attachment_folder = config.get("attachment_folder", "attachments")
 
@@ -18,7 +36,7 @@ class AttachmentHandler(tornado.web.RequestHandler):
         file_path = os.path.join(self.base_dir, attachment_folder, filename)
 
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
-            raise tornado.web.HTTPError(404, "File not found")
+            raise tornado.web.HTTPError(404, "File not found on server")
 
         content_type, _ = mimetypes.guess_type(file_path)
         self.set_header("Content-Type", content_type or "application/octet-stream")

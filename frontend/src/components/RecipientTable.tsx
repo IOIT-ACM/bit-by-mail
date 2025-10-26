@@ -18,9 +18,23 @@ const RecipientTableContent: React.FC<{
     setPreviewRecipient,
     config,
     recipientIssues,
+    selectedRecipientIndices,
+    toggleRecipientSelection,
+    selectAllRecipients,
+    clearRecipientSelection,
   } = useAppStore();
   const recipients = activeCampaignData?.recipients ?? [];
   const showAttachments = config.send_attachments;
+
+  const isAllSelected = recipients.length > 0 && selectedRecipientIndices.size === recipients.length;
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      clearRecipientSelection();
+    } else {
+      selectAllRecipients();
+    }
+  };
 
   useDebouncedEffect(
     () => {
@@ -44,9 +58,9 @@ const RecipientTableContent: React.FC<{
     setPreviewRecipient(recipient);
   };
 
-  const handleViewAttachment = (filename: string) => {
-    if (filename) {
-      window.open(`/attachments/${filename}`, '_blank');
+  const handleViewAttachment = (index: number) => {
+    if (activeCampaignId) {
+      window.open(`/attachments/${activeCampaignId}/${index}`, '_blank');
     }
   };
 
@@ -64,6 +78,10 @@ const RecipientTableContent: React.FC<{
   };
 
   const getRowClasses = (status: string, index: number) => {
+    const isSelected = selectedRecipientIndices.has(index);
+    if (isSelected) {
+      return 'bg-accent-blue/20 hover:bg-accent-blue/30';
+    }
     const issue = recipientIssues[index];
     if (issue?.type === 'error') {
       return 'bg-status-danger-bg/20 hover:bg-status-danger-bg/30';
@@ -97,6 +115,14 @@ const RecipientTableContent: React.FC<{
         <table className="w-full text-sm text-left">
           <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-[#1e1e2a] z-10">
             <tr>
+              <th scope="col" className="px-4 py-3 w-12 text-center">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  onChange={handleSelectAll}
+                  className="custom-checkbox"
+                />
+              </th>
               <th scope="col" className="px-4 py-3 w-12 text-center"></th>
               <th scope="col" className="px-4 py-3 w-16 text-center">
                 #
@@ -128,6 +154,14 @@ const RecipientTableContent: React.FC<{
                 title={recipientIssues[index]?.message}
               >
                 <td className="px-4 py-2 text-center align-middle">
+                  <input
+                    type="checkbox"
+                    checked={selectedRecipientIndices.has(index)}
+                    onChange={() => toggleRecipientSelection(index)}
+                    className="custom-checkbox"
+                  />
+                </td>
+                <td className="px-4 py-2 text-center align-middle">
                   <button
                     onClick={() => handleViewEmail(recipient)}
                     className="p-1 text-text-secondary hover:text-text-primary rounded-full hover:bg-surface-element-hover transition-colors"
@@ -154,7 +188,7 @@ const RecipientTableContent: React.FC<{
                     <EditableCell
                       value={recipient.AttachmentFile}
                       onSave={(newValue) => handleCellChange(index, 'AttachmentFile', newValue)}
-                      onView={() => handleViewAttachment(recipient.AttachmentFile)}
+                      onView={() => handleViewAttachment(index)}
                     />
                   </td>
                 )}

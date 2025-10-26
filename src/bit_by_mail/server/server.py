@@ -5,6 +5,7 @@ import importlib.resources
 
 from .handlers.websocket_handler import WebSocketHandler, WebSocketManager
 from .handlers.attachment_handler import AttachmentHandler
+from .handlers.report_handler import ReportHandler
 from .services.settings_service import SettingsService
 from .services.recipient_service import RecipientService
 from .services.template_service import TemplateService
@@ -54,9 +55,18 @@ def make_app():
         [
             (r"/ws", WebSocketHandler),
             (
-                r"/attachments/(.*)",
+                r"/attachments/(.*)/(.*)",
                 AttachmentHandler,
-                {"settings_service": settings_service, "base_dir": base_dir},
+                {
+                    "settings_service": settings_service,
+                    "recipient_service": recipient_service,
+                    "base_dir": base_dir,
+                },
+            ),
+            (
+                r"/reports/(.*)/(.*)",
+                ReportHandler,
+                {"campaign_service": campaign_service},
             ),
             (
                 r"/(.*)",
