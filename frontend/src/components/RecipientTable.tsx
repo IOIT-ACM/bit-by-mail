@@ -58,9 +58,9 @@ const RecipientTableContent: React.FC<{
     setPreviewRecipient(recipient);
   };
 
-  const handleViewAttachment = (filename: string) => {
-    if (filename) {
-      window.open(`/attachments/${filename}`, '_blank');
+  const handleViewAttachment = (index: number) => {
+    if (activeCampaignId) {
+      window.open(`/attachments/${activeCampaignId}/${index}`, '_blank');
     }
   };
 
@@ -188,7 +188,7 @@ const RecipientTableContent: React.FC<{
                     <EditableCell
                       value={recipient.AttachmentFile}
                       onSave={(newValue) => handleCellChange(index, 'AttachmentFile', newValue)}
-                      onView={() => handleViewAttachment(recipient.AttachmentFile)}
+                      onView={() => handleViewAttachment(index)}
                     />
                   </td>
                 )}

@@ -55,9 +55,13 @@ def make_app():
         [
             (r"/ws", WebSocketHandler),
             (
-                r"/attachments/(.*)",
+                r"/attachments/(.*)/(.*)",
                 AttachmentHandler,
-                {"settings_service": settings_service, "base_dir": base_dir},
+                {
+                    "settings_service": settings_service,
+                    "recipient_service": recipient_service,
+                    "base_dir": base_dir,
+                },
             ),
             (
                 r"/reports/(.*)/(.*)",

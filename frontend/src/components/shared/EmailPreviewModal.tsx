@@ -75,7 +75,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({ onClose })
   const finalSubject = replacePlaceholders(subjectTemplate, previewRecipient);
   const finalBody = replacePlaceholders(emailBody, previewRecipient);
   const showAttachment = config.send_attachments && previewRecipient.AttachmentFile;
-  const attachmentUrl = showAttachment ? `/attachments/${previewRecipient.AttachmentFile}` : '';
+  const attachmentUrl = showAttachment ? `/attachments/${activeCampaignId}/${currentIndex}` : '';
 
   const backdropVariants = {
     hidden: { opacity: 0 },

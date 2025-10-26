@@ -249,16 +249,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     def check_origin(self, origin):
         if self.application.settings.get("debug", False):
-            parsed_origin = urlparse(origin)
-            if (
-                parsed_origin.hostname in ["localhost", "127.0.0.1"]
-                and parsed_origin.port == 3000
-            ):
-                return True
+            return True
 
         parsed_origin = urlparse(origin)
         origin_host = parsed_origin.netloc.lower()
         request_host = self.request.host.lower()
+
         return origin_host == request_host
 
 

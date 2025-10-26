@@ -7,7 +7,9 @@ from . import crypto_service
 class SettingsService:
     def __init__(self, base_dir):
         self.base_dir = base_dir
-        self.settings_path = os.path.join(self.base_dir, "settings.json")
+        self.data_dir = os.path.join(self.base_dir, "data")
+        os.makedirs(self.data_dir, exist_ok=True)
+        self.settings_path = os.path.join(self.data_dir, "settings.json")
 
     def _read_config(self):
         desktop_path = os.path.join(os.path.expanduser("~"), "Desktop")

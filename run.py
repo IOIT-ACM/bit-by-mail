@@ -1,48 +1,37 @@
 import asyncio
 import os
 import sys
-import json
 from cryptography.fernet import Fernet
 from src.bit_by_mail.server.server import make_app
 
 
 def setup_environment():
-    """
-    Ensures the SECRET_KEY is set, which is required by the crypto_service.
-    This logic is borrowed from your cli.py for consistency.
-    """
-    settings_path = os.path.join(os.getcwd(), "settings.json")
-    settings_data = {}
+    data_dir = os.path.join(os.getcwd(), "data")
+    key_path = os.path.join(data_dir, "fernet.key")
     secret_key = None
 
-    if os.path.exists(settings_path):
-        try:
-            with open(settings_path, "r") as f:
-                settings_data = json.load(f)
-                secret_key = settings_data.get("SECRET_KEY")
-        except (json.JSONDecodeError, IOError):
-            settings_data = {}
+    try:
+        os.makedirs(data_dir, exist_ok=True)
 
-    if not secret_key:
-        print("SECRET_KEY not found in settings.json. Generating a new one...")
-        secret_key = Fernet.generate_key().decode()
-        settings_data["SECRET_KEY"] = secret_key
-        try:
-            with open(settings_path, "w") as f:
-                json.dump(settings_data, f, indent=2)
-            print("New SECRET_KEY saved to settings.json")
-        except IOError as e:
-            print(f"FATAL: Could not write to settings.json: {e}", file=sys.stderr)
-            sys.exit(1)
+        if os.path.exists(key_path):
+            with open(key_path, "r") as f:
+                secret_key = f.read().strip()
+
+        if not secret_key:
+            print("Secret key not found. Generating a new one...")
+            secret_key = Fernet.generate_key().decode()
+            with open(key_path, "w") as f:
+                f.write(secret_key)
+            print(f"New secret key saved to {key_path}")
+
+    except IOError as e:
+        print(f"FATAL: Could not read/write secret key: {e}", file=sys.stderr)
+        sys.exit(1)
 
     os.environ["SECRET_KEY"] = secret_key
 
 
 def main():
-    """
-    Development server entry point.
-    Enables Tornado's debug mode for auto-reloading on code changes.
-    """
     setup_environment()
 
     app = make_app()
