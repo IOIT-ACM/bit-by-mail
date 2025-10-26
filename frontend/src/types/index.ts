@@ -42,6 +42,7 @@ export interface Campaign {
   subject: string;
   createdAt: string;
   recipientCount: number;
+  latestReportUrl?: string | null;
 }
 
 export interface AppState {

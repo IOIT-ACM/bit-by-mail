@@ -200,7 +200,13 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
       const newRecipients = state.activeCampaignData.recipients.map(
         (recipient, index) => {
           if (state.selectedRecipientIndices.has(index)) {
-            return { ...recipient, Status: status };
+            const newRecipient = { ...recipient, Status: status };
+            if (status === "SENT" && recipient.Status !== "SENT") {
+              newRecipient.SentTimestamp = new Date().toISOString();
+            } else if (status === "PENDING") {
+              newRecipient.SentTimestamp = undefined;
+            }
+            return newRecipient;
           }
           return recipient;
         },

@@ -12,7 +12,6 @@ export const RecipientActionPopup: React.FC = () => {
     activeCampaignId,
     deleteSelectedRecipients,
     updateStatusForSelectedRecipients,
-    clearRecipientSelection,
   } = useAppStore();
   const selectedCount = selectedRecipientIndices.size;
 

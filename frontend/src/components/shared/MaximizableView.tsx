@@ -22,7 +22,7 @@ export const MaximizableView: React.FC<MaximizableViewProps> = ({ children, layo
 
       <AnimatePresence>
         {isMaximized && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div
               className="fixed inset-0 bg-black/80 backdrop-blur-sm"
               initial={{ opacity: 0 }}
