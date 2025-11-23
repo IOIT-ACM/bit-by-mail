@@ -49,6 +49,8 @@ interface AppActions {
   selectAllRecipients: () => void;
   deleteSelectedRecipients: () => void;
   updateStatusForSelectedRecipients: (status: "SENT" | "PENDING") => void;
+  setShowAddRecipientModal: (show: boolean) => void;
+  addRecipient: (recipient: Recipient) => void;
 }
 
 const emptyConfig: Omit<Config, "sender_password" | "subject_template"> = {
@@ -60,7 +62,7 @@ const emptyConfig: Omit<Config, "sender_password" | "subject_template"> = {
   send_attachments: true,
 };
 
-export const useAppStore = create<AppState & AppActions>((set, get) => ({
+export const useAppStore = create<AppState & AppActions>((set) => ({
   config: emptyConfig,
   sender_password: "",
   logs: [],
@@ -78,26 +80,28 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   selectedCampaignIds: new Set(),
   selectedRecipientIndices: new Set(),
   isLogCollapsed: false,
+  showAddRecipientModal: false,
 
   setConfig: (config) => set({ config }),
   setSenderPassword: (password) => set({ sender_password: password }),
   setRecipients: (recipients) => {
-    const { activeCampaignData } = get();
-    if (activeCampaignData) {
-      set({
-        activeCampaignData: { ...activeCampaignData, recipients },
-        recipientIssues: {},
-        selectedRecipientIndices: new Set(),
-      });
-    }
+    set((state) => {
+      if (state.activeCampaignData) {
+        return {
+          activeCampaignData: { ...state.activeCampaignData, recipients },
+          recipientIssues: {},
+          selectedRecipientIndices: new Set(),
+        };
+      }
+      return {};
+    });
   },
   addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
   clearLogs: () => set({ logs: [] }),
   setIsSending: (isSending) => {
+    set({ isSending });
     if (isSending) {
-      set({ isSending, progress: { sent: 0, total: 0 }, recipientIssues: {} });
-    } else {
-      set({ isSending });
+      set({ progress: { sent: 0, total: 0 }, recipientIssues: {} });
     }
   },
   setConnectionStatus: (status) => set({ connectionStatus: status }),
@@ -119,15 +123,14 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
   setCampaignSummary: (summary) => set({ campaignSummary: summary }),
   setCampaigns: (campaigns) => set({ campaigns }),
   setActiveCampaignId: (id) => {
+    set({
+      activeCampaignId: id,
+      activeCampaignData: null,
+      selectedCampaignIds: new Set(),
+      selectedRecipientIndices: new Set(),
+    });
     if (id === null) {
-      set({ activeCampaignId: null, activeCampaignData: null, logs: [] });
-    } else {
-      set({
-        activeCampaignId: id,
-        activeCampaignData: null,
-        selectedCampaignIds: new Set(),
-        selectedRecipientIndices: new Set(),
-      });
+      set({ activeCampaignData: null, logs: [] });
     }
   },
   setActiveCampaignData: (data) => set({ activeCampaignData: data }),
@@ -217,6 +220,18 @@ export const useAppStore = create<AppState & AppActions>((set, get) => ({
           recipients: newRecipients,
         },
         selectedRecipientIndices: new Set(),
+      };
+    }),
+  setShowAddRecipientModal: (show) => set({ showAddRecipientModal: show }),
+  addRecipient: (recipient) =>
+    set((state) => {
+      if (!state.activeCampaignData) return {};
+      const newRecipients = [...state.activeCampaignData.recipients, recipient];
+      return {
+        activeCampaignData: {
+          ...state.activeCampaignData,
+          recipients: newRecipients,
+        },
       };
     }),
 }));

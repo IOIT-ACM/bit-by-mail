@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import Header from './components/Header';
 import Settings from './components/Settings';
 import Editor from './components/Editor';
@@ -8,12 +8,133 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { useAppStore } from './store/useAppStore';
 import { CampaignSummaryModal } from './components/shared/CampaignSummaryModal';
 import { EmailPreviewModal } from './components/shared/EmailPreviewModal';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { CampaignDashboard } from './components/CampaignDashboard';
 import { apiService } from './services/apiService';
 import { Button } from './components/shared/Button';
-import { Download, Upload } from 'lucide-react';
+import { Download, Upload, X, UserPlus } from 'lucide-react';
 import { RecipientActionPopup } from './components/shared/RecipientActionPopup';
+import { Recipient } from './types';
+import { toast } from 'sonner';
+
+const AddRecipientModal: React.FC = () => {
+  const { activeCampaignData, setShowAddRecipientModal, addRecipient, activeCampaignId } = useAppStore();
+
+  const availableColumns = useMemo(() => {
+    if (activeCampaignData && activeCampaignData.recipients.length > 0) {
+      return Object.keys(activeCampaignData.recipients[0]).filter(
+        key => key !== 'Status' && key !== 'SentTimestamp'
+      );
+    }
+    return ['Name', 'Email', 'AttachmentFile'];
+  }, [activeCampaignData]);
+
+  const [formState, setFormState] = useState<Record<string, string>>(() =>
+    availableColumns.reduce((acc, key) => ({ ...acc, [key]: '' }), {})
+  );
+
+  const handleClose = () => {
+    setShowAddRecipientModal(false);
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formState.Email || !formState.Name) {
+      toast.error('Name and Email are required fields.');
+      return;
+    }
+
+    const newRecipientData: { [key: string]: string } = {};
+    availableColumns.forEach(col => {
+      newRecipientData[col] = formState[col] || '';
+    });
+
+    const newRecipient: Recipient = {
+      ...newRecipientData,
+      Status: 'PENDING',
+    } as Recipient;
+
+    addRecipient(newRecipient);
+
+    const updatedRecipients = useAppStore.getState().activeCampaignData?.recipients;
+
+    if (activeCampaignId && updatedRecipients) {
+      apiService.saveRecipients(activeCampaignId, updatedRecipients);
+      apiService.runPreflightCheck(activeCampaignId);
+    }
+
+    toast.success(`Recipient "${formState.Name}" added.`);
+    handleClose();
+  };
+
+  const backdropVariants = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1 },
+  };
+
+  const modalVariants = {
+    hidden: { opacity: 0, scale: 0.95, y: 20 },
+    visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.2, ease: 'easeOut' } },
+    exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.15, ease: 'easeIn' } },
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+        variants={backdropVariants}
+        initial="hidden"
+        animate="visible"
+        exit="hidden"
+        onClick={handleClose}
+      />
+      <motion.div
+        className="relative w-full max-w-lg bg-surface-card border border-borders-primary rounded-card shadow-card p-6"
+        variants={modalVariants}
+        initial="hidden"
+        animate="visible"
+        exit="exit"
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-heading-3 font-medium text-text-primary">Add New Recipient</h2>
+          <button onClick={handleClose} className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          {availableColumns.map(column => (
+            <div key={column}>
+              <label className="text-sm font-medium text-text-secondary mb-1 block">{column}</label>
+              <input
+                type={column.toLowerCase() === 'email' ? 'email' : 'text'}
+                name={column}
+                value={formState[column] || ''}
+                onChange={handleChange}
+                placeholder={`Enter ${column}...`}
+                className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:border-accent-blue transition-colors"
+                required={column === 'Name' || column === 'Email'}
+              />
+            </div>
+          ))}
+          <div className="flex justify-end gap-3 pt-4">
+            <Button type="button" variant="secondary" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary">
+              <UserPlus size={16} />
+              Add Recipient
+            </Button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+};
 
 const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
@@ -29,6 +150,7 @@ const App: React.FC = () => {
     activeCampaignData,
     campaigns,
     setActiveCampaignId,
+    showAddRecipientModal,
   } = useAppStore();
   const initialUrlCheckDone = useRef(false);
   const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
@@ -117,14 +239,6 @@ const App: React.FC = () => {
     return <CampaignDashboard />;
   }
 
-  if (!activeCampaignData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-text-secondary">
-        Loading campaign data...
-      </div>
-    );
-  }
-
   return (
     <div className="h-screen flex flex-col">
       <Header onToggleSettings={() => setShowSettings(true)} />
@@ -169,6 +283,7 @@ const App: React.FC = () => {
       <AnimatePresence>
         {previewRecipient && <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />}
         {showCampaignSummaryModal && <CampaignSummaryModal />}
+        {showAddRecipientModal && <AddRecipientModal />}
       </AnimatePresence>
       <RecipientActionPopup />
     </div>

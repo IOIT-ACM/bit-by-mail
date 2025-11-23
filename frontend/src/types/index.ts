@@ -69,4 +69,5 @@ export interface AppState {
   selectedCampaignIds: Set<string>;
   selectedRecipientIndices: Set<number>;
   isLogCollapsed: boolean;
+  showAddRecipientModal: boolean;
 }

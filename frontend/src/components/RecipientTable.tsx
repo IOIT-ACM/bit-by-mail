@@ -1,7 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import { Recipient } from '../types';
-import { Maximize, Minimize, Eye } from 'lucide-react';
+import { Maximize, Minimize, Eye, Plus } from 'lucide-react';
 import { useDebouncedEffect } from '../hooks/useDebouncedEffect';
 import { apiService } from '../services/apiService';
 import { MaximizableView } from './shared/MaximizableView';
@@ -22,6 +22,7 @@ const RecipientTableContent: React.FC<{
     toggleRecipientSelection,
     selectAllRecipients,
     clearRecipientSelection,
+    setShowAddRecipientModal,
   } = useAppStore();
   const recipients = activeCampaignData?.recipients ?? [];
   const showAttachments = config.send_attachments;
@@ -38,7 +39,7 @@ const RecipientTableContent: React.FC<{
 
   useDebouncedEffect(
     () => {
-      if (recipients.length > 0 && activeCampaignId && activeCampaignData) {
+      if (activeCampaignId && activeCampaignData) {
         apiService.saveRecipients(activeCampaignId, activeCampaignData.recipients);
       }
     },
@@ -99,7 +100,16 @@ const RecipientTableContent: React.FC<{
     <div className="p-2 flex flex-col h-full overflow-hidden relative">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h2 className="text-heading-3 font-medium text-text-primary">Recipients ({recipients.length})</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-heading-3 font-medium text-text-primary">Recipients ({recipients.length})</h2>
+            <button
+              onClick={() => setShowAddRecipientModal(true)}
+              className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+              title="Add New Recipient"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
           {!showAttachments && (
             <p className="text-sm text-text-secondary italic mt-1">Attachments disabled for this mail campaign.</p>
           )}
