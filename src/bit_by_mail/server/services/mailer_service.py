@@ -167,6 +167,11 @@ class MailerService:
             msg = MIMEMultipart()
             msg["From"] = config["sender_email"]
             msg["To"] = email
+
+            # Add custom headers for labeling
+            msg["X-Label"] = "bit by mail"
+            msg["X-Mailer"] = "bit-by-mail"
+
             subject = self._replace_placeholders(subject_template, recipient)
             msg["Subject"] = subject
 

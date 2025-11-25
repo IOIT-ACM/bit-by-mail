@@ -25,3 +25,4 @@ recipients.csv
 # Build
 dist
 *.egg-info
+build
