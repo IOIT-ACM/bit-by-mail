@@ -63,7 +63,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
 
         <div className="overflow-y-auto flex-1 px-4 sm:px-6 py-4 no-scrollbar">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-4">
               <LabeledField label="SMTP Server" description="Enter the address of your outgoing mail server.">
                 <InputField name="smtp_server" value={formState.smtp_server} onChange={handleChange} placeholder="SMTP Server" />
               </LabeledField>
@@ -76,7 +76,7 @@ const Settings: React.FC<SettingsProps> = ({ onClose }) => {
               <LabeledField label="Sender Password" description="The password or app-specific password for the sender email account.">
                 <InputField name="sender_password" type="password" value={sender_password} onChange={(e) => setSenderPassword(e.target.value)} placeholder={isPasswordSet ? "Leave blank to use saved password" : "Sender Password"} />
               </LabeledField>
-              <div className="sm:col-span-2">
+              <div>
                 <LabeledField label="Attachment Folder Path" description="Absolute path on the server where attachments are stored.">
                   <InputField name="attachment_folder" value={formState.attachment_folder} onChange={handleChange} placeholder="Attachment Folder Path" />
                 </LabeledField>

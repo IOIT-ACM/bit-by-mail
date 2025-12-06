@@ -170,6 +170,13 @@ export const CampaignDashboard: React.FC = () => {
     }
   };
 
+  const handleCardDoubleClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setActiveCampaignId(id);
+    apiService.getCampaignData(id);
+    window.history.pushState({}, '', `?c=${id}`);
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -258,6 +265,7 @@ export const CampaignDashboard: React.FC = () => {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                     onClick={(e) => handleCardClick(e, campaign.id)}
+                    onDoubleClick={(e) => handleCardDoubleClick(e, campaign.id)}
                     className={`bg-surface-card backdrop-blur-xl border rounded-card p-6 cursor-pointer hover:bg-surface-card/80 transition-all duration-200 flex flex-col ${
                       isSelected ? 'border-accent-blue ring-2 ring-accent-blue/50' : 'border-borders-primary hover:border-accent-blue/50'
                     }`}

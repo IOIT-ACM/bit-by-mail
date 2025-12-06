@@ -61,9 +61,8 @@ module.exports = (env, argv) => {
       historyApiFallback: true,
       proxy: [
         {
-          context: ["/attachments", "/reports", "/ws"],
+          context: ["/attachments", "/reports"],
           target: "http://localhost:8888",
-          ws: true,
           changeOrigin: true,
         },
       ],

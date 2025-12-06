@@ -102,6 +102,8 @@ class CampaignService:
             except FileNotFoundError:
                 campaign["latestReportUrl"] = None
 
+        campaigns.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
+
         return campaigns
 
     async def get_campaigns(self):
