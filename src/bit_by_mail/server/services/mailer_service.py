@@ -168,7 +168,6 @@ class MailerService:
             msg["From"] = config["sender_email"]
             msg["To"] = email
 
-            # Add custom headers for labeling
             msg["X-Label"] = "bit by mail"
             msg["X-Mailer"] = "bit-by-mail"
 
@@ -180,24 +179,29 @@ class MailerService:
 
             send_attachments = config.get("send_attachments", True)
             if send_attachments:
-                attachment_file = recipient.get("AttachmentFile")
-                if not attachment_file:
-                    return "SKIPPED", "Attachment file name is missing.", None
+                attachment_files_str = str(recipient.get("AttachmentFile", "")).strip()
 
-                attachment_path = os.path.join(
-                    config["attachment_folder"], attachment_file
-                )
-                if not os.path.exists(attachment_path):
-                    raise FileNotFoundError(f"Attachment not found: {attachment_path}")
+                if attachment_files_str:
+                    attachment_files = [
+                        f.strip() for f in attachment_files_str.split(";") if f.strip()
+                    ]
 
-                with open(attachment_path, "rb") as attachment:
-                    part = MIMEBase("application", "octet-stream")
-                    part.set_payload(attachment.read())
-                encoders.encode_base64(part)
-                part.add_header(
-                    "Content-Disposition", f"attachment; filename= {attachment_file}"
-                )
-                msg.attach(part)
+                    for filename in attachment_files:
+                        attachment_path = os.path.join(
+                            config["attachment_folder"], filename
+                        )
+                        if not os.path.exists(attachment_path):
+                            raise FileNotFoundError(f"Attachment not found: {filename}")
+
+                        with open(attachment_path, "rb") as attachment:
+                            part = MIMEBase("application", "octet-stream")
+                            part.set_payload(attachment.read())
+
+                        encoders.encode_base64(part)
+                        part.add_header(
+                            "Content-Disposition", f"attachment; filename= {filename}"
+                        )
+                        msg.attach(part)
 
             server.send_message(msg)
             timestamp = datetime.now().isoformat()

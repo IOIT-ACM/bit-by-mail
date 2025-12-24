@@ -20,12 +20,29 @@ class AttachmentHandler(tornado.web.RequestHandler):
             raise tornado.web.HTTPError(404, "Recipient not found")
 
         recipient = recipients[recipient_index]
-        filename = recipient.get("AttachmentFile")
+        attachment_files_str = str(recipient.get("AttachmentFile", "")).strip()
 
-        if not filename:
+        if not attachment_files_str:
             raise tornado.web.HTTPError(
                 404, "Attachment filename not specified for this recipient"
             )
+
+        available_files = [
+            f.strip() for f in attachment_files_str.split(";") if f.strip()
+        ]
+
+        requested_file = self.get_argument("file", None)
+
+        if requested_file:
+            if requested_file not in available_files:
+                raise tornado.web.HTTPError(
+                    403, "Requested file is not associated with this recipient"
+                )
+            filename = requested_file
+        else:
+            if not available_files:
+                raise tornado.web.HTTPError(404, "No valid attachments found")
+            filename = available_files[0]
 
         config = await self.settings_service.get_config()
         attachment_folder = config.get("attachment_folder", "attachments")

@@ -1,36 +1,47 @@
-import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import Header from './components/Header';
-import Settings from './components/Settings';
-import Editor from './components/Editor';
-import RecipientTable from './components/RecipientTable';
-import StatusBar from './components/StatusBar';
-import { useWebSocket } from './hooks/useWebSocket';
-import { useAppStore } from './store/useAppStore';
-import { CampaignSummaryModal } from './components/shared/CampaignSummaryModal';
-import { EmailPreviewModal } from './components/shared/EmailPreviewModal';
-import { AnimatePresence, motion } from 'framer-motion';
-import { CampaignDashboard } from './components/CampaignDashboard';
-import { apiService } from './services/apiService';
-import { Button } from './components/shared/Button';
-import { Download, Upload, X, UserPlus } from 'lucide-react';
-import { RecipientActionPopup } from './components/shared/RecipientActionPopup';
-import { Recipient } from './types';
-import { toast } from 'sonner';
+import React, {
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
+import Header from "./components/Header";
+import Settings from "./components/Settings";
+import Editor from "./components/Editor";
+import RecipientTable from "./components/RecipientTable";
+import StatusBar from "./components/StatusBar";
+import { useWebSocket } from "./hooks/useWebSocket";
+import { useAppStore } from "./store/useAppStore";
+import { CampaignSummaryModal } from "./components/shared/CampaignSummaryModal";
+import { EmailPreviewModal } from "./components/shared/EmailPreviewModal";
+import { AnimatePresence, motion } from "framer-motion";
+import { CampaignDashboard } from "./components/CampaignDashboard";
+import { apiService } from "./services/apiService";
+import { Button } from "./components/shared/Button";
+import { Download, Upload, X, UserPlus } from "lucide-react";
+import { RecipientActionPopup } from "./components/shared/RecipientActionPopup";
+import { Recipient } from "./types";
+import { toast } from "sonner";
 
 const AddRecipientModal: React.FC = () => {
-  const { activeCampaignData, setShowAddRecipientModal, addRecipient, activeCampaignId } = useAppStore();
+  const {
+    activeCampaignData,
+    setShowAddRecipientModal,
+    addRecipient,
+    activeCampaignId,
+  } = useAppStore();
 
   const availableColumns = useMemo(() => {
     if (activeCampaignData && activeCampaignData.recipients.length > 0) {
       return Object.keys(activeCampaignData.recipients[0]).filter(
-        key => key !== 'Status' && key !== 'SentTimestamp'
+        (key) => key !== "Status" && key !== "SentTimestamp",
       );
     }
-    return ['Name', 'Email', 'AttachmentFile'];
+    return ["Name", "Email", "AttachmentFile"];
   }, [activeCampaignData]);
 
   const [formState, setFormState] = useState<Record<string, string>>(() =>
-    availableColumns.reduce((acc, key) => ({ ...acc, [key]: '' }), {})
+    availableColumns.reduce((acc, key) => ({ ...acc, [key]: "" }), {}),
   );
 
   const handleClose = () => {
@@ -39,29 +50,30 @@ const AddRecipientModal: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormState(prev => ({ ...prev, [name]: value }));
+    setFormState((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formState.Email || !formState.Name) {
-      toast.error('Name and Email are required fields.');
+      toast.error("Name and Email are required fields.");
       return;
     }
 
     const newRecipientData: { [key: string]: string } = {};
-    availableColumns.forEach(col => {
-      newRecipientData[col] = formState[col] || '';
+    availableColumns.forEach((col) => {
+      newRecipientData[col] = formState[col] || "";
     });
 
     const newRecipient: Recipient = {
       ...newRecipientData,
-      Status: 'PENDING',
+      Status: "PENDING",
     } as Recipient;
 
     addRecipient(newRecipient);
 
-    const updatedRecipients = useAppStore.getState().activeCampaignData?.recipients;
+    const updatedRecipients =
+      useAppStore.getState().activeCampaignData?.recipients;
 
     if (activeCampaignId && updatedRecipients) {
       apiService.saveRecipients(activeCampaignId, updatedRecipients);
@@ -79,8 +91,18 @@ const AddRecipientModal: React.FC = () => {
 
   const modalVariants = {
     hidden: { opacity: 0, scale: 0.95, y: 20 },
-    visible: { opacity: 1, scale: 1, y: 0, transition: { duration: 0.2, ease: 'easeOut' } },
-    exit: { opacity: 0, scale: 0.95, y: 20, transition: { duration: 0.15, ease: 'easeIn' } },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      transition: { duration: 0.2, ease: "easeOut" },
+    },
+    exit: {
+      opacity: 0,
+      scale: 0.95,
+      y: 20,
+      transition: { duration: 0.15, ease: "easeIn" },
+    },
   };
 
   return (
@@ -101,23 +123,33 @@ const AddRecipientModal: React.FC = () => {
         exit="exit"
       >
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-heading-3 font-medium text-text-primary">Add New Recipient</h2>
-          <button onClick={handleClose} className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors">
+          <h2 className="text-heading-3 font-medium text-text-primary">
+            Add New Recipient
+          </h2>
+          <button
+            onClick={handleClose}
+            className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+          >
             <X size={20} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
-          {availableColumns.map(column => (
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 max-h-[70vh] overflow-y-auto pr-2"
+        >
+          {availableColumns.map((column) => (
             <div key={column}>
-              <label className="text-sm font-medium text-text-secondary mb-1 block">{column}</label>
+              <label className="text-sm font-medium text-text-secondary mb-1 block">
+                {column}
+              </label>
               <input
-                type={column.toLowerCase() === 'email' ? 'email' : 'text'}
+                type={column.toLowerCase() === "email" ? "email" : "text"}
                 name={column}
-                value={formState[column] || ''}
+                value={formState[column] || ""}
                 onChange={handleChange}
                 placeholder={`Enter ${column}...`}
                 className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:border-accent-blue transition-colors"
-                required={column === 'Name' || column === 'Email'}
+                required={column === "Name" || column === "Email"}
               />
             </div>
           ))}
@@ -153,13 +185,16 @@ const App: React.FC = () => {
     showAddRecipientModal,
   } = useAppStore();
   const initialUrlCheckDone = useRef(false);
-  const activeCampaign = campaigns.find(c => c.id === activeCampaignId);
+  const activeCampaign = campaigns.find((c) => c.id === activeCampaignId);
 
   useEffect(() => {
     if (campaigns.length > 0 && !initialUrlCheckDone.current) {
       const params = new URLSearchParams(window.location.search);
-      const campaignIdFromUrl = params.get('c');
-      if (campaignIdFromUrl && campaigns.some(c => c.id === campaignIdFromUrl)) {
+      const campaignIdFromUrl = params.get("c");
+      if (
+        campaignIdFromUrl &&
+        campaigns.some((c) => c.id === campaignIdFromUrl)
+      ) {
         setActiveCampaignId(campaignIdFromUrl);
         apiService.getCampaignData(campaignIdFromUrl);
       }
@@ -171,15 +206,15 @@ const App: React.FC = () => {
     const handleResize = () => {
       setIsLargeScreen(window.innerWidth >= 1024);
     };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (window.innerWidth < 1024) return;
     e.preventDefault();
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!mainContentRef.current) return;
@@ -188,7 +223,8 @@ const App: React.FC = () => {
       const containerRect = container.getBoundingClientRect();
 
       const newEditorPixelWidth = moveEvent.clientX - containerRect.left;
-      let newEditorWidthPercent = (newEditorPixelWidth / containerRect.width) * 100;
+      let newEditorWidthPercent =
+        (newEditorPixelWidth / containerRect.width) * 100;
 
       if (newEditorWidthPercent < 25) newEditorWidthPercent = 25;
       if (newEditorWidthPercent > 75) newEditorWidthPercent = 75;
@@ -197,14 +233,14 @@ const App: React.FC = () => {
     };
 
     const handleMouseUp = () => {
-      document.body.style.cursor = 'default';
-      document.body.style.userSelect = 'auto';
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = "default";
+      document.body.style.userSelect = "auto";
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
     };
 
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
   }, []);
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -222,13 +258,13 @@ const App: React.FC = () => {
 
   const handleDownloadSample = () => {
     const csvContent =
-      'Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING';
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      "Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf;brochure.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'sample_recipients.csv');
-    link.style.visibility = 'hidden';
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", "sample_recipients.csv");
+    link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -252,16 +288,33 @@ const App: React.FC = () => {
               <Download size={16} />
               <span>Sample Data</span>
             </Button>
-            <input type="file" id="csv-upload" accept=".csv" onChange={handleFileUpload} className="hidden" />
-            <Button as="label" htmlFor="csv-upload" variant="success" className="cursor-pointer">
+            <input
+              type="file"
+              id="csv-upload"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            <Button
+              as="label"
+              htmlFor="csv-upload"
+              variant="success"
+              className="cursor-pointer"
+            >
               <Upload size={16} />
               <span>Upload Data</span>
             </Button>
           </div>
         </div>
 
-        <div ref={mainContentRef} className="flex-grow flex flex-col lg:flex-row items-stretch min-h-0">
-          <div className="min-w-0 lg:pr-4 mb-8 lg:mb-0 flex flex-col" style={isLargeScreen ? { width: `${editorWidth}%` } : {}}>
+        <div
+          ref={mainContentRef}
+          className="flex-grow flex flex-col lg:flex-row items-stretch min-h-0"
+        >
+          <div
+            className="min-w-0 lg:pr-4 mb-8 lg:mb-0 flex flex-col"
+            style={isLargeScreen ? { width: `${editorWidth}%` } : {}}
+          >
             <Editor />
           </div>
           <div
@@ -281,7 +334,9 @@ const App: React.FC = () => {
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}
 
       <AnimatePresence>
-        {previewRecipient && <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />}
+        {previewRecipient && (
+          <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />
+        )}
         {showCampaignSummaryModal && <CampaignSummaryModal />}
         {showAddRecipientModal && <AddRecipientModal />}
       </AnimatePresence>
