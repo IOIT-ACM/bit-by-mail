@@ -18,8 +18,11 @@ class RecipientService:
         recipients_path = self.get_recipients_path(campaign_id)
         if not os.path.exists(recipients_path):
             return []
-        df = pd.read_csv(recipients_path).fillna("")
-        return df.to_dict(orient="records")
+        try:
+            df = pd.read_csv(recipients_path).fillna("")
+            return df.to_dict(orient="records")
+        except (pd.errors.EmptyDataError, pd.errors.ParserError):
+            return []
 
     def _write_recipients_from_base64(self, campaign_id, base64_content):
         recipients_path = self.get_recipients_path(campaign_id)

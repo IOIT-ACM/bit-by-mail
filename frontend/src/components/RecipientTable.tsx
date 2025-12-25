@@ -1,11 +1,11 @@
-import React from 'react';
-import { useAppStore } from '../store/useAppStore';
-import { Recipient } from '../types';
-import { Maximize, Minimize, Eye, Plus } from 'lucide-react';
-import { useDebouncedEffect } from '../hooks/useDebouncedEffect';
-import { apiService } from '../services/apiService';
-import { MaximizableView } from './shared/MaximizableView';
-import { EditableCell } from './shared/EditableCell';
+import React from "react";
+import { useAppStore } from "../store/useAppStore";
+import { Recipient } from "../types";
+import { Maximize, Minimize, Eye, Plus } from "lucide-react";
+import { useDebouncedEffect } from "../hooks/useDebouncedEffect";
+import { apiService } from "../services/apiService";
+import { MaximizableView } from "./shared/MaximizableView";
+import { EditableCell } from "./shared/EditableCell";
 
 const RecipientTableContent: React.FC<{
   isMaximized: boolean;
@@ -27,7 +27,9 @@ const RecipientTableContent: React.FC<{
   const recipients = activeCampaignData?.recipients ?? [];
   const showAttachments = config.send_attachments;
 
-  const isAllSelected = recipients.length > 0 && selectedRecipientIndices.size === recipients.length;
+  const isAllSelected =
+    recipients.length > 0 &&
+    selectedRecipientIndices.size === recipients.length;
 
   const handleSelectAll = () => {
     if (isAllSelected) {
@@ -40,60 +42,80 @@ const RecipientTableContent: React.FC<{
   useDebouncedEffect(
     () => {
       if (activeCampaignId && activeCampaignData) {
-        apiService.saveRecipients(activeCampaignId, activeCampaignData.recipients);
+        apiService.saveRecipients(
+          activeCampaignId,
+          activeCampaignData.recipients,
+        );
       }
     },
     1500,
-    [activeCampaignId, activeCampaignData?.recipients]
+    [activeCampaignId, activeCampaignData?.recipients],
   );
 
-  const handleCellChange = (index: number, field: keyof Recipient, value: string) => {
+  const handleCellChange = (
+    index: number,
+    field: keyof Recipient,
+    value: string,
+  ) => {
     const recipient = recipients[index];
     const updatedRecipient = { ...recipient, [field]: value };
     const newRecipients = [...recipients];
     newRecipients[index] = updatedRecipient;
-    setActiveCampaignData({ ...activeCampaignData!, recipients: newRecipients });
+    setActiveCampaignData({
+      ...activeCampaignData!,
+      recipients: newRecipients,
+    });
   };
 
   const handleViewEmail = (recipient: Recipient) => {
     setPreviewRecipient(recipient);
   };
 
-  const handleViewAttachment = (index: number) => {
-    if (activeCampaignId) {
-      window.open(`/attachments/${activeCampaignId}/${index}`, '_blank');
+  const handleViewAttachment = (index: number, attachmentString: string) => {
+    if (activeCampaignId && attachmentString) {
+      const files = attachmentString
+        .split(";")
+        .map((f) => f.trim())
+        .filter(Boolean);
+      if (files.length > 0) {
+        // Open the first file by default when clicking view from table
+        window.open(
+          `/attachments/${activeCampaignId}/${index}?file=${encodeURIComponent(files[0])}`,
+          "_blank",
+        );
+      }
     }
   };
 
   const getStatusClasses = (status: string) => {
     switch (status?.toUpperCase()) {
-      case 'SENT':
-        return 'bg-status-success-bg text-status-success-text';
-      case 'ERROR':
-        return 'bg-status-danger-bg text-status-danger-text';
-      case 'SKIPPED':
-        return 'bg-status-info-bg text-status-info-text';
+      case "SENT":
+        return "bg-status-success-bg text-status-success-text";
+      case "ERROR":
+        return "bg-status-danger-bg text-status-danger-text";
+      case "SKIPPED":
+        return "bg-status-info-bg text-status-info-text";
       default:
-        return 'bg-surface-element text-text-secondary';
+        return "bg-surface-element text-text-secondary";
     }
   };
 
   const getRowClasses = (status: string, index: number) => {
     const isSelected = selectedRecipientIndices.has(index);
     if (isSelected) {
-      return 'bg-accent-blue/20 hover:bg-accent-blue/30';
+      return "bg-accent-blue/20 hover:bg-accent-blue/30";
     }
     const issue = recipientIssues[index];
-    if (issue?.type === 'error') {
-      return 'bg-status-danger-bg/20 hover:bg-status-danger-bg/30';
+    if (issue?.type === "error") {
+      return "bg-status-danger-bg/20 hover:bg-status-danger-bg/30";
     }
-    if (issue?.type === 'warning') {
-      return 'bg-accent-orange/20 hover:bg-accent-orange/30';
+    if (issue?.type === "warning") {
+      return "bg-accent-orange/20 hover:bg-accent-orange/30";
     }
-    if (status?.toUpperCase() === 'ERROR') {
-      return 'bg-status-danger-bg/20 hover:bg-status-danger-bg/30';
+    if (status?.toUpperCase() === "ERROR") {
+      return "bg-status-danger-bg/20 hover:bg-status-danger-bg/30";
     }
-    return 'hover:bg-surface-element/50';
+    return "hover:bg-surface-element/50";
   };
 
   return (
@@ -101,7 +123,9 @@ const RecipientTableContent: React.FC<{
       <div className="flex justify-between items-center mb-4">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-heading-3 font-medium text-text-primary">Recipients ({recipients.length})</h2>
+            <h2 className="text-heading-3 font-medium text-text-primary">
+              Recipients ({recipients.length})
+            </h2>
             <button
               onClick={() => setShowAddRecipientModal(true)}
               className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
@@ -111,7 +135,9 @@ const RecipientTableContent: React.FC<{
             </button>
           </div>
           {!showAttachments && (
-            <p className="text-sm text-text-secondary italic mt-1">Attachments disabled for this mail campaign.</p>
+            <p className="text-sm text-text-secondary italic mt-1">
+              Attachments disabled for this mail campaign.
+            </p>
           )}
         </div>
       </div>
@@ -159,7 +185,7 @@ const RecipientTableContent: React.FC<{
                 key={index}
                 className={`border-b border-borders-primary transition-colors ${getRowClasses(
                   recipient.Status,
-                  index
+                  index,
                 )}`}
                 title={recipientIssues[index]?.message}
               >
@@ -180,35 +206,45 @@ const RecipientTableContent: React.FC<{
                     <Eye size={16} />
                   </button>
                 </td>
-                <td className="px-4 py-2 text-center align-middle text-text-secondary">{index + 1}</td>
+                <td className="px-4 py-2 text-center align-middle text-text-secondary">
+                  {index + 1}
+                </td>
                 <td className="p-1 align-middle">
                   <EditableCell
                     value={recipient.Name}
-                    onSave={(newValue) => handleCellChange(index, 'Name', newValue)}
+                    onSave={(newValue) =>
+                      handleCellChange(index, "Name", newValue)
+                    }
                   />
                 </td>
                 <td className="p-1 align-middle">
                   <EditableCell
                     value={recipient.Email}
-                    onSave={(newValue) => handleCellChange(index, 'Email', newValue)}
+                    onSave={(newValue) =>
+                      handleCellChange(index, "Email", newValue)
+                    }
                   />
                 </td>
                 {showAttachments && (
                   <td className="p-1 align-middle">
                     <EditableCell
                       value={recipient.AttachmentFile}
-                      onSave={(newValue) => handleCellChange(index, 'AttachmentFile', newValue)}
-                      onView={() => handleViewAttachment(index)}
+                      onSave={(newValue) =>
+                        handleCellChange(index, "AttachmentFile", newValue)
+                      }
+                      onView={() =>
+                        handleViewAttachment(index, recipient.AttachmentFile)
+                      }
                     />
                   </td>
                 )}
                 <td className="px-4 py-2 text-center align-middle">
                   <span
                     className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full ${getStatusClasses(
-                      recipient.Status
+                      recipient.Status,
                     )}`}
                   >
-                    {recipient.Status || 'PENDING'}
+                    {recipient.Status || "PENDING"}
                   </span>
                 </td>
               </tr>
@@ -223,7 +259,12 @@ const RecipientTableContent: React.FC<{
 const RecipientTable: React.FC = () => {
   return (
     <MaximizableView layoutId="recipient-table-container">
-      {({ isMaximized, onToggle }) => <RecipientTableContent isMaximized={isMaximized} onToggleMaximize={onToggle} />}
+      {({ isMaximized, onToggle }) => (
+        <RecipientTableContent
+          isMaximized={isMaximized}
+          onToggleMaximize={onToggle}
+        />
+      )}
     </MaximizableView>
   );
 };

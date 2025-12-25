@@ -75,11 +75,15 @@ class PreflightService:
             and os.path.isdir(attachment_folder)
         ):
             for _, row in recipients_to_send_df.iterrows():
-                attachment_file = str(row.get("AttachmentFile", "")).strip()
-                if attachment_file:
-                    file_path = os.path.join(attachment_folder, attachment_file)
-                    if os.path.exists(file_path) and os.path.isfile(file_path):
-                        total_attachment_size += os.path.getsize(file_path)
+                attachment_files_str = str(row.get("AttachmentFile", "")).strip()
+                if attachment_files_str:
+                    files = [
+                        f.strip() for f in attachment_files_str.split(";") if f.strip()
+                    ]
+                    for filename in files:
+                        file_path = os.path.join(attachment_folder, filename)
+                        if os.path.exists(file_path) and os.path.isfile(file_path):
+                            total_attachment_size += os.path.getsize(file_path)
 
         preview_subject = "No pending recipients to preview."
         preview_body = "<p>No pending recipients to preview.</p>"
@@ -261,10 +265,10 @@ class PreflightService:
                     )
 
                 if send_attachments:
-                    cert_file = str(row.get("AttachmentFile", "")).strip()
+                    attachment_files_str = str(row.get("AttachmentFile", "")).strip()
                     name_for_msg = name or f"Row {row_num}"
 
-                    if not cert_file:
+                    if not attachment_files_str:
                         msg = f"Recipient '{name_for_msg}' has an empty 'AttachmentFile' field."
                         warnings.append(f"Row {row_num}: {msg}")
                         result.recipient_issues.append(
@@ -275,30 +279,36 @@ class PreflightService:
                             }
                         )
                     else:
-                        full_path = os.path.join(attachment_folder, cert_file)
-                        if not os.path.exists(full_path):
-                            all_attachments_found = False
-                            if status == "SENT":
-                                msg = f"Attachment '{cert_file}' for '{name_for_msg}' is missing, but email was already marked as SENT."
-                                warnings.append(f"Row {row_num}: {msg}")
-                                result.recipient_issues.append(
-                                    {
-                                        "index": cast(int, index),
-                                        "type": "warning",
-                                        "message": msg,
-                                    }
-                                )
-                            else:
-                                msg = f"Attachment '{cert_file}' for '{name_for_msg}' not found."
-                                errors.append(f"Row {row_num}: {msg}")
-                                result.recipient_issues.append(
-                                    {
-                                        "index": cast(int, index),
-                                        "type": "error",
-                                        "message": msg,
-                                    }
-                                )
-                                any_pending_attachments_missing = True
+                        files = [
+                            f.strip()
+                            for f in attachment_files_str.split(";")
+                            if f.strip()
+                        ]
+                        for filename in files:
+                            full_path = os.path.join(attachment_folder, filename)
+                            if not os.path.exists(full_path):
+                                all_attachments_found = False
+                                if status == "SENT":
+                                    msg = f"Attachment '{filename}' for '{name_for_msg}' is missing, but email was already marked as SENT."
+                                    warnings.append(f"Row {row_num}: {msg}")
+                                    result.recipient_issues.append(
+                                        {
+                                            "index": cast(int, index),
+                                            "type": "warning",
+                                            "message": msg,
+                                        }
+                                    )
+                                else:
+                                    msg = f"Attachment '{filename}' for '{name_for_msg}' not found."
+                                    errors.append(f"Row {row_num}: {msg}")
+                                    result.recipient_issues.append(
+                                        {
+                                            "index": cast(int, index),
+                                            "type": "error",
+                                            "message": msg,
+                                        }
+                                    )
+                                    any_pending_attachments_missing = True
 
             if send_attachments:
                 if all_attachments_found:
