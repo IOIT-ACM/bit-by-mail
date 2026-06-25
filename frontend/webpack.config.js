@@ -14,9 +14,13 @@ module.exports = (env, argv) => {
       path: path.resolve(__dirname, "dist"),
       filename: isProduction ? "[name].[contenthash].js" : "[name].bundle.js",
       clean: true,
+      publicPath: "/",
     },
     resolve: {
       extensions: [".tsx", ".ts", ".js"],
+      alias: {
+        "@": path.resolve(__dirname, "src/"),
+      },
     },
     module: {
       rules: [

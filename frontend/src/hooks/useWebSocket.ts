@@ -1,10 +1,10 @@
 import { useEffect, useRef, useCallback } from "react";
-import { useAppStore } from "../store/useAppStore";
-import { apiService } from "../services/apiService";
-import { RecipientIssue, CampaignData } from "../types";
+import { useAppStore } from "@/store/useAppStore";
+import { apiService } from "@/services/apiService";
+import { RecipientIssue, CampaignData } from "@/types";
 import { toast } from "sonner";
-import { queryClient } from "../queryClient";
-import { router } from "../router";
+import { queryClient } from "@/services/queryClient";
+import { router } from "@/routes/router";
 
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
@@ -139,28 +139,29 @@ export const useWebSocket = () => {
   );
 
   useEffect(() => {
-    const isDevelopment = process.env.NODE_ENV === "development";
-    const wsHost = isDevelopment ? "localhost:8888" : window.location.host;
-    const socket = new WebSocket(`ws://${wsHost}/ws`);
-    ws.current = socket;
-    apiService.setSocket(socket);
+  const socket = new WebSocket("ws://localhost:8888/ws");
+  ws.current = socket;
+  apiService.setSocket(socket);
 
-    socket.onopen = () => {
-      setConnectionStatus("open");
-      apiService.getCampaigns();
-    };
-    socket.onclose = () => {
-      setConnectionStatus("closed");
-    };
-    socket.onerror = () => {
-      setConnectionStatus("closed");
-    };
-    socket.onmessage = onMessage;
+  socket.onopen = () => {
+    setConnectionStatus("open");
+    apiService.getCampaigns();
+  };
 
-    return () => {
-      socket.close();
-      apiService.setSocket(null);
-    };
-  }, [onMessage, setConnectionStatus]);
+  socket.onclose = () => {
+    setConnectionStatus("closed");
+  };
+
+  socket.onerror = () => {
+    setConnectionStatus("closed");
+  };
+
+  socket.onmessage = onMessage;
+
+  return () => {
+    socket.close();
+    apiService.setSocket(null);
+  };
+}, [onMessage, setConnectionStatus]);
 };
 

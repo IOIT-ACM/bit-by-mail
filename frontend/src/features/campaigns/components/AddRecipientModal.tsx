@@ -1,13 +1,13 @@
-import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAppStore } from "../../store/useAppStore";
-import { CampaignData, Recipient } from "../../types";
-import { Button } from "./Button";
-import { UserPlus, X } from "lucide-react";
 import { motion } from "framer-motion";
+import { UserPlus, X } from "lucide-react";
+import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { queryClient } from "../../queryClient";
-import { apiService } from "../../services/apiService";
+import { queryClient } from "../../../services/queryClient";
+import { apiService } from "@/services/apiService";
+import { useAppStore } from "@/store/useAppStore";
+import { CampaignData, Recipient } from "@/types";
+import { Button } from "@/components/common/Button"
 
 export const AddRecipientModal: React.FC<{ campaignId: string }> = ({ campaignId }) => {
   const { setShowAddRecipientModal } = useAppStore();

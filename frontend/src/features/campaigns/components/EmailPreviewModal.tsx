@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { CampaignData, Config, Campaign, Recipient } from "../../types";
-import { Paperclip, X, ChevronLeft, ChevronRight } from "lucide-react";
-import { motion } from "framer-motion";
-import { useAppStore } from "../../store/useAppStore";
-import { useParams } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
+import { motion } from "framer-motion";
+import { ChevronLeft, ChevronRight, Paperclip, X } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useAppStore } from "@/store/useAppStore";
+import { Campaign, CampaignData, Config, Recipient } from "@/types";
 
 interface EmailPreviewModalProps {
   onClose: () => void;

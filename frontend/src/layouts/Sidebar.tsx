@@ -2,9 +2,9 @@ import React, { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Plus, Home, Settings, Wifi, WifiOff, Loader, BookOpen, PanelLeftClose, PanelLeft } from "lucide-react";
-import { useAppStore } from "../store/useAppStore";
-import { Campaign } from "../types";
-import { apiService } from "../services/apiService";
+import { useAppStore } from "@/store/useAppStore";
+import { Campaign } from "@/types";
+import { apiService } from "@/services/apiService";
 
 export const Sidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -20,14 +20,14 @@ export const Sidebar: React.FC = () => {
 
   return (
     <div className={`${isCollapsed ? 'w-20' : 'w-64'} bg-surface-header border-r border-borders-primary flex flex-col h-full flex-shrink-0 z-20 transition-all duration-300 ease-in-out`}>
-      <div className="flex items-center justify-between p-4 border-b border-borders-primary flex-shrink-0">
+      <div className="flex items-center justify-between p-4 border-b border-borders-primary flex-shrink-0 w-full">
         <Link to="/" className={`flex items-center gap-3 transition-opacity overflow-hidden ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100 w-auto'}`}>
           <img src="https://ioit.acm.org/static/img/assets/acm.png" alt="ACM Logo" className="h-8 w-8 flex-shrink-0" />
           <h1 className="text-heading-3 font-bold text-text-primary tracking-tight whitespace-nowrap">bit-by-mail</h1>
         </Link>
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 text-text-secondary hover:text-text-primary hover:bg-surface-element rounded-lg transition-colors flex-shrink-0 mx-auto"
+          className={`${isCollapsed && 'mx-auto'} py-2 text-text-secondary hover:text-text-primary hover:bg-surface-element rounded-lg transition-colors flex-shrink-0`}
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {isCollapsed ? <PanelLeft size={20} /> : <PanelLeftClose size={20} />}
@@ -85,7 +85,7 @@ export const Sidebar: React.FC = () => {
 
         {!isCollapsed && recentCampaigns.length > 0 && (
           <div className="pt-2 border-t border-borders-primary/50">
-            <h3 className="px-3 mb-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+            <h3 className="px-3 my-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
               Recent Campaigns
             </h3>
             <div className="space-y-1">

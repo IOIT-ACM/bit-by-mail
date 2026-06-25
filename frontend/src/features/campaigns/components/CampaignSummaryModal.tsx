@@ -1,10 +1,10 @@
-import React from 'react';
-import { useAppStore } from '../../store/useAppStore';
-import { motion } from 'framer-motion';
-import { X, Users, Send, FileStack, AlertTriangle } from 'lucide-react';
-import { Button } from './Button';
-import { apiService } from '../../services/apiService';
 import { useParams } from '@tanstack/react-router';
+import { motion } from 'framer-motion';
+import { AlertTriangle, FileStack, Send, Users, X } from 'lucide-react';
+import React from 'react';
+import { apiService } from '@/services/apiService';
+import { useAppStore } from '@/store/useAppStore';
+import { Button } from '@/components/common/Button';
 
 const formatBytes = (bytes: number, decimals = 2) => {
   if (!bytes || bytes === 0) return '0 Bytes';

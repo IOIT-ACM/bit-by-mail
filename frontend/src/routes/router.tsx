@@ -1,12 +1,12 @@
 import { createRootRoute, createRoute, createRouter, redirect } from '@tanstack/react-router';
-import App from './App';
-import { CampaignDashboard } from './components/CampaignDashboard';
-import { CampaignView } from './components/CampaignView';
-import Settings from './components/Settings';
-import { Docs } from './components/Docs';
+import MainLayout from '@/layouts/MainLayout';
+import { CampaignDashboard } from '@/pages/campaigns/CampaignDashboard';
+import { CampaignView } from '@/pages/campaigns/CampaignView';
+import Settings from '../pages/Settings';
+import { Docs } from '../pages/Docs';
 
 export const rootRoute = createRootRoute({
-  component: App,
+  component: MainLayout,
 });
 
 export const indexRoute = createRoute({

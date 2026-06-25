@@ -1,11 +1,11 @@
 import React from "react";
 import { Outlet } from "@tanstack/react-router";
-import { Sidebar } from "./components/Sidebar";
-import { useWebSocket } from "./hooks/useWebSocket";
-import { SelectionPopup } from "./components/shared/SelectionPopup";
-import { RecipientActionPopup } from "./components/shared/RecipientActionPopup";
+import { Sidebar } from "./Sidebar";
+import { useWebSocket } from "@/hooks/useWebSocket";
+import { SelectionPopup } from "@/features/campaigns/components/SelectionPopup";
+import { RecipientActionPopup } from "@/features/campaigns/components/RecipientActionPopup";
 
-const App: React.FC = () => {
+const MainLayout: React.FC = () => {
   useWebSocket();
 
   return (
@@ -20,5 +20,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
-
+export default MainLayout;

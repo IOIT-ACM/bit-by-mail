@@ -1,5 +1,5 @@
-import { Config, Recipient } from "../types";
-import { queryClient } from "../queryClient";
+import { Config, Recipient } from "@/types";
+import { queryClient } from "@/services/queryClient";
 
 class ApiService {
   private socket: WebSocket | null = null;

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { AppState, Recipient, LogEntry, CampaignSummary, RecipientIssue } from "../types";
+import { AppState, Recipient, LogEntry, CampaignSummary, RecipientIssue } from "@/types";
 
 type ConnectionStatus = "connecting" | "open" | "closed";
 

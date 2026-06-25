@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, ArrowRight } from 'lucide-react';
-import { useAppStore } from '../../store/useAppStore';
-import { apiService } from '../../services/apiService';
-import { Button } from './Button';
+import { useAppStore } from '@/store/useAppStore';
+import { apiService } from '@/services/apiService';
+import { Button } from '@/components/common/Button';
 import { toast } from 'sonner';
 import { useQuery } from '@tanstack/react-query';
-import { Campaign } from '../../types';
+import { Campaign } from '@/types';
 import { useRouter } from '@tanstack/react-router';
 
 export const SelectionPopup: React.FC = () => {
@@ -18,7 +18,8 @@ export const SelectionPopup: React.FC = () => {
   const handleOpen = () => {
     if (selectedCount !== 1) return;
     const id = selectedCampaignIds.values().next().value;
-    router.navigate({ to: '/campaigns/$campaignId', params: { campaignId: id } });
+    router.navigate({ to: '/campaigns/$campaignId', params: { campaignId: id ?? "undefined" } });
+    clearCampaignSelection();
   };
 
   const handleDelete = () => {

@@ -1,10 +1,10 @@
+import { Download, Send, TestTube, Upload, XCircle } from "lucide-react";
 import React from "react";
-import { Campaign } from "../types";
-import { Button } from "./shared/Button";
-import { Download, Upload, TestTube, Send, XCircle } from "lucide-react";
-import { useAppStore } from "../store/useAppStore";
-import { apiService } from "../services/apiService";
 import { toast } from "sonner";
+import { apiService } from "@/services/apiService";
+import { useAppStore } from "@/store/useAppStore";
+import { Campaign } from "@/types";
+import { Button } from "@/components/common/Button";
 
 interface CampaignViewHeaderProps {
   campaign: Campaign;

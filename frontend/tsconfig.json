@@ -1,16 +1,23 @@
 {
   "compilerOptions": {
+    "rootDir": "./src",
     "outDir": "./dist/",
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "module": "es6",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    
     "target": "es2015",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    
     "jsx": "react-jsx",
     "allowJs": true,
-    "moduleResolution": "node",
+    
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
   "include": ["src"]
 }
-

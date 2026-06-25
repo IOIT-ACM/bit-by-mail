@@ -12,8 +12,6 @@ export const MonacoEditorWrapper: React.FC<{ value: string; onChange: (value: st
 
   useEffect(() => {
     let editor: monaco.editor.IStandaloneCodeEditor | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-
     const editorNode = editorRef.current;
 
     if (editorNode) {
@@ -35,7 +33,7 @@ export const MonacoEditorWrapper: React.FC<{ value: string; onChange: (value: st
         value: value,
         language: 'html',
         theme: 'BitByMailDark',
-        automaticLayout: false,
+        automaticLayout: true,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
         fontSize: 14,
         minimap: { enabled: false },
@@ -63,18 +61,9 @@ export const MonacoEditorWrapper: React.FC<{ value: string; onChange: (value: st
           onChangeRef.current(currentValue);
         }
       });
-
-      resizeObserver = new ResizeObserver(() => {
-        setTimeout(() => editor?.layout(), 0);
-      });
-      resizeObserver.observe(editorNode);
     }
 
     return () => {
-      if (resizeObserver && editorNode) {
-        resizeObserver.unobserve(editorNode);
-        resizeObserver.disconnect();
-      }
       if (editor) {
         editor.dispose();
       }
@@ -89,5 +78,5 @@ export const MonacoEditorWrapper: React.FC<{ value: string; onChange: (value: st
     }
   }, [value]);
 
-  return <div ref={editorRef} className="monaco-editor-container" />;
+  return <div ref={editorRef} className="w-full h-full overflow-hidden" />;
 };

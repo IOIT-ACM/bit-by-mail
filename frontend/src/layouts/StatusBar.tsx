@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { useAppStore } from '../store/useAppStore';
+import { useAppStore } from '@/store/useAppStore';
 import { ChevronDown, ChevronUp, Maximize, Minimize } from 'lucide-react';
-import { LogEntry } from '../types';
+import { LogEntry } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MaximizableView } from './shared/MaximizableView';
+import { MaximizableView } from '@/components/common/MaximizableView';
 
 const getLogColor = (level: string) => {
   switch (level.toLowerCase()) {

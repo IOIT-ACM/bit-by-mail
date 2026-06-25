@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
-import { useAppStore } from '../store/useAppStore';
-import { apiService } from '../services/apiService';
-import { Button } from './shared/Button';
+import { useAppStore } from '@/store/useAppStore';
+import { apiService } from '@/services/apiService';
+import { Button } from '@/components/common/Button';
 import { Plus, Mail, Users, Download } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Campaign } from '../types';
+import { Campaign } from '@/types';
 
 export const CampaignDashboard: React.FC = () => {
   const router = useRouter();
@@ -129,6 +128,7 @@ export const CampaignDashboard: React.FC = () => {
   const handleCardDoubleClick = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     router.navigate({ to: '/campaigns/$campaignId', params: { campaignId: id } });
+    clearCampaignSelection();
   };
 
   useEffect(() => {
@@ -140,7 +140,7 @@ export const CampaignDashboard: React.FC = () => {
       } else if (e.key === 'Enter' && selectedCampaignIds.size === 1) {
         e.preventDefault();
         const id = selectedCampaignIds.values().next().value;
-        router.navigate({ to: '/campaigns/$campaignId', params: { campaignId: id } });
+        router.navigate({ to: '/campaigns/$campaignId', params: { campaignId: id ?? "undefined" } });
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -168,12 +168,9 @@ export const CampaignDashboard: React.FC = () => {
               {campaigns.map((campaign, index) => {
                 const isSelected = selectedCampaignIds.has(campaign.id);
                 return (
-                  <motion.div
+                  <div
                     ref={node => { if (node) itemRefs.current.set(campaign.id, node); else itemRefs.current.delete(campaign.id); }}
                     key={campaign.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
                     onClick={(e) => handleCardClick(e, campaign.id)}
                     onDoubleClick={(e) => handleCardDoubleClick(e, campaign.id)}
                     className={`bg-surface-card backdrop-blur-xl border rounded-card p-6 cursor-pointer hover:bg-surface-card/80 transition-all duration-200 flex flex-col ${isSelected ? 'border-accent-blue ring-2 ring-accent-blue/50' : 'border-borders-primary hover:border-accent-blue/50'}`}
@@ -202,7 +199,7 @@ export const CampaignDashboard: React.FC = () => {
                         <span>{new Date(campaign.createdAt).toLocaleDateString()}</span>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 );
               })}
             </div>
@@ -216,11 +213,10 @@ export const CampaignDashboard: React.FC = () => {
         </section>
       </main>
 
-      <AnimatePresence>
         {showCreateModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="relative w-full max-w-md bg-surface-card border border-borders-primary rounded-card shadow-card p-6">
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowCreateModal(false)} />
+            <div className="relative w-full max-w-md bg-surface-card border border-borders-primary rounded-card shadow-card p-6">
               <h2 className="text-heading-3 font-medium text-text-primary mb-4">Create New Campaign</h2>
               <form onSubmit={handleCreateCampaign}>
                 <input type="text" value={newCampaignName} onChange={(e) => setNewCampaignName(e.target.value)} placeholder="Enter campaign name..." className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:border-accent-blue transition-colors mb-6" autoFocus maxLength={60} />
@@ -229,10 +225,9 @@ export const CampaignDashboard: React.FC = () => {
                   <Button type="submit" variant="primary" disabled={!newCampaignName.trim()}>Create</Button>
                 </div>
               </form>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
     </div>
   );
 };

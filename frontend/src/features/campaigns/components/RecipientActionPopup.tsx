@@ -1,13 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trash2, Send, CheckCircle, XCircle } from 'lucide-react';
-import { useAppStore } from '../../store/useAppStore';
-import { apiService } from '../../services/apiService';
-import { Button } from './Button';
+import { useAppStore } from '@/store/useAppStore';
+import { apiService } from '@/services/apiService';
+import { Button } from '@/components/common/Button';
 import { toast } from 'sonner';
 import { useParams } from '@tanstack/react-router';
-import { queryClient } from '../../queryClient';
-import { CampaignData } from '../../types';
+import { queryClient } from '@/services/queryClient';
+import { CampaignData } from '@/types';
 
 export const RecipientActionPopup: React.FC = () => {
   const params = useParams({ strict: false }) as Record<string, string | undefined>;

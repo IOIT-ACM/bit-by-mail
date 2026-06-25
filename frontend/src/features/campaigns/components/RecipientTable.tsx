@@ -1,13 +1,13 @@
-import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAppStore } from "../store/useAppStore";
-import { Recipient, CampaignData, Config } from "../types";
-import { Maximize, Minimize, Eye, Plus } from "lucide-react";
-import { useDebouncedEffect } from "../hooks/useDebouncedEffect";
-import { apiService } from "../services/apiService";
-import { MaximizableView } from "./shared/MaximizableView";
-import { EditableCell } from "./shared/EditableCell";
-import { queryClient } from "../queryClient";
+import { Eye, Maximize, Minimize, Plus } from "lucide-react";
+import React from "react";
+import { useDebouncedEffect } from "@/hooks/useDebouncedEffect";
+import { queryClient } from "@/services/queryClient";
+import { apiService } from "@/services/apiService";
+import { useAppStore } from "@/store/useAppStore";
+import { CampaignData, Config, Recipient } from "@/types";
+import { EditableCell } from "@/components/common/EditableCell";
+import { MaximizableView } from "@/components/common/MaximizableView";
 
 const RecipientTableContent: React.FC<{ isMaximized: boolean; onToggleMaximize: () => void; campaignId: string }> = ({ isMaximized, onToggleMaximize, campaignId }) => {
   const { data } = useQuery<CampaignData>({ queryKey: ['campaignData', campaignId] });

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useAppStore } from '../store/useAppStore';
-import { Config } from '../types';
-import { Button } from './shared/Button';
-import { apiService } from '../services/apiService';
+import { useAppStore } from '@/store/useAppStore';
+import { Config } from '@/types';
+import { Button } from '@/components/common/Button';
+import { apiService } from '@/services/apiService';
 import { toast } from 'sonner';
 
 export default function Settings() {

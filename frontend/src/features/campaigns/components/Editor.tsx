@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Code, Eye, Expand, Maximize, Minimize, Braces } from 'lucide-react';
-import { MonacoEditorWrapper } from './shared/MonacoEditorWrapper';
-import { MaximizableView } from './shared/MaximizableView';
-import { useDebouncedEffect } from '../hooks/useDebouncedEffect';
-import { apiService } from '../services/apiService';
-import { CampaignData } from '../types';
+import { Braces, Code, Expand, Eye, Maximize, Minimize } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { useDebouncedEffect } from '@/hooks/useDebouncedEffect';
+import { apiService } from '@/services/apiService';
+import { CampaignData } from '@/types';
+import { MaximizableView } from '@/components/common/MaximizableView';
+import { MonacoEditorWrapper } from '@/components/common/MonacoEditorWrapper';
 
 const TabButton: React.FC<{ label: string; icon: React.ReactNode; isActive: boolean; onClick: () => void; }> = ({ label, icon, isActive, onClick }) => (
   <button onClick={onClick} className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${isActive ? 'text-text-primary border-accent-blue' : 'text-text-secondary border-transparent hover:text-text-primary'}`}>
