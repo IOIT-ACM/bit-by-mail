@@ -15,7 +15,7 @@ export interface Recipient {
   AttachmentFile: string;
   Status: string;
   SentTimestamp?: string | undefined;
-  [key: string]: string;
+  [key: string]: any;
 }
 
 export interface LogEntry {
@@ -45,8 +45,13 @@ export interface Campaign {
   latestReportUrl?: string | null;
 }
 
+export interface CampaignData {
+  campaign_id: string;
+  emailBody: string;
+  recipients: Recipient[];
+}
+
 export interface AppState {
-  config: Omit<Config, "sender_password" | "subject_template">;
   sender_password: string;
   logs: LogEntry[];
   isSending: boolean;
@@ -60,14 +65,9 @@ export interface AppState {
   recipientIssues: Record<number, RecipientIssue>;
   showCampaignSummaryModal: boolean;
   campaignSummary: CampaignSummary | null;
-  campaigns: Campaign[];
-  activeCampaignId: string | null;
-  activeCampaignData: {
-    emailBody: string;
-    recipients: Recipient[];
-  } | null;
   selectedCampaignIds: Set<string>;
   selectedRecipientIndices: Set<number>;
   isLogCollapsed: boolean;
   showAddRecipientModal: boolean;
 }
+

@@ -1,8 +1,9 @@
-import { useAppStore } from "../store/useAppStore";
 import { Config, Recipient } from "../types";
+import { queryClient } from "../queryClient";
 
 class ApiService {
   private socket: WebSocket | null = null;
+  private resolvers: Map<string, Function[]> = new Map();
 
   setSocket(socket: WebSocket | null) {
     this.socket = socket;
@@ -13,6 +14,25 @@ class ApiService {
       this.socket.send(JSON.stringify({ action, payload }));
     } else {
       console.error("WebSocket is not connected.");
+    }
+  }
+
+  async request(action: string, payload?: any, expectedAction?: string): Promise<any> {
+    return new Promise((resolve) => {
+      const waitAction = expectedAction || action;
+      if (!this.resolvers.has(waitAction)) {
+        this.resolvers.set(waitAction, []);
+      }
+      this.resolvers.get(waitAction)!.push(resolve);
+      this.sendMessage(action, payload);
+    });
+  }
+
+  handleResponse(action: string, payload: any) {
+    if (this.resolvers.has(action)) {
+      const callbacks = this.resolvers.get(action)!;
+      callbacks.forEach(cb => cb(payload));
+      this.resolvers.delete(action);
     }
   }
 
@@ -28,10 +48,7 @@ class ApiService {
     this.sendMessage("create_campaign", { name });
   }
 
-  updateCampaign(
-    campaignId: string,
-    updates: { name?: string; subject?: string },
-  ) {
+  updateCampaign(campaignId: string, updates: { name?: string; subject?: string }) {
     this.sendMessage("update_campaign", { campaign_id: campaignId, updates });
   }
 
@@ -44,59 +61,35 @@ class ApiService {
   }
 
   saveTemplate(campaignId: string, emailBody: string) {
-    this.sendMessage("save_template", {
-      campaign_id: campaignId,
-      content: emailBody,
-    });
+    this.sendMessage("save_template", { campaign_id: campaignId, content: emailBody });
   }
 
-  saveConfig(config: Partial<Omit<Config, "subject_template">>) {
-    const { config: currentConfig, sender_password } = useAppStore.getState();
+  saveConfig(config: Partial<Omit<Config, "subject_template">>, sender_password?: string) {
+    const currentConfig = (queryClient.getQueryData(['config']) as Partial<Config>) || {};
     const fullConfig = { ...currentConfig, ...config, sender_password };
     this.sendMessage("save_config", fullConfig);
   }
 
-  saveAndTestConfig(
-    config: Omit<Config, "sender_password" | "subject_template">,
-    password: string,
-  ) {
-    const { setConfig, clearLogs, activeCampaignId } = useAppStore.getState();
+  saveAndTestConfig(config: Omit<Config, "sender_password" | "subject_template">, password: string, activeCampaignId?: string) {
     const fullConfig = { ...config, sender_password: password };
-
-    setConfig(config);
+    queryClient.setQueryData(['config'], config);
     this.sendMessage("save_config", fullConfig);
-
     if (activeCampaignId) {
-      clearLogs();
-      this.sendMessage("preflight_check", {
-        campaign_id: activeCampaignId,
-        config: fullConfig,
-      });
+      this.sendMessage("preflight_check", { campaign_id: activeCampaignId, config: fullConfig });
     }
   }
 
   saveRecipients(campaignId: string, recipients: Recipient[]) {
-    this.sendMessage("save_recipients", {
-      campaign_id: campaignId,
-      recipients,
-    });
+    this.sendMessage("save_recipients", { campaign_id: campaignId, recipients });
   }
 
   uploadRecipients(campaignId: string, base64Content: string) {
-    this.sendMessage("upload_recipients", {
-      campaign_id: campaignId,
-      content: base64Content,
-    });
+    this.sendMessage("upload_recipients", { campaign_id: campaignId, content: base64Content });
   }
 
   startMailing(campaignId: string, indices?: number[]) {
-    const { config, clearLogs } = useAppStore.getState();
-    clearLogs();
-    this.sendMessage("start_mailing", {
-      campaign_id: campaignId,
-      config: config,
-      recipient_indices: indices,
-    });
+    const config = queryClient.getQueryData(['config']);
+    this.sendMessage("start_mailing", { campaign_id: campaignId, config: config, recipient_indices: indices });
   }
 
   stopMailing() {
@@ -104,24 +97,16 @@ class ApiService {
   }
 
   getCampaignSummary(campaignId: string, indices?: number[]) {
-    const { config } = useAppStore.getState();
-    this.sendMessage("get_campaign_summary", {
-      campaign_id: campaignId,
-      config: config,
-      recipient_indices: indices,
-    });
+    const config = queryClient.getQueryData(['config']);
+    this.sendMessage("get_campaign_summary", { campaign_id: campaignId, config: config, recipient_indices: indices });
   }
 
   runPreflightCheck(campaignId: string, configOverride?: Config) {
-    const { config, clearLogs, setIsLogCollapsed } = useAppStore.getState();
-    clearLogs();
-    setIsLogCollapsed(false);
+    const config = queryClient.getQueryData(['config']);
     const configPayload = configOverride ? configOverride : config;
-    this.sendMessage("preflight_check", {
-      campaign_id: campaignId,
-      config: configPayload,
-    });
+    this.sendMessage("preflight_check", { campaign_id: campaignId, config: configPayload });
   }
 }
 
 export const apiService = new ApiService();
+

@@ -18,7 +18,7 @@ install:
 dev-backend:
 	@echo "Starting backend server in DEVELOPMENT mode (http://localhost:8888)..."
 	@echo "Auto-reloading is ON."
-	. venv/bin/activate && python run.py
+	. venv/bin/activate && python3 run.py
 
 dev-frontend:
 	@echo "Starting frontend dev server in DEVELOPMENT mode (http://localhost:3000)..."

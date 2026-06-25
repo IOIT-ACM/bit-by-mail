@@ -1,14 +1,14 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { apiService } from "../services/apiService";
-import { Recipient, RecipientIssue } from "../types";
+import { RecipientIssue, CampaignData } from "../types";
 import { toast } from "sonner";
+import { queryClient } from "../queryClient";
+import { router } from "../router";
 
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
   const {
-    setInitialData,
-    setRecipients,
     addLog,
     setIsSending,
     clearLogs,
@@ -18,9 +18,7 @@ export const useWebSocket = () => {
     clearRecipientIssues,
     setCampaignSummary,
     setShowCampaignSummaryModal,
-    setActiveCampaignData,
-    setCampaigns,
-    setActiveCampaignId,
+    setIsPasswordSet,
   } = useAppStore();
 
   const onMessage = useCallback(
@@ -30,30 +28,38 @@ export const useWebSocket = () => {
 
       switch (action) {
         case "initial_data":
-          setInitialData(payload);
+          queryClient.setQueryData(['campaigns'], payload.campaigns);
+          queryClient.setQueryData(['config'], payload.config);
+          setIsPasswordSet(payload.is_password_set);
+          apiService.handleResponse("initial_data", payload);
+          apiService.handleResponse("campaigns_list", payload.campaigns);
           break;
         case "campaigns_list":
-          setCampaigns(payload);
+          queryClient.setQueryData(['campaigns'], payload);
+          apiService.handleResponse("campaigns_list", payload);
           break;
         case "campaign_created":
-          setActiveCampaignId(payload.id);
-          apiService.getCampaignData(payload.id);
-          window.history.pushState({}, "", `?c=${payload.id}`);
+          queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+          router.navigate({ to: '/campaigns/$campaignId', params: { campaignId: payload.id } });
           break;
         case "campaign_data":
-          setActiveCampaignData({
-            emailBody: payload.emailBody,
-            recipients: payload.recipients,
-          });
+          queryClient.setQueryData(['campaignData', payload.campaign_id], payload);
+          apiService.handleResponse("campaign_data", payload);
           clearLogs();
-          apiService.runPreflightCheck(payload.campaign_id, payload.config);
+          const currentConfig = queryClient.getQueryData(['config']);
+          apiService.runPreflightCheck(payload.campaign_id, currentConfig as any);
           break;
         case "recipients_updated":
-          setRecipients(payload);
-          toast.success(`${payload.length} recipients loaded successfully`);
-          const { activeCampaignId } = useAppStore.getState();
-          if (activeCampaignId) {
-            apiService.runPreflightCheck(activeCampaignId);
+          {
+            const matches = router.state.matches;
+            const currentMatch = matches[matches.length - 1];
+            const params = currentMatch?.params as Record<string, string | undefined>;
+            const campaignId = params?.campaignId;
+            if (campaignId) {
+              queryClient.setQueryData<CampaignData>(['campaignData', campaignId], (old) => old ? { ...old, recipients: payload } : old);
+              toast.success(`${payload.length} recipients loaded successfully`);
+              apiService.runPreflightCheck(campaignId);
+            }
           }
           break;
         case "mailing_started":
@@ -61,18 +67,20 @@ export const useWebSocket = () => {
           setProgress(0, payload.total_to_send);
           break;
         case "status_update":
-          const statusLevelMap: { [key: string]: string } = {
-            SENT: "success",
-            ERROR: "error",
-            SKIPPED: "warn",
-          };
-          const level = statusLevelMap[payload.status.toUpperCase()] || "info";
-          addLog({
-            level,
-            message: `To: ${payload.email} - ${payload.details}`,
-          });
-          setRecipients(payload.recipients);
-          setProgress(payload.sent_count, payload.total_to_send);
+          {
+            const statusLevelMap: { [key: string]: string } = { SENT: "success", ERROR: "error", SKIPPED: "warn" };
+            const level = statusLevelMap[payload.status.toUpperCase()] || "info";
+            addLog({ level, message: `To: ${payload.email} - ${payload.details}` });
+
+            const matchesStatus = router.state.matches;
+            const currentMatchStatus = matchesStatus[matchesStatus.length - 1];
+            const paramsStatus = currentMatchStatus?.params as Record<string, string | undefined>;
+            const campaignIdStatus = paramsStatus?.campaignId;
+            if (campaignIdStatus) {
+              queryClient.setQueryData<CampaignData>(['campaignData', campaignIdStatus], (old) => old ? { ...old, recipients: payload.recipients } : old);
+            }
+            setProgress(payload.sent_count, payload.total_to_send);
+          }
           break;
         case "log":
           addLog({ level: payload.level, message: payload.message });
@@ -83,53 +91,30 @@ export const useWebSocket = () => {
         case "preflight_result":
           clearRecipientIssues();
           addLog({ level: "info", message: "--- PREFLIGHT CHECK RESULTS ---" });
-
           if (payload.successes && payload.successes.length > 0) {
             addLog({ level: "info", message: "CHECKS PASSED:" });
-            payload.successes.forEach((msg: string) =>
-              addLog({ level: "success", message: `+ ${msg}` }),
-            );
+            payload.successes.forEach((msg: string) => addLog({ level: "success", message: `+ ${msg}` }));
           }
-
           if (payload.errors && payload.errors.length > 0) {
             addLog({ level: "info", message: "ERRORS:" });
-            payload.errors.forEach((err: string) =>
-              addLog({ level: "error", message: `- ${err}` }),
-            );
+            payload.errors.forEach((err: string) => addLog({ level: "error", message: `- ${err}` }));
           }
-
           if (payload.warnings && payload.warnings.length > 0) {
             addLog({ level: "info", message: "WARNINGS:" });
-            payload.warnings.forEach((warn: string) =>
-              addLog({ level: "warn", message: `! ${warn}` }),
-            );
+            payload.warnings.forEach((warn: string) => addLog({ level: "warn", message: `! ${warn}` }));
           }
-
           if (payload.ok) {
-            addLog({
-              level: "success",
-              message: "Preflight complete. System is ready.",
-            });
+            addLog({ level: "success", message: "Preflight complete. System is ready." });
           } else {
             toast.error("Preflight failed. See logs for details.");
-            addLog({
-              level: "error",
-              message: "Preflight failed. Please resolve the errors above.",
-            });
+            addLog({ level: "error", message: "Preflight failed. Please resolve the errors above." });
           }
           addLog({ level: "info", message: "-----------------------------" });
-
           const issues: Record<number, RecipientIssue> = {};
-          if (
-            payload.recipient_issues &&
-            Array.isArray(payload.recipient_issues)
-          ) {
+          if (payload.recipient_issues && Array.isArray(payload.recipient_issues)) {
             payload.recipient_issues.forEach((issue: any) => {
               if (typeof issue.index === "number") {
-                issues[issue.index] = {
-                  type: issue.type,
-                  message: issue.message,
-                };
+                issues[issue.index] = { type: issue.type, message: issue.message };
               }
             });
           }
@@ -143,32 +128,14 @@ export const useWebSocket = () => {
           toast.success("Report generated and download started.");
           const link = document.createElement("a");
           link.href = payload.url;
-          link.setAttribute(
-            "download",
-            payload.url.split("/").pop() || "report.csv",
-          );
+          link.setAttribute("download", payload.url.split("/").pop() || "report.csv");
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           break;
       }
     },
-    [
-      setInitialData,
-      setRecipients,
-      addLog,
-      setIsSending,
-      clearLogs,
-      setProgress,
-      setRecipientIssues,
-      clearRecipientIssues,
-      setConnectionStatus,
-      setCampaignSummary,
-      setShowCampaignSummaryModal,
-      setActiveCampaignData,
-      setCampaigns,
-      setActiveCampaignId,
-    ],
+    [addLog, setIsSending, clearLogs, setProgress, setRecipientIssues, clearRecipientIssues, setCampaignSummary, setShowCampaignSummaryModal, setIsPasswordSet],
   );
 
   useEffect(() => {
@@ -179,16 +146,13 @@ export const useWebSocket = () => {
     apiService.setSocket(socket);
 
     socket.onopen = () => {
-      console.log("WebSocket Connected");
       setConnectionStatus("open");
       apiService.getCampaigns();
     };
     socket.onclose = () => {
-      console.log("WebSocket Disconnected");
       setConnectionStatus("closed");
     };
-    socket.onerror = (error) => {
-      console.error("WebSocket Error:", error);
+    socket.onerror = () => {
       setConnectionStatus("closed");
     };
     socket.onmessage = onMessage;
@@ -199,3 +163,4 @@ export const useWebSocket = () => {
     };
   }, [onMessage, setConnectionStatus]);
 };
+
