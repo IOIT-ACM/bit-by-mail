@@ -1,123 +1,157 @@
-import { Config, Recipient } from "@/types";
-import { queryClient } from "@/services/queryClient";
+import type { Config, Recipient } from '@/types'
+import { queryClient } from '@/services/queryClient'
 
 class ApiService {
-  private socket: WebSocket | null = null;
-  private resolvers: Map<string, Function[]> = new Map();
-  private messageQueue: string[] = [];
+  private socket: WebSocket | null = null
+  private resolvers: Map<string, Function[]> = new Map()
+  private messageQueue: string[] = []
 
   setSocket(socket: WebSocket | null) {
-    this.socket = socket;
+    this.socket = socket
   }
 
   flushQueue() {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       while (this.messageQueue.length > 0) {
-        const msg = this.messageQueue.shift();
-        if (msg) this.socket.send(msg);
+        const msg = this.messageQueue.shift()
+        if (msg) this.socket.send(msg)
       }
     }
   }
 
   sendMessage(action: string, payload?: any) {
-    const msg = JSON.stringify({ action, payload });
+    const msg = JSON.stringify({ action, payload })
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-      this.socket.send(msg);
+      this.socket.send(msg)
     } else {
-      console.warn(`WebSocket not open yet. Queueing action: ${action}`);
-      this.messageQueue.push(msg);
+      this.messageQueue.push(msg)
     }
   }
 
-  async request(action: string, payload?: any, expectedAction?: string): Promise<any> {
+  async request(
+    action: string,
+    payload?: any,
+    expectedAction?: string,
+  ): Promise<any> {
     return new Promise((resolve) => {
-      const waitAction = expectedAction || action;
+      const waitAction = expectedAction || action
       if (!this.resolvers.has(waitAction)) {
-        this.resolvers.set(waitAction, []);
+        this.resolvers.set(waitAction, [])
       }
-      this.resolvers.get(waitAction)!.push(resolve);
-      this.sendMessage(action, payload);
-    });
+      this.resolvers.get(waitAction)!.push(resolve)
+      this.sendMessage(action, payload)
+    })
   }
 
   handleResponse(action: string, payload: any) {
     if (this.resolvers.has(action)) {
-      const callbacks = this.resolvers.get(action)!;
-      callbacks.forEach(cb => cb(payload));
-      this.resolvers.delete(action);
+      const callbacks = this.resolvers.get(action)!
+      callbacks.forEach((cb) => cb(payload))
+      this.resolvers.delete(action)
     }
   }
 
   getCampaigns() {
-    this.sendMessage("get_campaigns");
+    this.sendMessage('get_campaigns')
   }
 
   getCampaignData(campaignId: string) {
-    this.sendMessage("get_campaign_data", { campaign_id: campaignId });
+    this.sendMessage('get_campaign_data', { campaign_id: campaignId })
   }
 
   createCampaign(name: string) {
-    this.sendMessage("create_campaign", { name });
+    this.sendMessage('create_campaign', { name })
   }
 
-  updateCampaign(campaignId: string, updates: { name?: string; subject?: string }) {
-    this.sendMessage("update_campaign", { campaign_id: campaignId, updates });
+  updateCampaign(
+    campaignId: string,
+    updates: { name?: string; subject?: string },
+  ) {
+    this.sendMessage('update_campaign', { campaign_id: campaignId, updates })
   }
 
   deleteCampaign(campaignId: string) {
-    this.sendMessage("delete_campaign", { campaign_id: campaignId });
+    this.sendMessage('delete_campaign', { campaign_id: campaignId })
   }
 
   deleteCampaigns(campaignIds: string[]) {
-    this.sendMessage("delete_campaigns", { campaign_ids: campaignIds });
+    this.sendMessage('delete_campaigns', { campaign_ids: campaignIds })
   }
 
   saveTemplate(campaignId: string, emailBody: string) {
-    this.sendMessage("save_template", { campaign_id: campaignId, content: emailBody });
+    this.sendMessage('save_template', {
+      campaign_id: campaignId,
+      content: emailBody,
+    })
   }
 
-  saveConfig(config: Partial<Omit<Config, "subject_template">>, sender_password?: string) {
-    const currentConfig = (queryClient.getQueryData(['config']) as Partial<Config>) || {};
-    const fullConfig = { ...currentConfig, ...config, sender_password };
-    this.sendMessage("save_config", fullConfig);
+  saveConfig(
+    config: Partial<Omit<Config, 'subject_template'>>,
+    sender_password?: string,
+  ) {
+    const currentConfig =
+      (queryClient.getQueryData(['config']) as Partial<Config>) || {}
+    const fullConfig = { ...currentConfig, ...config, sender_password }
+    this.sendMessage('save_config', fullConfig)
   }
 
-  saveAndTestConfig(config: Omit<Config, "sender_password" | "subject_template">, password: string, activeCampaignId?: string) {
-    const fullConfig = { ...config, sender_password: password };
-    queryClient.setQueryData(['config'], config);
-    this.sendMessage("save_config", fullConfig);
+  saveAndTestConfig(
+    config: Omit<Config, 'sender_password' | 'subject_template'>,
+    password: string,
+    activeCampaignId?: string,
+  ) {
+    const fullConfig = { ...config, sender_password: password }
+    queryClient.setQueryData(['config'], config)
+    this.sendMessage('save_config', fullConfig)
     if (activeCampaignId) {
-      this.sendMessage("preflight_check", { campaign_id: activeCampaignId, config: fullConfig });
+      this.sendMessage('preflight_check', {
+        campaign_id: activeCampaignId,
+        config: fullConfig,
+      })
     }
   }
 
   saveRecipients(campaignId: string, recipients: Recipient[]) {
-    this.sendMessage("save_recipients", { campaign_id: campaignId, recipients });
+    this.sendMessage('save_recipients', { campaign_id: campaignId, recipients })
   }
 
   uploadRecipients(campaignId: string, base64Content: string) {
-    this.sendMessage("upload_recipients", { campaign_id: campaignId, content: base64Content });
+    this.sendMessage('upload_recipients', {
+      campaign_id: campaignId,
+      content: base64Content,
+    })
   }
 
   startMailing(campaignId: string, indices?: number[]) {
-    const config = queryClient.getQueryData(['config']);
-    this.sendMessage("start_mailing", { campaign_id: campaignId, config: config, recipient_indices: indices });
+    const config = queryClient.getQueryData(['config'])
+    this.sendMessage('start_mailing', {
+      campaign_id: campaignId,
+      config: config,
+      recipient_indices: indices,
+    })
   }
 
   stopMailing() {
-    this.sendMessage("stop_mailing");
+    this.sendMessage('stop_mailing')
   }
 
   getCampaignSummary(campaignId: string, indices?: number[]) {
-    const config = queryClient.getQueryData(['config']);
-    this.sendMessage("get_campaign_summary", { campaign_id: campaignId, config: config, recipient_indices: indices });
+    const config = queryClient.getQueryData(['config'])
+    this.sendMessage('get_campaign_summary', {
+      campaign_id: campaignId,
+      config: config,
+      recipient_indices: indices,
+    })
   }
 
   runPreflightCheck(campaignId: string, configOverride?: Config) {
-    const config = queryClient.getQueryData(['config']);
-    const configPayload = configOverride ? configOverride : config;
-    this.sendMessage("preflight_check", { campaign_id: campaignId, config: configPayload });
+    const config = queryClient.getQueryData(['config'])
+    const configPayload = configOverride ? configOverride : config
+    this.sendMessage('preflight_check', {
+      campaign_id: campaignId,
+      config: configPayload,
+    })
   }
 }
 
-export const apiService = new ApiService();
+export const apiService = new ApiService()

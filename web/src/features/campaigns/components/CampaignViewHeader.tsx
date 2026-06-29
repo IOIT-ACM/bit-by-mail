@@ -1,100 +1,222 @@
-import { Download, Send, TestTube, Upload, XCircle } from "lucide-react";
-import React from "react";
-import { toast } from "sonner";
-import { apiService } from "@/services/apiService";
-import { useAppStore } from "@/store/useAppStore";
-import { Campaign } from "@/types";
-import { Button } from "@/components/common/Button";
+import {
+  Download,
+  Send,
+  TestTube,
+  Upload,
+  XCircle,
+  Pencil,
+  Check,
+} from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { toast } from 'sonner'
+import { apiService } from '@/services/apiService'
+import { useAppStore } from '@/store/useAppStore'
+import type { Campaign } from '@/types'
+import { Button } from '@/components/common/Button'
+import { queryClient } from '@/services/queryClient'
 
 interface CampaignViewHeaderProps {
-  campaign: Campaign;
-  campaignId: string;
+  campaign: Campaign
+  campaignId: string
 }
 
-export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({ campaign, campaignId }) => {
-  const { isSending, clearRecipientSelection } = useAppStore();
+export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
+  campaign,
+  campaignId,
+}) => {
+  const { isSending, isStopping, setIsStopping, clearRecipientSelection } =
+    useAppStore()
+
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(campaign.name)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isEditingName && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [isEditingName])
+
+  const handleSaveName = () => {
+    if (editedName.trim() && editedName !== campaign.name) {
+      apiService.updateCampaign(campaignId, { name: editedName.trim() })
+    } else {
+      setEditedName(campaign.name)
+    }
+    setIsEditingName(false)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') handleSaveName()
+    if (e.key === 'Escape') {
+      setEditedName(campaign.name)
+      setIsEditingName(false)
+    }
+  }
 
   const handleDownloadSample = () => {
-    const csvContent = "Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf;brochure.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING";
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "sample_recipients.csv");
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+    const csvContent =
+      'Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf;brochure.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING'
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'sample_recipients.csv')
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const file = event.target.files?.[0]
     if (file && campaignId) {
-      const reader = new FileReader();
+      const reader = new FileReader()
       reader.onload = (e) => {
-        const text = e.target?.result as string;
-        const base64Content = btoa(text);
-        apiService.uploadRecipients(campaignId, base64Content);
-      };
-      reader.readAsText(file);
+        const text = e.target?.result as string
+        const lines = text.split('\n')
+        const header = lines[0].toLowerCase()
+        if (!header.includes('email') || !header.includes('name')) {
+          toast.error(
+            'Invalid CSV: Must contain at least "Name" and "Email" columns.',
+          )
+          if (event.target) event.target.value = ''
+          return
+        }
+        const base64Content = btoa(text)
+        apiService.uploadRecipients(campaignId, base64Content)
+      }
+      reader.readAsText(file)
     }
-  };
+  }
 
   const handlePreflight = () => {
-    toast.info("Running preflight check...");
-    apiService.runPreflightCheck(campaignId);
-  };
+    apiService.flushQueue()
+    apiService.runPreflightCheck(campaignId)
+  }
 
   const handleSend = () => {
-    if (isSending) return;
-    clearRecipientSelection();
-    apiService.getCampaignSummary(campaignId);
-  };
+    if (isSending) return
+    apiService.flushQueue()
+    clearRecipientSelection()
+    apiService.getCampaignSummary(campaignId)
+  }
 
   const handleStop = () => {
-    if (!isSending) return;
-    apiService.stopMailing();
-    toast.warning("Stop request sent. The process will halt after the current email.");
-  };
+    if (!isSending || isStopping) return
+    setIsStopping(true)
+    apiService.stopMailing()
+    toast.warning(
+      'Stop request sent. The process will halt after the current email.',
+    )
+  }
 
   return (
-    <div className="flex-shrink-0 flex justify-between items-center mb-6 flex-wrap gap-4">
-      <h1 className="text-3xl font-bold text-text-primary tracking-tight">
-        {campaign.name}
-      </h1>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 mr-2">
-          <Button onClick={handleDownloadSample} variant="secondary">
-            <Download size={16} />
-            <span className="hidden sm:inline">Sample</span>
-          </Button>
-          <input type="file" id="csv-upload" accept=".csv" onChange={handleFileUpload} className="hidden" />
-          <Button as="label" htmlFor="csv-upload" variant="success" className="cursor-pointer">
-            <Upload size={16} />
-            <span className="hidden sm:inline">Upload</span>
-          </Button>
-        </div>
-        <div className="h-6 w-px bg-borders-primary"></div>
-        <div className="flex items-center gap-2 ml-2">
-          <Button onClick={handlePreflight} disabled={isSending} variant="warning">
-            <TestTube size={16} />
-            <span className="hidden sm:inline">Preflight</span>
-          </Button>
-          {isSending ? (
-            <Button onClick={handleStop} variant="danger">
+    <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
+      <div className="flex items-center gap-2 group max-w-full">
+        {isEditingName ? (
+          <div className="flex items-center gap-2 w-full max-w-md">
+            <input
+              ref={inputRef}
+              type="text"
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onBlur={handleSaveName}
+              onKeyDown={handleKeyDown}
+              className="text-2xl font-bold bg-surface-element border border-accent-blue rounded-md px-2 py-1 outline-none w-full"
+            />
+            <button
+              onMouseDown={handleSaveName}
+              className="p-1.5 text-accent-blue hover:bg-surface-element rounded-md"
+            >
+              <Check size={18} />
+            </button>
+          </div>
+        ) : (
+          <div
+            onClick={() => setIsEditingName(true)}
+            className="flex items-center gap-3 cursor-pointer rounded-md p-1 -ml-1 border border-transparent hover:border-borders-primary hover:bg-surface-element transition-all"
+            title="Click to rename"
+          >
+            <h1 className="text-2xl font-bold text-text-primary tracking-tight truncate max-w-sm md:max-w-md lg:max-w-xl">
+              {campaign.name}
+            </h1>
+            <Pencil
+              size={16}
+              className="text-text-tertiary group-hover:text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+        <Button onClick={handleDownloadSample} variant="secondary">
+          <Download size={16} />
+          <span className="hidden lg:inline">Sample</span>
+        </Button>
+        <input
+          type="file"
+          id="csv-upload"
+          accept=".csv"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+        <Button
+          as="label"
+          htmlFor="csv-upload"
+          variant="success"
+          className="cursor-pointer"
+        >
+          <Upload size={16} />
+          <span className="hidden lg:inline">Upload</span>
+        </Button>
+
+        <div className="h-6 w-px bg-borders-primary mx-1"></div>
+
+        <Button
+          onClick={handlePreflight}
+          disabled={isSending}
+          variant="warning"
+        >
+          <TestTube size={16} />
+          <span className="hidden md:inline">Preflight</span>
+        </Button>
+        {isSending ? (
+          <Button onClick={handleStop} variant="danger" disabled={isStopping}>
+            {isStopping ? (
+              <Loader size={16} className="animate-spin" />
+            ) : (
               <XCircle size={16} />
-              <span>Stop Sending</span>
-            </Button>
-          ) : (
-            <Button onClick={handleSend} variant="primary">
-              <Send size={16} />
-              <span>Start Sending</span>
-            </Button>
-          )}
-        </div>
+            )}
+            <span>{isStopping ? 'Stopping...' : 'Stop Sending'}</span>
+          </Button>
+        ) : (
+          <Button onClick={handleSend} variant="primary">
+            <Send size={16} />
+            <span>Start Sending</span>
+          </Button>
+        )}
       </div>
     </div>
-  );
-};
+  )
+}
 
+function Loader({ size, className }: { size: number; className: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  )
+}
