@@ -1,4 +1,4 @@
-.PHONY: install build-frontend package run-prod dev-backend dev-frontend help
+.PHONY: install build-web package run-prod dev-backend dev-web help
 
 # ==============================================================================
 # SETUP
@@ -9,8 +9,8 @@ install:
 		python3 -m venv venv; \
 	fi
 	. venv/bin/activate && pip install -e .
-	@echo "Installing frontend dependencies..."
-	cd frontend && npm install
+	@echo "Installing web dependencies..."
+	cd web && bun install
 
 # ==============================================================================
 # DEVELOPMENT
@@ -20,23 +20,23 @@ dev-backend:
 	@echo "Auto-reloading is ON."
 	. venv/bin/activate && python3 run.py
 
-dev-frontend:
-	@echo "Starting frontend dev server in DEVELOPMENT mode (http://localhost:3000)..."
+dev-web:
+	@echo "Starting web dev server in DEVELOPMENT mode (http://localhost:3000)..."
 	@echo "Hot-reloading is ON."
-	cd frontend && npm run dev
+	cd web && bun run dev
 
 # ==============================================================================
 # PRODUCTION
 # ==============================================================================
-build-frontend:
-	@echo "Building frontend for production..."
-	cd frontend && npm run build
+build-web:
+	@echo "Building web for production..."
+	cd web && bun run build
 
-package: build-frontend
+package: build-web
 	@echo "Preparing assets for packaging..."
-	@rm -rf src/bit_by_mail/frontend/dist
-	@mkdir -p src/bit_by_mail/frontend
-	@cp -r frontend/dist src/bit_by_mail/frontend/
+	@rm -rf src/bit_by_mail/web/dist
+	@mkdir -p src/bit_by_mail/web
+	@cp -r web/dist src/bit_by_mail/web/
 	@echo "Building Python package..."
 	@pip install --upgrade build
 	@python -m build
@@ -52,9 +52,9 @@ run-prod: package
 # ==============================================================================
 help:
 	@echo "Available commands:"
-	@echo "  install            - Install all backend and frontend dependencies."
+	@echo "  install            - Install all backend and web dependencies."
 	@echo "  dev-backend        - Start the backend server for development (with auto-reload)."
-	@echo "  dev-frontend       - Start the frontend server for development (with hot-reload)."
+	@echo "  dev-web       - Start the web server for development (with hot-reload)."
 	@echo "  run-prod           - Build, package, and run the application for production."
-	@echo "  build-frontend     - Build the frontend assets for production."
+	@echo "  build-web     - Build the web assets for production."
 	@echo "  package            - Build the final Python package for distribution."
