@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import { Loader } from 'lucide-react'
 
 export const MonacoEditorWrapper: React.FC<{
   value: string
@@ -6,8 +7,14 @@ export const MonacoEditorWrapper: React.FC<{
 }> = ({ value, onChange }) => {
   const editorRef = useRef<HTMLDivElement>(null)
   const monacoInstance = useRef<any>(null)
+  const emmetDisposeRef = useRef<any>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+
+  const latestValueRef = useRef(value)
+  latestValueRef.current = value
+
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let editor: any = null
@@ -15,7 +22,31 @@ export const MonacoEditorWrapper: React.FC<{
 
     const initMonaco = async () => {
       const monaco = await import('monaco-editor')
+      const { emmetHTML } = await import('emmet-monaco-es')
+
+      if (!(window as any).MonacoEnvironment) {
+        const editorWorker =
+          await import('monaco-editor/esm/vs/editor/editor.worker?worker')
+        const htmlWorker =
+          await import('monaco-editor/esm/vs/language/html/html.worker?worker')
+
+        ;(window as any).MonacoEnvironment = {
+          getWorker: function (_moduleId: any, label: string) {
+            if (
+              label === 'html' ||
+              label === 'handlebars' ||
+              label === 'razor'
+            ) {
+              return new htmlWorker.default()
+            }
+            return new editorWorker.default()
+          },
+        }
+      }
+
       if (!isMounted) return
+
+      emmetDisposeRef.current = emmetHTML(monaco)
 
       const editorNode = editorRef.current
 
@@ -35,7 +66,7 @@ export const MonacoEditorWrapper: React.FC<{
         })
 
         editor = monaco.editor.create(editorNode, {
-          value: value,
+          value: latestValueRef.current,
           language: 'html',
           theme: 'BitByMailDark',
           automaticLayout: true,
@@ -60,6 +91,7 @@ export const MonacoEditorWrapper: React.FC<{
         })
 
         monacoInstance.current = editor
+        setIsLoading(false)
 
         editor.onDidChangeModelContent(() => {
           const currentValue = editor?.getValue()
@@ -74,6 +106,9 @@ export const MonacoEditorWrapper: React.FC<{
 
     return () => {
       isMounted = false
+      if (emmetDisposeRef.current) {
+        emmetDisposeRef.current()
+      }
       if (monacoInstance.current) {
         monacoInstance.current.dispose()
       }
@@ -88,6 +123,14 @@ export const MonacoEditorWrapper: React.FC<{
     }
   }, [value])
 
-  return <div ref={editorRef} className="w-full h-full overflow-hidden" />
+  return (
+    <div className="relative w-full h-full">
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-surface-element">
+          <Loader size={24} className="animate-spin text-accent-blue mb-2" />
+        </div>
+      )}
+      <div ref={editorRef} className="w-full h-full overflow-hidden" />
+    </div>
+  )
 }
-

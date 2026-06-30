@@ -11,9 +11,11 @@ import {
   BookOpen,
   PanelLeftClose,
   PanelLeft,
+  Database,
+  LayoutTemplate,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
-import type { Campaign } from '@/types'
+import type { Campaign, Database as DatabaseType, EmailTemplate } from '@/types'
 import { apiService } from '@/services/apiService'
 
 export const Sidebar: React.FC = () => {
@@ -29,7 +31,17 @@ export const Sidebar: React.FC = () => {
         .then((d) => d.campaigns),
   })
 
+  const { data: databases = [] } = useQuery<DatabaseType[]>({
+    queryKey: ['databases'],
+  })
+
+  const { data: templates = [] } = useQuery<EmailTemplate[]>({
+    queryKey: ['templates'],
+  })
+
   const recentCampaigns = campaigns.slice(0, 5)
+  const recentDatabases = databases.slice(0, 3)
+  const recentTemplates = templates.slice(0, 3)
 
   return (
     <div
@@ -80,10 +92,34 @@ export const Sidebar: React.FC = () => {
                 ? 'bg-accent-blue/10 text-accent-blue'
                 : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
             } ${isCollapsed ? 'justify-center' : ''}`}
-            title="Dashboard"
+            title="Campaigns"
           >
             <Home size={20} />
-            {!isCollapsed && <span>Dashboard</span>}
+            {!isCollapsed && <span>Campaigns</span>}
+          </Link>
+          <Link
+            to="/databases"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              routerState.location.pathname.startsWith('/databases')
+                ? 'bg-accent-blue/10 text-accent-blue'
+                : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+            } ${isCollapsed ? 'justify-center' : ''}`}
+            title="Databases"
+          >
+            <Database size={20} />
+            {!isCollapsed && <span>Databases</span>}
+          </Link>
+          <Link
+            to="/templates"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              routerState.location.pathname.startsWith('/templates')
+                ? 'bg-accent-blue/10 text-accent-blue'
+                : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+            } ${isCollapsed ? 'justify-center' : ''}`}
+            title="Templates"
+          >
+            <LayoutTemplate size={20} />
+            {!isCollapsed && <span>Templates</span>}
           </Link>
           <Link
             to="/docs"
@@ -130,6 +166,56 @@ export const Sidebar: React.FC = () => {
                   title={c.name}
                 >
                   {c.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!isCollapsed && recentDatabases.length > 0 && (
+          <div className="pt-2 border-t border-borders-primary/50">
+            <h3 className="px-3 my-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Recent Databases
+            </h3>
+            <div className="space-y-1">
+              {recentDatabases.map((db) => (
+                <Link
+                  key={db.id}
+                  to="/databases/$databaseId"
+                  params={{ databaseId: db.id }}
+                  className={`block px-3 py-2 rounded-lg text-sm truncate transition-colors ${
+                    routerState.location.pathname === `/databases/${db.id}`
+                      ? 'bg-surface-element-hover text-text-primary font-medium'
+                      : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+                  }`}
+                  title={db.name}
+                >
+                  {db.name}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!isCollapsed && recentTemplates.length > 0 && (
+          <div className="pt-2 border-t border-borders-primary/50">
+            <h3 className="px-3 my-3 text-xs font-semibold text-text-tertiary uppercase tracking-wider">
+              Recent Templates
+            </h3>
+            <div className="space-y-1">
+              {recentTemplates.map((t) => (
+                <Link
+                  key={t.id}
+                  to="/templates/$templateId"
+                  params={{ templateId: t.id }}
+                  className={`block px-3 py-2 rounded-lg text-sm truncate transition-colors ${
+                    routerState.location.pathname === `/templates/${t.id}`
+                      ? 'bg-surface-element-hover text-text-primary font-medium'
+                      : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+                  }`}
+                  title={t.name}
+                >
+                  {t.name}
                 </Link>
               ))}
             </div>

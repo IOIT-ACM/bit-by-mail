@@ -5,18 +5,29 @@ import { toast } from 'sonner'
 import { queryClient } from '@/services/queryClient'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
-import type { CampaignData, Recipient } from '@/types'
+import type { CampaignData, DatabaseData, Recipient } from '@/types'
 import { Button } from '@/components/common/Button'
 import { Modal } from '@/components/common/Modal'
 
-export const AddRecipientModal: React.FC<{ campaignId: string }> = ({
-  campaignId,
-}) => {
+export const AddRecipientModal: React.FC<{
+  contextId: string
+  contextType: 'campaign' | 'database'
+}> = ({ contextId, contextType }) => {
   const { showAddRecipientModal, setShowAddRecipientModal } = useAppStore()
-  const { data } = useQuery<CampaignData>({
-    queryKey: ['campaignData', campaignId],
+
+  const { data: campaignData } = useQuery<CampaignData>({
+    queryKey: ['campaignData', contextId],
+    enabled: contextType === 'campaign',
   })
-  const recipients = data?.recipients ?? []
+  const { data: databaseData } = useQuery<DatabaseData>({
+    queryKey: ['databaseData', contextId],
+    enabled: contextType === 'database',
+  })
+
+  const recipients =
+    contextType === 'campaign'
+      ? (campaignData?.recipients ?? [])
+      : (databaseData?.recipients ?? [])
 
   const availableColumns = useMemo(() => {
     if (recipients.length > 0)
@@ -48,15 +59,28 @@ export const AddRecipientModal: React.FC<{ campaignId: string }> = ({
     availableColumns.forEach((col) => {
       newRecipientData[col] = formState[col] || ''
     })
-    const newRecipient = { ...newRecipientData, Status: 'PENDING' } as Recipient
+
+    let newRecipient = { ...newRecipientData } as Recipient
+    if (contextType === 'campaign') {
+      newRecipient.Status = 'PENDING'
+    }
 
     const newRecipients = [...recipients, newRecipient]
-    queryClient.setQueryData<CampaignData>(
-      ['campaignData', campaignId],
-      (old) => (old ? { ...old, recipients: newRecipients } : old),
-    )
 
-    apiService.saveRecipients(campaignId, newRecipients)
+    if (contextType === 'campaign') {
+      queryClient.setQueryData<CampaignData>(
+        ['campaignData', contextId],
+        (old) => (old ? { ...old, recipients: newRecipients } : old),
+      )
+      apiService.saveRecipients(contextId, newRecipients)
+    } else {
+      queryClient.setQueryData<DatabaseData>(
+        ['databaseData', contextId],
+        (old) => (old ? { ...old, recipients: newRecipients } : old),
+      )
+      apiService.saveDatabaseData(contextId, newRecipients)
+    }
+
     toast.success(`Recipient "${formState.Name}" added.`)
     handleClose()
   }

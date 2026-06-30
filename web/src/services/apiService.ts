@@ -65,7 +65,7 @@ class ApiService {
 
   updateCampaign(
     campaignId: string,
-    updates: { name?: string; subject?: string },
+    updates: { name?: string; subject?: string; sourceDbId?: string },
   ) {
     this.sendMessage('update_campaign', { campaign_id: campaignId, updates })
   }
@@ -151,6 +151,85 @@ class ApiService {
       campaign_id: campaignId,
       config: configPayload,
     })
+  }
+
+  getDatabases() {
+    this.sendMessage('get_databases')
+  }
+
+  getDatabaseData(databaseId: string) {
+    this.sendMessage('get_database_data', { database_id: databaseId })
+  }
+
+  createDatabase(name: string) {
+    this.sendMessage('create_database', { name })
+  }
+
+  updateDatabase(databaseId: string, updates: { name?: string }) {
+    this.sendMessage('update_database', { database_id: databaseId, updates })
+  }
+
+  deleteDatabases(databaseIds: string[]) {
+    this.sendMessage('delete_databases', { database_ids: databaseIds })
+  }
+
+  saveDatabaseData(databaseId: string, recipients: Recipient[]) {
+    this.sendMessage('save_database_data', {
+      database_id: databaseId,
+      recipients,
+    })
+  }
+
+  importCsvToDatabase(
+    databaseId: string,
+    base64Content: string,
+    mode: 'merge' | 'replace',
+  ) {
+    this.sendMessage('import_csv_to_database', {
+      database_id: databaseId,
+      content: base64Content,
+      mode,
+    })
+  }
+
+  getGlobalTemplates() {
+    this.sendMessage('get_global_templates')
+  }
+
+  getGlobalTemplateData(templateId: string) {
+    this.sendMessage('get_global_template_data', { template_id: templateId })
+  }
+
+  createGlobalTemplate(
+    name: string,
+    category: string = '',
+    subject: string = '',
+    body: string = '',
+    navigate: boolean = true,
+  ) {
+    this.sendMessage('create_global_template', {
+      name,
+      category,
+      subject,
+      body,
+      navigate,
+    })
+  }
+
+  updateGlobalTemplate(templateId: string, updates: any, body?: string) {
+    this.sendMessage('update_global_template', {
+      template_id: templateId,
+      updates,
+      body,
+    })
+  }
+
+  deleteGlobalTemplates(templateIds: string[]) {
+    this.sendMessage('delete_global_templates', { template_ids: templateIds })
+  }
+
+  duplicateGlobalTemplate(templateId: string) {
+    this.sendMessage('duplicate_global_template', { template_id: templateId })
   }
 }
 

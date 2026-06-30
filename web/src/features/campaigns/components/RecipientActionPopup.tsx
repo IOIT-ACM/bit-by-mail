@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { toast } from 'sonner'
 import { useParams } from '@tanstack/react-router'
 import { queryClient } from '@/services/queryClient'
-import type { CampaignData } from '@/types'
+import type { CampaignData, DatabaseData } from '@/types'
 
 export const RecipientActionPopup: React.FC = () => {
   const params = useParams({ strict: false }) as Record<
@@ -16,45 +16,67 @@ export const RecipientActionPopup: React.FC = () => {
     string | undefined
   >
   const campaignId = params.campaignId
+  const databaseId = params.databaseId
+  const contextId = campaignId || databaseId
+  const contextType = campaignId ? 'campaign' : databaseId ? 'database' : null
+
   const { selectedRecipientIndices, clearRecipientSelection } = useAppStore()
   const selectedCount = selectedRecipientIndices.size
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
-  const getCampaignData = () => {
-    if (!campaignId) return undefined
-    return queryClient.getQueryData<CampaignData>(['campaignData', campaignId])
-  }
-
   const handleSend = () => {
-    if (!campaignId) return
+    if (contextType !== 'campaign' || !contextId) return
     apiService.flushQueue()
     apiService.getCampaignSummary(
-      campaignId,
+      contextId,
       Array.from(selectedRecipientIndices),
     )
   }
 
   const confirmDelete = () => {
-    if (!campaignId) return
-    const data = getCampaignData()
-    if (data) {
-      const newRecipients = data.recipients.filter(
-        (_, i) => !selectedRecipientIndices.has(i),
-      )
-      queryClient.setQueryData<CampaignData>(['campaignData', campaignId], {
-        ...data,
-        recipients: newRecipients,
-      })
-      apiService.saveRecipients(campaignId, newRecipients)
+    if (!contextId) return
+    if (contextType === 'campaign') {
+      const data = queryClient.getQueryData<CampaignData>([
+        'campaignData',
+        contextId,
+      ])
+      if (data) {
+        const newRecipients = data.recipients.filter(
+          (_, i) => !selectedRecipientIndices.has(i),
+        )
+        queryClient.setQueryData<CampaignData>(['campaignData', contextId], {
+          ...data,
+          recipients: newRecipients,
+        })
+        apiService.saveRecipients(contextId, newRecipients)
+      }
+    } else {
+      const data = queryClient.getQueryData<DatabaseData>([
+        'databaseData',
+        contextId,
+      ])
+      if (data) {
+        const newRecipients = data.recipients.filter(
+          (_, i) => !selectedRecipientIndices.has(i),
+        )
+        queryClient.setQueryData<DatabaseData>(['databaseData', contextId], {
+          ...data,
+          recipients: newRecipients,
+        })
+        apiService.saveDatabaseData(contextId, newRecipients)
+      }
     }
     clearRecipientSelection()
     toast.success(`${selectedCount} recipient(s) deleted`)
   }
 
   const updateStatus = (status: 'SENT' | 'PENDING') => {
-    if (!campaignId) return
-    const data = getCampaignData()
+    if (contextType !== 'campaign' || !contextId) return
+    const data = queryClient.getQueryData<CampaignData>([
+      'campaignData',
+      contextId,
+    ])
     if (data) {
       const newRecipients = data.recipients.map((r, i) => {
         if (selectedRecipientIndices.has(i)) {
@@ -66,11 +88,11 @@ export const RecipientActionPopup: React.FC = () => {
         }
         return r
       })
-      queryClient.setQueryData<CampaignData>(['campaignData', campaignId], {
+      queryClient.setQueryData<CampaignData>(['campaignData', contextId], {
         ...data,
         recipients: newRecipients,
       })
-      apiService.saveRecipients(campaignId, newRecipients)
+      apiService.saveRecipients(contextId, newRecipients)
     }
     clearRecipientSelection()
     toast.success(`${selectedCount} recipient(s) marked as ${status}`)
@@ -79,7 +101,7 @@ export const RecipientActionPopup: React.FC = () => {
   return (
     <>
       <AnimatePresence>
-        {selectedCount > 0 && campaignId && (
+        {selectedCount > 0 && contextId && (
           <motion.div
             initial={{ opacity: 0, x: 100 }}
             animate={{ opacity: 1, x: 0 }}
@@ -93,10 +115,15 @@ export const RecipientActionPopup: React.FC = () => {
                 {selectedCount === 1 ? 'recipient' : 'recipients'} selected
               </p>
               <div className="flex flex-col gap-2">
-                <Button onClick={handleSend} variant="primary">
-                  <Send size={16} />
-                  <span>Send to {selectedCount}</span>
-                </Button>
+                {contextType === 'campaign' && (
+                  <>
+                    <Button onClick={handleSend} variant="primary">
+                      <Send size={16} />
+                      <span>Send to {selectedCount}</span>
+                    </Button>
+                  </>
+                )}
+
                 <Button
                   onClick={() => setShowConfirmDelete(true)}
                   variant="danger"
@@ -104,17 +131,25 @@ export const RecipientActionPopup: React.FC = () => {
                   <Trash2 size={16} />
                   <span>Delete</span>
                 </Button>
-                <Button onClick={() => updateStatus('SENT')} variant="success">
-                  <CheckCircle size={16} />
-                  <span>Mark as Sent</span>
-                </Button>
-                <Button
-                  onClick={() => updateStatus('PENDING')}
-                  variant="warning"
-                >
-                  <XCircle size={16} />
-                  <span>Mark as Pending</span>
-                </Button>
+
+                {contextType === 'campaign' && (
+                  <>
+                    <Button
+                      onClick={() => updateStatus('SENT')}
+                      variant="success"
+                    >
+                      <CheckCircle size={16} />
+                      <span>Mark as Sent</span>
+                    </Button>
+                    <Button
+                      onClick={() => updateStatus('PENDING')}
+                      variant="warning"
+                    >
+                      <XCircle size={16} />
+                      <span>Mark as Pending</span>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

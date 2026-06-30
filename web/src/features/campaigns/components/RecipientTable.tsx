@@ -15,26 +15,39 @@ import {
   ChevronDown,
   ChevronUp,
   Columns,
+  Pencil,
 } from 'lucide-react'
 import React, { useState, useMemo } from 'react'
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
 import { queryClient } from '@/services/queryClient'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
-import type { CampaignData, Config, Recipient } from '@/types'
+import type { CampaignData, DatabaseData, Config } from '@/types'
 import { EditableCell } from '@/components/common/EditableCell'
 import { MaximizableView } from '@/components/common/MaximizableView'
+import { Modal } from '@/components/common/Modal'
+import { Button } from '@/components/common/Button'
 
 const RecipientTableContent: React.FC<{
   isMaximized: boolean
   onToggleMaximize: () => void
-  campaignId: string
-}> = ({ isMaximized, onToggleMaximize, campaignId }) => {
-  const { data } = useQuery<CampaignData>({
-    queryKey: ['campaignData', campaignId],
+  contextId: string
+  contextType: 'campaign' | 'database'
+}> = ({ isMaximized, onToggleMaximize, contextId, contextType }) => {
+  const { data: campaignData } = useQuery<CampaignData>({
+    queryKey: ['campaignData', contextId],
+    enabled: contextType === 'campaign',
+  })
+  const { data: databaseData } = useQuery<DatabaseData>({
+    queryKey: ['databaseData', contextId],
+    enabled: contextType === 'database',
   })
   const { data: config } = useQuery<Config>({ queryKey: ['config'] })
-  const recipients = data?.recipients ?? []
+
+  const recipients =
+    contextType === 'campaign'
+      ? (campaignData?.recipients ?? [])
+      : (databaseData?.recipients ?? [])
   const showAttachments = config?.send_attachments ?? true
 
   const {
@@ -50,6 +63,8 @@ const RecipientTableContent: React.FC<{
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
   const [showColDropdown, setShowColDropdown] = useState(false)
+  const [renamingCol, setRenamingCol] = useState<string | null>(null)
+  const [newColName, setNewColName] = useState('')
 
   const isAllSelected =
     recipients.length > 0 && selectedRecipientIndices.size === recipients.length
@@ -61,8 +76,12 @@ const RecipientTableContent: React.FC<{
 
   useDebouncedEffect(
     () => {
-      if (campaignId && recipients.length > 0) {
-        apiService.saveRecipients(campaignId, recipients)
+      if (contextId && recipients.length > 0) {
+        if (contextType === 'campaign') {
+          apiService.saveRecipients(contextId, recipients)
+        } else {
+          apiService.saveDatabaseData(contextId, recipients)
+        }
       }
     },
     1500,
@@ -72,10 +91,50 @@ const RecipientTableContent: React.FC<{
   const handleCellChange = (index: number, field: string, value: string) => {
     const newRecipients = [...recipients]
     newRecipients[index] = { ...newRecipients[index], [field]: value }
-    queryClient.setQueryData<CampaignData>(
-      ['campaignData', campaignId],
-      (old) => (old ? { ...old, recipients: newRecipients } : old),
-    )
+    if (contextType === 'campaign') {
+      queryClient.setQueryData<CampaignData>(
+        ['campaignData', contextId],
+        (old) => (old ? { ...old, recipients: newRecipients } : old),
+      )
+    } else {
+      queryClient.setQueryData<DatabaseData>(
+        ['databaseData', contextId],
+        (old) => (old ? { ...old, recipients: newRecipients } : old),
+      )
+    }
+  }
+
+  const submitRename = () => {
+    if (
+      !renamingCol ||
+      !newColName.trim() ||
+      renamingCol === newColName.trim()
+    ) {
+      setRenamingCol(null)
+      return
+    }
+    const newKey = newColName.trim()
+    const newRecipients = recipients.map((r) => {
+      const copy = { ...r }
+      copy[newKey] = copy[renamingCol]
+      delete copy[renamingCol]
+      return copy
+    })
+
+    if (contextType === 'campaign') {
+      queryClient.setQueryData<CampaignData>(
+        ['campaignData', contextId],
+        (old) => (old ? { ...old, recipients: newRecipients } : old),
+      )
+      apiService.saveRecipients(contextId, newRecipients)
+    } else {
+      queryClient.setQueryData<DatabaseData>(
+        ['databaseData', contextId],
+        (old) => (old ? { ...old, recipients: newRecipients } : old),
+      )
+      apiService.saveDatabaseData(contextId, newRecipients)
+    }
+    setRenamingCol(null)
   }
 
   const exportCSV = () => {
@@ -104,7 +163,7 @@ const RecipientTableContent: React.FC<{
       (k) => k !== 'Status' && k !== 'SentTimestamp',
     )
 
-    const cols = [
+    const cols: any[] = [
       {
         id: 'select',
         header: () => (
@@ -128,7 +187,10 @@ const RecipientTableContent: React.FC<{
         enableSorting: false,
         size: 50,
       },
-      {
+    ]
+
+    if (contextType === 'campaign') {
+      cols.push({
         id: 'preview',
         header: '',
         cell: ({ row }: any) => (
@@ -144,20 +206,43 @@ const RecipientTableContent: React.FC<{
         ),
         enableSorting: false,
         size: 40,
-      },
-    ]
+      })
+    }
 
     keys.forEach((k) => {
       if (!showAttachments && k === 'AttachmentFile') return
+
+      const canRename = k !== 'Email' && k !== 'Name' && k !== 'AttachmentFile'
+
       cols.push({
         accessorKey: k,
-        header: k,
+        header: ({ column }: any) => (
+          <div className="flex items-center gap-2 group">
+            <span>{k}</span>
+            {canRename && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setRenamingCol(k)
+                  setNewColName(k)
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-element-hover text-text-secondary transition-opacity"
+                title="Rename Column"
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+          </div>
+        ),
         cell: ({ row, getValue }: any) => (
           <EditableCell
             value={getValue() as string}
             onSave={(val) => handleCellChange(row.index, k, val)}
             onView={
-              k === 'AttachmentFile' && showAttachments && getValue()
+              k === 'AttachmentFile' &&
+              showAttachments &&
+              getValue() &&
+              contextType === 'campaign'
                 ? () => {
                     const files = (getValue() as string)
                       .split(';')
@@ -165,7 +250,7 @@ const RecipientTableContent: React.FC<{
                       .filter(Boolean)
                     if (files.length > 0)
                       window.open(
-                        `/attachments/${campaignId}/${row.index}?file=${encodeURIComponent(files[0])}`,
+                        `/attachments/${contextId}/${row.index}?file=${encodeURIComponent(files[0])}`,
                         '_blank',
                       )
                   }
@@ -177,31 +262,33 @@ const RecipientTableContent: React.FC<{
       })
     })
 
-    cols.push({
-      accessorKey: 'Status',
-      header: 'Status',
-      cell: ({ getValue }: any) => {
-        const status = getValue() as string
-        let classes = 'bg-surface-element text-text-secondary'
-        if (status?.toUpperCase() === 'SENT')
-          classes = 'bg-status-success-bg text-status-success-text'
-        if (status?.toUpperCase() === 'ERROR')
-          classes = 'bg-status-danger-bg text-status-danger-text'
-        if (status?.toUpperCase() === 'SKIPPED')
-          classes = 'bg-status-info-bg text-status-info-text'
+    if (contextType === 'campaign') {
+      cols.push({
+        accessorKey: 'Status',
+        header: 'Status',
+        cell: ({ getValue }: any) => {
+          const status = getValue() as string
+          let classes = 'bg-surface-element text-text-secondary'
+          if (status?.toUpperCase() === 'SENT')
+            classes = 'bg-status-success-bg text-status-success-text'
+          if (status?.toUpperCase() === 'ERROR')
+            classes = 'bg-status-danger-bg text-status-danger-text'
+          if (status?.toUpperCase() === 'SKIPPED')
+            classes = 'bg-status-info-bg text-status-info-text'
 
-        return (
-          <div className="text-center">
-            <span
-              className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full ${classes}`}
-            >
-              {status || 'PENDING'}
-            </span>
-          </div>
-        )
-      },
-      size: 100,
-    })
+          return (
+            <div className="text-center">
+              <span
+                className={`inline-block px-2.5 py-0.5 text-xs font-medium rounded-full ${classes}`}
+              >
+                {status || 'PENDING'}
+              </span>
+            </div>
+          )
+        },
+        size: 100,
+      })
+    }
 
     return cols
   }, [
@@ -209,7 +296,8 @@ const RecipientTableContent: React.FC<{
     selectedRecipientIndices,
     isAllSelected,
     showAttachments,
-    campaignId,
+    contextId,
+    contextType,
   ])
 
   const table = useReactTable({
@@ -238,7 +326,7 @@ const RecipientTableContent: React.FC<{
               <Plus size={16} />
             </button>
           </div>
-          {!showAttachments && (
+          {!showAttachments && contextType === 'campaign' && (
             <p className="text-sm text-text-secondary italic mt-1">
               Attachments disabled.
             </p>
@@ -350,10 +438,13 @@ const RecipientTableContent: React.FC<{
 
               if (selectedRecipientIndices.has(row.index))
                 rowClasses = 'bg-accent-blue/20 hover:bg-accent-blue/30'
-              else if (issue?.type === 'error' || status === 'ERROR')
+              else if (
+                contextType === 'campaign' &&
+                (issue?.type === 'error' || status === 'ERROR')
+              )
                 rowClasses =
                   'bg-status-danger-bg/20 hover:bg-status-danger-bg/30'
-              else if (issue?.type === 'warning')
+              else if (contextType === 'campaign' && issue?.type === 'warning')
                 rowClasses = 'bg-accent-orange/20 hover:bg-accent-orange/30'
 
               return (
@@ -386,18 +477,56 @@ const RecipientTableContent: React.FC<{
           </tbody>
         </table>
       </div>
+
+      {renamingCol && (
+        <Modal
+          isOpen={true}
+          onClose={() => setRenamingCol(null)}
+          title="Rename Column"
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-2">
+                New Column Name
+              </label>
+              <input
+                type="text"
+                value={newColName}
+                onChange={(e) => setNewColName(e.target.value)}
+                className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setRenamingCol(null)}>
+                Cancel
+              </Button>
+              <Button variant="primary" onClick={submitRename}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
 
-export default function RecipientTable({ campaignId }: { campaignId: string }) {
+export default function RecipientTable({
+  contextId,
+  contextType,
+}: {
+  contextId: string
+  contextType: 'campaign' | 'database'
+}) {
   return (
     <MaximizableView layoutId="recipient-table-container">
       {({ isMaximized, onToggle }) => (
         <RecipientTableContent
           isMaximized={isMaximized}
           onToggleMaximize={onToggle}
-          campaignId={campaignId}
+          contextId={contextId}
+          contextType={contextType}
         />
       )}
     </MaximizableView>

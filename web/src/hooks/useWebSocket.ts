@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react'
 import { useRouter } from '@tanstack/react-router'
 import { useAppStore } from '@/store/useAppStore'
 import { apiService } from '@/services/apiService'
-import type { RecipientIssue, CampaignData } from '@/types'
+import type { RecipientIssue, CampaignData, DatabaseData } from '@/types'
 import { toast } from 'sonner'
 import { queryClient } from '@/services/queryClient'
 
@@ -35,6 +35,8 @@ export const useWebSocket = () => {
       setConnectionStatus('open')
       apiService.flushQueue()
       apiService.getCampaigns()
+      apiService.getDatabases()
+      apiService.getGlobalTemplates()
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current)
         reconnectTimeout.current = null
@@ -213,6 +215,56 @@ export const useWebSocket = () => {
           document.body.appendChild(link)
           link.click()
           document.body.removeChild(link)
+          break
+        case 'databases_list':
+          queryClient.setQueryData(['databases'], payload)
+          break
+        case 'database_created':
+          queryClient.invalidateQueries({ queryKey: ['databases'] })
+          router.navigate({
+            to: '/databases/$databaseId',
+            params: { databaseId: payload.id },
+          })
+          break
+        case 'database_data':
+          queryClient.setQueryData(
+            ['databaseData', payload.database_id],
+            payload,
+          )
+          apiService.handleResponse('database_data', payload)
+          break
+        case 'database_recipients_updated':
+          {
+            const dbId = payload.database_id
+            if (dbId) {
+              queryClient.setQueryData<DatabaseData>(
+                ['databaseData', dbId],
+                (old) =>
+                  old ? { ...old, recipients: payload.recipients } : old,
+              )
+              toast.success(
+                `${payload.recipients.length} recipients imported successfully`,
+              )
+            }
+          }
+          break
+        case 'global_templates_list':
+          queryClient.setQueryData(['templates'], payload)
+          break
+        case 'global_template_created':
+          queryClient.invalidateQueries({ queryKey: ['templates'] })
+          if (payload.navigate) {
+            router.navigate({
+              to: '/templates/$templateId',
+              params: { templateId: payload.template.id },
+            })
+          } else {
+            toast.success('Template saved successfully!')
+          }
+          break
+        case 'global_template_data':
+          queryClient.setQueryData(['templateData', payload.id], payload)
+          apiService.handleResponse('global_template_data', payload)
           break
       }
     }

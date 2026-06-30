@@ -1,6 +1,12 @@
 import React, { useEffect, useRef } from 'react'
 import { useAppStore } from '@/store/useAppStore'
-import { ChevronDown, ChevronUp, Maximize, Minimize } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Maximize,
+  Minimize,
+  Trash2,
+} from 'lucide-react'
 import type { LogEntry } from '@/types'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MaximizableView } from '@/components/common/MaximizableView'
@@ -43,6 +49,7 @@ const LogViewerContent: React.FC<{
   const progress = useAppStore((state) => state.progress)
   const isLogCollapsed = useAppStore((state) => state.isLogCollapsed)
   const setIsLogCollapsed = useAppStore((state) => state.setIsLogCollapsed)
+  const clearLogs = useAppStore((state) => state.clearLogs)
 
   const logsEndRef = useRef<HTMLDivElement>(null)
 
@@ -86,6 +93,13 @@ const LogViewerContent: React.FC<{
           )}
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={clearLogs}
+            title="Clear Logs"
+            className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-status-danger-text transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
           {!isMaximized && (
             <button
               onClick={() => setIsLogCollapsed(!isLogCollapsed)}

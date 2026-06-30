@@ -12,7 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as DocsRouteImport } from './routes/docs'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TemplatesIndexRouteImport } from './routes/templates/index'
+import { Route as DatabasesIndexRouteImport } from './routes/databases/index'
 import { Route as CampaignsIndexRouteImport } from './routes/campaigns/index'
+import { Route as TemplatesNewRouteImport } from './routes/templates/new'
+import { Route as TemplatesTemplateIdRouteImport } from './routes/templates/$templateId'
+import { Route as DatabasesNewRouteImport } from './routes/databases/new'
+import { Route as DatabasesDatabaseIdRouteImport } from './routes/databases/$databaseId'
 import { Route as CampaignsNewRouteImport } from './routes/campaigns/new'
 import { Route as CampaignsCampaignIdRouteImport } from './routes/campaigns/$campaignId'
 
@@ -31,9 +37,39 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TemplatesIndexRoute = TemplatesIndexRouteImport.update({
+  id: '/templates/',
+  path: '/templates/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatabasesIndexRoute = DatabasesIndexRouteImport.update({
+  id: '/databases/',
+  path: '/databases/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CampaignsIndexRoute = CampaignsIndexRouteImport.update({
   id: '/campaigns/',
   path: '/campaigns/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplatesNewRoute = TemplatesNewRouteImport.update({
+  id: '/templates/new',
+  path: '/templates/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TemplatesTemplateIdRoute = TemplatesTemplateIdRouteImport.update({
+  id: '/templates/$templateId',
+  path: '/templates/$templateId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatabasesNewRoute = DatabasesNewRouteImport.update({
+  id: '/databases/new',
+  path: '/databases/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DatabasesDatabaseIdRoute = DatabasesDatabaseIdRouteImport.update({
+  id: '/databases/$databaseId',
+  path: '/databases/$databaseId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CampaignsNewRoute = CampaignsNewRouteImport.update({
@@ -53,7 +89,13 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
+  '/databases/$databaseId': typeof DatabasesDatabaseIdRoute
+  '/databases/new': typeof DatabasesNewRoute
+  '/templates/$templateId': typeof TemplatesTemplateIdRoute
+  '/templates/new': typeof TemplatesNewRoute
   '/campaigns/': typeof CampaignsIndexRoute
+  '/databases/': typeof DatabasesIndexRoute
+  '/templates/': typeof TemplatesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -61,7 +103,13 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
+  '/databases/$databaseId': typeof DatabasesDatabaseIdRoute
+  '/databases/new': typeof DatabasesNewRoute
+  '/templates/$templateId': typeof TemplatesTemplateIdRoute
+  '/templates/new': typeof TemplatesNewRoute
   '/campaigns': typeof CampaignsIndexRoute
+  '/databases': typeof DatabasesIndexRoute
+  '/templates': typeof TemplatesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -70,7 +118,13 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/campaigns/$campaignId': typeof CampaignsCampaignIdRoute
   '/campaigns/new': typeof CampaignsNewRoute
+  '/databases/$databaseId': typeof DatabasesDatabaseIdRoute
+  '/databases/new': typeof DatabasesNewRoute
+  '/templates/$templateId': typeof TemplatesTemplateIdRoute
+  '/templates/new': typeof TemplatesNewRoute
   '/campaigns/': typeof CampaignsIndexRoute
+  '/databases/': typeof DatabasesIndexRoute
+  '/templates/': typeof TemplatesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -80,7 +134,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
+    | '/databases/$databaseId'
+    | '/databases/new'
+    | '/templates/$templateId'
+    | '/templates/new'
     | '/campaigns/'
+    | '/databases/'
+    | '/templates/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -88,7 +148,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
+    | '/databases/$databaseId'
+    | '/databases/new'
+    | '/templates/$templateId'
+    | '/templates/new'
     | '/campaigns'
+    | '/databases'
+    | '/templates'
   id:
     | '__root__'
     | '/'
@@ -96,7 +162,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/campaigns/$campaignId'
     | '/campaigns/new'
+    | '/databases/$databaseId'
+    | '/databases/new'
+    | '/templates/$templateId'
+    | '/templates/new'
     | '/campaigns/'
+    | '/databases/'
+    | '/templates/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,7 +177,13 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   CampaignsCampaignIdRoute: typeof CampaignsCampaignIdRoute
   CampaignsNewRoute: typeof CampaignsNewRoute
+  DatabasesDatabaseIdRoute: typeof DatabasesDatabaseIdRoute
+  DatabasesNewRoute: typeof DatabasesNewRoute
+  TemplatesTemplateIdRoute: typeof TemplatesTemplateIdRoute
+  TemplatesNewRoute: typeof TemplatesNewRoute
   CampaignsIndexRoute: typeof CampaignsIndexRoute
+  DatabasesIndexRoute: typeof DatabasesIndexRoute
+  TemplatesIndexRoute: typeof TemplatesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -131,11 +209,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/templates/': {
+      id: '/templates/'
+      path: '/templates'
+      fullPath: '/templates/'
+      preLoaderRoute: typeof TemplatesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/databases/': {
+      id: '/databases/'
+      path: '/databases'
+      fullPath: '/databases/'
+      preLoaderRoute: typeof DatabasesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/campaigns/': {
       id: '/campaigns/'
       path: '/campaigns'
       fullPath: '/campaigns/'
       preLoaderRoute: typeof CampaignsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates/new': {
+      id: '/templates/new'
+      path: '/templates/new'
+      fullPath: '/templates/new'
+      preLoaderRoute: typeof TemplatesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/templates/$templateId': {
+      id: '/templates/$templateId'
+      path: '/templates/$templateId'
+      fullPath: '/templates/$templateId'
+      preLoaderRoute: typeof TemplatesTemplateIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/databases/new': {
+      id: '/databases/new'
+      path: '/databases/new'
+      fullPath: '/databases/new'
+      preLoaderRoute: typeof DatabasesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/databases/$databaseId': {
+      id: '/databases/$databaseId'
+      path: '/databases/$databaseId'
+      fullPath: '/databases/$databaseId'
+      preLoaderRoute: typeof DatabasesDatabaseIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/campaigns/new': {
@@ -161,7 +281,13 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   CampaignsCampaignIdRoute: CampaignsCampaignIdRoute,
   CampaignsNewRoute: CampaignsNewRoute,
+  DatabasesDatabaseIdRoute: DatabasesDatabaseIdRoute,
+  DatabasesNewRoute: DatabasesNewRoute,
+  TemplatesTemplateIdRoute: TemplatesTemplateIdRoute,
+  TemplatesNewRoute: TemplatesNewRoute,
   CampaignsIndexRoute: CampaignsIndexRoute,
+  DatabasesIndexRoute: DatabasesIndexRoute,
+  TemplatesIndexRoute: TemplatesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

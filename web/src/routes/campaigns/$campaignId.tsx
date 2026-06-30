@@ -65,7 +65,7 @@ function CampaignDetail() {
           <Editor campaignId={campaignId} subject={campaign.subject} />
         </div>
         <div className="w-full md:w-1/2 flex flex-col min-h-0">
-          <RecipientTable campaignId={campaignId} />
+          <RecipientTable contextId={campaignId} contextType="campaign" />
         </div>
       </div>
 
@@ -77,7 +77,9 @@ function CampaignDetail() {
       {previewRecipient && (
         <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />
       )}
-      {showAddRecipientModal && <AddRecipientModal campaignId={campaignId} />}
+      {showAddRecipientModal && (
+        <AddRecipientModal contextId={campaignId} contextType="campaign" />
+      )}
     </div>
   )
 }

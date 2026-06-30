@@ -6,6 +6,8 @@ import {
   XCircle,
   Pencil,
   Check,
+  Database,
+  RefreshCw,
 } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -13,7 +15,8 @@ import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
 import type { Campaign } from '@/types'
 import { Button } from '@/components/common/Button'
-import { queryClient } from '@/services/queryClient'
+import { ImportFromDbModal } from './ImportFromDbModal'
+import { SyncDbModal } from './SyncDbModal'
 
 interface CampaignViewHeaderProps {
   campaign: Campaign
@@ -29,6 +32,8 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaign.name)
+  const [showImportDbModal, setShowImportDbModal] = useState(false)
+  const [showSyncModal, setShowSyncModal] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -113,92 +118,125 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
   }
 
   return (
-    <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
-      <div className="flex items-center gap-2 group max-w-full">
-        {isEditingName ? (
-          <div className="flex items-center gap-2 w-full max-w-md">
-            <input
-              ref={inputRef}
-              type="text"
-              value={editedName}
-              onChange={(e) => setEditedName(e.target.value)}
-              onBlur={handleSaveName}
-              onKeyDown={handleKeyDown}
-              className="text-2xl font-bold bg-surface-element border border-accent-blue rounded-md px-2 py-1 outline-none w-full"
-            />
-            <button
-              onMouseDown={handleSaveName}
-              className="p-1.5 text-accent-blue hover:bg-surface-element rounded-md"
+    <>
+      <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
+        <div className="flex items-center gap-2 group max-w-full">
+          {isEditingName ? (
+            <div className="flex items-center gap-2 w-full max-w-md">
+              <input
+                ref={inputRef}
+                type="text"
+                value={editedName}
+                onChange={(e) => setEditedName(e.target.value)}
+                onBlur={handleSaveName}
+                onKeyDown={handleKeyDown}
+                className="text-2xl font-bold bg-surface-element border border-accent-blue rounded-md px-2 py-1 outline-none w-full"
+              />
+              <button
+                onMouseDown={handleSaveName}
+                className="p-1.5 text-accent-blue hover:bg-surface-element rounded-md"
+              >
+                <Check size={18} />
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => setIsEditingName(true)}
+              className="flex items-center gap-3 cursor-pointer rounded-md p-1 -ml-1 border border-transparent hover:border-borders-primary hover:bg-surface-element transition-all"
+              title="Click to rename"
             >
-              <Check size={18} />
-            </button>
-          </div>
-        ) : (
-          <div
-            onClick={() => setIsEditingName(true)}
-            className="flex items-center gap-3 cursor-pointer rounded-md p-1 -ml-1 border border-transparent hover:border-borders-primary hover:bg-surface-element transition-all"
-            title="Click to rename"
+              <h1 className="text-2xl font-bold text-text-primary tracking-tight truncate max-w-sm md:max-w-md lg:max-w-xl">
+                {campaign.name}
+              </h1>
+              <Pencil
+                size={16}
+                className="text-text-tertiary group-hover:text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+          {campaign.sourceDbId && (
+            <Button onClick={() => setShowSyncModal(true)} variant="secondary">
+              <RefreshCw size={16} />
+              <span className="hidden lg:inline">Sync DB</span>
+            </Button>
+          )}
+
+          <Button onClick={handleDownloadSample} variant="secondary">
+            <Download size={16} />
+            <span className="hidden lg:inline">Sample</span>
+          </Button>
+
+          <Button
+            onClick={() => setShowImportDbModal(true)}
+            variant="secondary"
           >
-            <h1 className="text-2xl font-bold text-text-primary tracking-tight truncate max-w-sm md:max-w-md lg:max-w-xl">
-              {campaign.name}
-            </h1>
-            <Pencil
-              size={16}
-              className="text-text-tertiary group-hover:text-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
-            />
-          </div>
-        )}
+            <Database size={16} />
+            <span className="hidden lg:inline">Import</span>
+          </Button>
+
+          <input
+            type="file"
+            id="csv-upload"
+            accept=".csv"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            as="label"
+            htmlFor="csv-upload"
+            variant="success"
+            className="cursor-pointer"
+          >
+            <Upload size={16} />
+            <span className="hidden lg:inline">Upload CSV</span>
+          </Button>
+
+          <div className="h-6 w-px bg-borders-primary mx-1"></div>
+
+          <Button
+            onClick={handlePreflight}
+            disabled={isSending}
+            variant="warning"
+          >
+            <TestTube size={16} />
+            <span className="hidden md:inline">Preflight</span>
+          </Button>
+          {isSending ? (
+            <Button onClick={handleStop} variant="danger" disabled={isStopping}>
+              {isStopping ? (
+                <Loader size={16} className="animate-spin" />
+              ) : (
+                <XCircle size={16} />
+              )}
+              <span>{isStopping ? 'Stopping...' : 'Stop Sending'}</span>
+            </Button>
+          ) : (
+            <Button onClick={handleSend} variant="primary">
+              <Send size={16} />
+              <span>Start Sending</span>
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
-        <Button onClick={handleDownloadSample} variant="secondary">
-          <Download size={16} />
-          <span className="hidden lg:inline">Sample</span>
-        </Button>
-        <input
-          type="file"
-          id="csv-upload"
-          accept=".csv"
-          onChange={handleFileUpload}
-          className="hidden"
+      {showImportDbModal && (
+        <ImportFromDbModal
+          campaignId={campaignId}
+          onClose={() => setShowImportDbModal(false)}
         />
-        <Button
-          as="label"
-          htmlFor="csv-upload"
-          variant="success"
-          className="cursor-pointer"
-        >
-          <Upload size={16} />
-          <span className="hidden lg:inline">Upload</span>
-        </Button>
+      )}
 
-        <div className="h-6 w-px bg-borders-primary mx-1"></div>
-
-        <Button
-          onClick={handlePreflight}
-          disabled={isSending}
-          variant="warning"
-        >
-          <TestTube size={16} />
-          <span className="hidden md:inline">Preflight</span>
-        </Button>
-        {isSending ? (
-          <Button onClick={handleStop} variant="danger" disabled={isStopping}>
-            {isStopping ? (
-              <Loader size={16} className="animate-spin" />
-            ) : (
-              <XCircle size={16} />
-            )}
-            <span>{isStopping ? 'Stopping...' : 'Stop Sending'}</span>
-          </Button>
-        ) : (
-          <Button onClick={handleSend} variant="primary">
-            <Send size={16} />
-            <span>Start Sending</span>
-          </Button>
-        )}
-      </div>
-    </div>
+      {showSyncModal && campaign.sourceDbId && (
+        <SyncDbModal
+          campaignId={campaignId}
+          sourceDbId={campaign.sourceDbId}
+          onClose={() => setShowSyncModal(false)}
+        />
+      )}
+    </>
   )
 }
 

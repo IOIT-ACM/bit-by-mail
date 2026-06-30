@@ -13,7 +13,7 @@ export interface Recipient {
   Name: string
   Email: string
   AttachmentFile: string
-  Status: string
+  Status?: string
   SentTimestamp?: string | undefined
   [key: string]: any
 }
@@ -52,12 +52,37 @@ export interface Campaign {
   createdAt: string
   recipientCount: number
   latestReportUrl?: string | null
+  sourceDbId?: string
 }
 
 export interface CampaignData {
   campaign_id: string
   emailBody: string
   recipients: Recipient[]
+}
+
+export interface Database {
+  id: string
+  name: string
+  createdAt: string
+  recipientCount: number
+}
+
+export interface DatabaseData {
+  database_id: string
+  recipients: Recipient[]
+}
+
+export interface EmailTemplate {
+  id: string
+  name: string
+  subject: string
+  category: string
+  createdAt: string
+}
+
+export interface EmailTemplateData extends EmailTemplate {
+  body: string
 }
 
 export interface AppState {
@@ -76,6 +101,8 @@ export interface AppState {
   showCampaignSummaryModal: boolean
   campaignSummary: CampaignSummary | null
   selectedCampaignIds: Set<string>
+  selectedDatabaseIds: Set<string>
+  selectedTemplateIds: Set<string>
   selectedRecipientIndices: Set<number>
   isLogCollapsed: boolean
   showAddRecipientModal: boolean

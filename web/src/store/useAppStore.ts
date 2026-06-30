@@ -27,6 +27,16 @@ interface AppActions {
   toggleCampaignSelection: (id: string) => void
   selectSingleCampaign: (id: string) => void
   selectAllCampaigns: (ids: string[]) => void
+  setSelectedDatabaseIds: (ids: Set<string>) => void
+  clearDatabaseSelection: () => void
+  toggleDatabaseSelection: (id: string) => void
+  selectSingleDatabase: (id: string) => void
+  selectAllDatabases: (ids: string[]) => void
+  setSelectedTemplateIds: (ids: Set<string>) => void
+  clearTemplateSelection: () => void
+  toggleTemplateSelection: (id: string) => void
+  selectSingleTemplate: (id: string) => void
+  selectAllTemplates: (ids: string[]) => void
   setIsLogCollapsed: (isCollapsed: boolean) => void
   toggleRecipientSelection: (index: number) => void
   clearRecipientSelection: () => void
@@ -48,6 +58,8 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   showCampaignSummaryModal: false,
   campaignSummary: null,
   selectedCampaignIds: new Set(),
+  selectedDatabaseIds: new Set(),
+  selectedTemplateIds: new Set(),
   selectedRecipientIndices: new Set(),
   isLogCollapsed: false,
   showAddRecipientModal: false,
@@ -91,6 +103,48 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       return { selectedCampaignIds: new Set([id]) }
     }),
   selectAllCampaigns: (ids) => set({ selectedCampaignIds: new Set(ids) }),
+  setSelectedDatabaseIds: (ids) => set({ selectedDatabaseIds: ids }),
+  clearDatabaseSelection: () => set({ selectedDatabaseIds: new Set() }),
+  toggleDatabaseSelection: (id) =>
+    set((state) => {
+      const newSelection = new Set(state.selectedDatabaseIds)
+      if (newSelection.has(id)) {
+        newSelection.delete(id)
+      } else {
+        newSelection.add(id)
+      }
+      return { selectedDatabaseIds: newSelection }
+    }),
+  selectSingleDatabase: (id) =>
+    set((state) => {
+      const currentSelection = state.selectedDatabaseIds
+      if (currentSelection.size === 1 && currentSelection.has(id)) {
+        return { selectedDatabaseIds: new Set() }
+      }
+      return { selectedDatabaseIds: new Set([id]) }
+    }),
+  selectAllDatabases: (ids) => set({ selectedDatabaseIds: new Set(ids) }),
+  setSelectedTemplateIds: (ids) => set({ selectedTemplateIds: ids }),
+  clearTemplateSelection: () => set({ selectedTemplateIds: new Set() }),
+  toggleTemplateSelection: (id) =>
+    set((state) => {
+      const newSelection = new Set(state.selectedTemplateIds)
+      if (newSelection.has(id)) {
+        newSelection.delete(id)
+      } else {
+        newSelection.add(id)
+      }
+      return { selectedTemplateIds: newSelection }
+    }),
+  selectSingleTemplate: (id) =>
+    set((state) => {
+      const currentSelection = state.selectedTemplateIds
+      if (currentSelection.size === 1 && currentSelection.has(id)) {
+        return { selectedTemplateIds: new Set() }
+      }
+      return { selectedTemplateIds: new Set([id]) }
+    }),
+  selectAllTemplates: (ids) => set({ selectedTemplateIds: new Set(ids) }),
   setIsLogCollapsed: (isCollapsed) => set({ isLogCollapsed: isCollapsed }),
   toggleRecipientSelection: (index) =>
     set((state) => {

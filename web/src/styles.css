@@ -2,46 +2,42 @@
 
 @theme {
   /* Backgrounds */
-  --color-background-base: #0f0f13;
-  --color-surface-header: #1e1e2a;
-  --color-surface-card: #1e1e2a;
-  --color-surface-element: #282834;
-  --color-surface-element-hover: #323242;
 
+  --color-background-base: #0a0a0e;
+  --color-surface-header: #16161f;
+  --color-surface-card: #16161f;
+  --color-surface-element: #1e1e29;
+  --color-surface-element-hover: #262632;
   /* Borders */
-  --color-borders-primary: #38384d;
 
+  --color-borders-primary: #2c2c3a;
   /* Text */
-  --color-text-primary: #f8fafc;
-  --color-text-secondary: #94a3b8;
-  --color-text-tertiary: #64748b;
 
+  --color-text-primary: #f5f7fa;
+  --color-text-secondary: #a3adc2;
+  --color-text-tertiary: #6b7385;
   /* Accents */
-  --color-accent-blue: #3b82f6;
-  --color-accent-orange: #f97316;
-  --color-accent-green: #22c55e;
 
+  --color-accent-blue: #5b8def;
+  --color-accent-orange: #fb923c;
+  --color-accent-green: #34d399;
   /* Status Colors */
-  --color-status-success-bg: rgba(34, 197, 94, 0.15);
+  --color-status-success-bg: rgba(52, 211, 153, 0.15);
   --color-status-success-text: #4ade80;
 
-  --color-status-danger-bg: rgba(239, 68, 68, 0.15);
-  --color-status-danger-text: #f87171;
-
-  --color-status-info-bg: rgba(59, 130, 246, 0.15);
-  --color-status-info-text: #60a5fa;
-
-  --color-status-warning-bg: rgba(249, 115, 22, 0.15);
-  --color-status-warning-text: #fb923c;
-
+  --color-status-danger-bg: rgba(248, 113, 113, 0.15);
+  --color-status-danger-text: #fb7185;
+  --color-status-info-bg: rgba(91, 141, 239, 0.15);
+  --color-status-info-text: #7aa2f7;
+  --color-status-warning-bg: rgba(251, 146, 60, 0.15);
+  --color-status-warning-text: #fbbf24;
   /* Border Radius */
   --radius-button: 0.5rem;
   --radius-card: 0.75rem;
 
   /* Shadows */
   --shadow-card:
-    0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.2);
-
+    0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
   /* Typography */
   --font-size-heading-3: 1.25rem;
 }
@@ -94,4 +90,29 @@
 
 button:hover {
   cursor: pointer;
+}
+
+/* Global Scrollbar */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }

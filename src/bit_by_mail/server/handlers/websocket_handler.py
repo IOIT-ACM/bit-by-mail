@@ -2,7 +2,6 @@ import json
 import tornado.websocket
 from urllib.parse import urlparse
 
-
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         self.application.settings["websocket_manager"].add(self)
@@ -12,6 +11,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.mailer_service = self.application.settings["mailer_service"]
         self.preflight_service = self.application.settings["preflight_service"]
         self.campaign_service = self.application.settings["campaign_service"]
+        self.database_service = self.application.settings["database_service"]
+        self.global_template_service = self.application.settings["global_template_service"]
         self.action_handlers = {
             "get_campaigns": self._handle_get_campaigns,
             "get_campaign_data": self._handle_get_campaign_data,
@@ -27,6 +28,19 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "stop_mailing": self._handle_stop_mailing,
             "preflight_check": self._handle_preflight_check,
             "get_campaign_summary": self._handle_get_campaign_summary,
+            "get_databases": self._handle_get_databases,
+            "get_database_data": self._handle_get_database_data,
+            "create_database": self._handle_create_database,
+            "update_database": self._handle_update_database,
+            "delete_databases": self._handle_delete_databases,
+            "save_database_data": self._handle_save_database_data,
+            "import_csv_to_database": self._handle_import_csv_to_database,
+            "get_global_templates": self._handle_get_global_templates,
+            "get_global_template_data": self._handle_get_global_template_data,
+            "create_global_template": self._handle_create_global_template,
+            "update_global_template": self._handle_update_global_template,
+            "delete_global_templates": self._handle_delete_global_templates,
+            "duplicate_global_template": self._handle_duplicate_global_template,
         }
 
     def on_close(self):
@@ -247,16 +261,132 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             json.dumps({"action": "campaign_summary", "payload": summary})
         )
 
+    async def _handle_get_databases(self, _):
+        dbs = await self.database_service.get_databases()
+        self.write_message(json.dumps({"action": "databases_list", "payload": dbs}))
+
+    async def _handle_get_database_data(self, payload):
+        db_id = payload.get("database_id")
+        if not db_id:
+            return
+        recipients = await self.database_service.get_database_data(db_id)
+        self.write_message(json.dumps({
+            "action": "database_data",
+            "payload": {"database_id": db_id, "recipients": recipients}
+        }))
+
+    async def _handle_create_database(self, payload):
+        name = payload.get("name")
+        if not name:
+            return
+        new_db, all_dbs = await self.database_service.create_database(name)
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "databases_list", "payload": all_dbs}
+        )
+        self.write_message(json.dumps({"action": "database_created", "payload": new_db}))
+
+    async def _handle_update_database(self, payload):
+        db_id = payload.get("database_id")
+        updates = payload.get("updates")
+        if not db_id or not updates:
+            return
+        dbs = await self.database_service.update_database(db_id, updates)
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "databases_list", "payload": dbs}
+        )
+
+    async def _handle_delete_databases(self, payload):
+        db_ids = payload.get("database_ids")
+        if not isinstance(db_ids, list):
+            return
+        dbs = await self.database_service.delete_databases(db_ids)
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "databases_list", "payload": dbs}
+        )
+
+    async def _handle_save_database_data(self, payload):
+        db_id = payload.get("database_id")
+        recipients = payload.get("recipients")
+        if db_id is not None and recipients is not None:
+            await self.database_service.save_database_data(db_id, recipients)
+
+    async def _handle_import_csv_to_database(self, payload):
+        db_id = payload.get("database_id")
+        content = payload.get("content")
+        mode = payload.get("mode")
+        if not db_id or not content or not mode:
+            return
+        await self.database_service.import_csv_to_database(db_id, content, mode)
+        recipients = await self.database_service.get_database_data(db_id)
+        self.write_message(json.dumps({
+            "action": "database_recipients_updated",
+            "payload": {"database_id": db_id, "recipients": recipients}
+        }))
+
+    async def _handle_get_global_templates(self, _):
+        templates = await self.global_template_service.get_templates()
+        self.write_message(json.dumps({"action": "global_templates_list", "payload": templates}))
+
+    async def _handle_get_global_template_data(self, payload):
+        template_id = payload.get("template_id")
+        if not template_id:
+            return
+        data = await self.global_template_service.get_template_data(template_id)
+        self.write_message(json.dumps({"action": "global_template_data", "payload": data}))
+
+    async def _handle_create_global_template(self, payload):
+        name = payload.get("name")
+        category = payload.get("category", "")
+        subject = payload.get("subject", "")
+        body = payload.get("body", "")
+        navigate = payload.get("navigate", True)
+        if not name:
+            return
+        new_t, all_t = await self.global_template_service.create_template(name, category, subject, body)
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "global_templates_list", "payload": all_t}
+        )
+        self.write_message(json.dumps({
+            "action": "global_template_created",
+            "payload": {"template": new_t, "navigate": navigate}
+        }))
+
+    async def _handle_update_global_template(self, payload):
+        template_id = payload.get("template_id")
+        updates = payload.get("updates", {})
+        body = payload.get("body")
+        if not template_id:
+            return
+        all_t = await self.global_template_service.update_template(template_id, updates, body)
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "global_templates_list", "payload": all_t}
+        )
+
+    async def _handle_delete_global_templates(self, payload):
+        template_ids = payload.get("template_ids")
+        if not isinstance(template_ids, list):
+            return
+        all_t = await self.global_template_service.delete_templates(template_ids)
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "global_templates_list", "payload": all_t}
+        )
+
+    async def _handle_duplicate_global_template(self, payload):
+        template_id = payload.get("template_id")
+        if not template_id:
+            return
+        all_t = await self.global_template_service.duplicate_template(template_id)
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "global_templates_list", "payload": all_t}
+        )
+
     def check_origin(self, origin):
         if self.application.settings.get("debug", False):
             return True
-
         parsed_origin = urlparse(origin)
         origin_host = parsed_origin.netloc.lower()
         request_host = self.request.host.lower()
-
         return origin_host == request_host
-
 
 class WebSocketManager:
     def __init__(self):
@@ -274,3 +404,4 @@ class WebSocketManager:
                 connection.write_message(json.dumps(message))
             except tornado.websocket.WebSocketClosedError:
                 pass
+

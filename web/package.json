@@ -28,6 +28,7 @@
     "@tanstack/react-start": "latest",
     "@tanstack/react-table": "latest",
     "@tanstack/router-plugin": "^1.132.0",
+    "emmet-monaco-es": "^5.7.0",
     "framer-motion": "^12.42.0",
     "lucide-react": "^0.545.0",
     "monaco-editor": "^0.55.1",
