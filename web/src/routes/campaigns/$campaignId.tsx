@@ -68,7 +68,11 @@ function CampaignDetail() {
 
       <div className="flex-1 flex flex-col md:flex-row gap-4 px-4 pb-4 min-h-0">
         <div className="w-full md:w-1/2 flex flex-col min-h-0">
-          <Editor campaignId={campaignId} subject={campaign.subject} />
+          <Editor
+            entityId={campaignId}
+            subject={campaign.subject}
+            type="campaign"
+          />
         </div>
         <div className="w-full md:w-1/2 flex flex-col min-h-0">
           <RecipientTable contextId={campaignId} contextType="campaign" />

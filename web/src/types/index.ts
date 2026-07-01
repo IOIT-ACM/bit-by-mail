@@ -99,6 +99,7 @@ export interface AppState {
   isStopping: boolean
   isPasswordSet: boolean
   connectionStatus: 'connecting' | 'open' | 'closed'
+  saveStatus: 'saved' | 'saving' | 'error'
   previewRecipient: Recipient | null
   progress: {
     sent: number

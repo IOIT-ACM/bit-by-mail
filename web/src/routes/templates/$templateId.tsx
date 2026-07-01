@@ -4,7 +4,7 @@ import type { EmailTemplate } from '@/types'
 import { useState, useRef, useEffect } from 'react'
 import { apiService } from '@/services/apiService'
 import { Loader, Pencil, Check } from 'lucide-react'
-import GlobalEditor from '@/features/templates/components/GlobalEditor'
+import Editor from '@/features/campaigns/components/Editor'
 
 export const Route = createFileRoute('/templates/$templateId')({
   component: TemplateDetail,
@@ -182,7 +182,11 @@ function TemplateDetail() {
       </div>
 
       <div className="flex-1 p-4 min-h-0 flex flex-col">
-        <GlobalEditor templateId={templateId} subject={template.subject} />
+        <Editor
+          entityId={templateId}
+          subject={template.subject}
+          type="template"
+        />
       </div>
     </div>
   )

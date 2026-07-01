@@ -16,6 +16,7 @@ interface AppActions {
   setIsSending: (isSending: boolean) => void
   setIsStopping: (isStopping: boolean) => void
   setConnectionStatus: (status: ConnectionStatus) => void
+  setSaveStatus: (status: 'saved' | 'saving' | 'error') => void
   setPreviewRecipient: (recipient: Recipient | null) => void
   setProgress: (sent: number, total: number) => void
   setRecipientIssues: (issues: Record<number, RecipientIssue>) => void
@@ -56,6 +57,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   isStopping: false,
   isPasswordSet: false,
   connectionStatus: 'connecting',
+  saveStatus: 'saved',
   previewRecipient: null,
   progress: { sent: 0, total: 0 },
   recipientIssues: {},
@@ -81,6 +83,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   },
   setIsStopping: (isStopping) => set({ isStopping }),
   setConnectionStatus: (status) => set({ connectionStatus: status }),
+  setSaveStatus: (status) => set({ saveStatus: status }),
   setPreviewRecipient: (recipient) => set({ previewRecipient: recipient }),
   setProgress: (sent, total) => set({ progress: { sent, total } }),
   setRecipientIssues: (issues) => set({ recipientIssues: issues }),

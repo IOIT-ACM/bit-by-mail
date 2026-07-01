@@ -15,12 +15,13 @@ import { toast } from 'sonner'
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
 import { apiService } from '@/services/apiService'
 import { queryClient } from '@/services/queryClient'
-import type { CampaignData, Campaign } from '@/types'
+import type { CampaignData, Campaign, EmailTemplateData } from '@/types'
 import { MaximizableView } from '@/components/common/MaximizableView'
 import { MonacoEditorWrapper } from '@/components/common/MonacoEditorWrapper'
 import { LoadTemplateModal } from './LoadTemplateModal'
 import { SaveTemplateModal } from './SaveTemplateModal'
 import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
+import { useAppStore } from '@/store/useAppStore'
 
 const TabButton: React.FC<{
   label: string
@@ -38,9 +39,9 @@ const TabButton: React.FC<{
   </button>
 )
 
-const PlaceholderList: React.FC<{ campaignId: string }> = ({ campaignId }) => {
+const PlaceholderList: React.FC<{ entityId: string }> = ({ entityId }) => {
   const { data } = useQuery<CampaignData>({
-    queryKey: ['campaignData', campaignId],
+    queryKey: ['campaignData', entityId],
   })
   const recipients = data?.recipients ?? []
   const availablePlaceholders =
@@ -77,12 +78,23 @@ const PlaceholderList: React.FC<{ campaignId: string }> = ({ campaignId }) => {
 const EditorContent: React.FC<{
   isMaximized: boolean
   onToggleMaximize: () => void
-  campaignId: string
+  entityId: string
   initialSubject: string
-}> = ({ isMaximized, onToggleMaximize, campaignId, initialSubject }) => {
-  const { data } = useQuery<CampaignData>({
-    queryKey: ['campaignData', campaignId],
+  type: 'campaign' | 'template'
+}> = ({ isMaximized, onToggleMaximize, entityId, initialSubject, type }) => {
+  const { data: campaignData } = useQuery<CampaignData>({
+    queryKey: ['campaignData', entityId],
+    enabled: type === 'campaign',
   })
+
+  const { data: templateData } = useQuery<EmailTemplateData>({
+    queryKey: ['templateData', entityId],
+    enabled: type === 'template',
+  })
+
+  const remoteBody =
+    type === 'campaign' ? campaignData?.emailBody : templateData?.body
+
   const [activeTab, setActiveTab] = useState<
     'code' | 'preview' | 'placeholders'
   >('code')
@@ -95,36 +107,75 @@ const EditorContent: React.FC<{
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
 
+  const setSaveStatus = useAppStore((state) => state.setSaveStatus)
+  const saveStatus = useAppStore((state) => state.saveStatus)
+  const connectionStatus = useAppStore((state) => state.connectionStatus)
+
   useEffect(() => {
-    if (data?.emailBody !== undefined) {
-      setLocalBody((prev) => (prev !== data.emailBody ? data.emailBody : prev))
+    if (remoteBody !== undefined) {
+      setLocalBody((prev) => (prev !== remoteBody ? remoteBody : prev))
     }
-  }, [data?.emailBody])
+  }, [remoteBody])
 
   useEffect(() => {
     setLocalSubject((prev) => (prev !== initialSubject ? initialSubject : prev))
   }, [initialSubject])
 
+  useEffect(() => {
+    if (connectionStatus === 'closed') {
+      setSaveStatus('error')
+    } else if (saveStatus === 'error' && connectionStatus === 'open') {
+      setSaveStatus('saved')
+    }
+  }, [connectionStatus, setSaveStatus, saveStatus])
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saveStatus === 'saving') {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [saveStatus])
+
   const handleBodyChange = (newBody: string) => {
     if (newBody === localBody) return
+    setSaveStatus('saving')
     setLocalBody(newBody)
-    queryClient.setQueryData<CampaignData>(
-      ['campaignData', campaignId],
-      (old) => (old ? { ...old, emailBody: newBody } : old),
-    )
+    if (type === 'campaign') {
+      queryClient.setQueryData<CampaignData>(
+        ['campaignData', entityId],
+        (old) => (old ? { ...old, emailBody: newBody } : old),
+      )
+    } else {
+      queryClient.setQueryData<EmailTemplateData>(
+        ['templateData', entityId],
+        (old) => (old ? { ...old, body: newBody } : old),
+      )
+    }
   }
 
   const handleSubjectChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newSubject = e.target.value
     if (newSubject === localSubject) return
+    setSaveStatus('saving')
     setLocalSubject(newSubject)
-    queryClient.setQueryData<Campaign[]>(['campaigns'], (old) =>
-      old
-        ? old.map((c) =>
-            c.id === campaignId ? { ...c, subject: newSubject } : c,
-          )
-        : old,
-    )
+    if (type === 'campaign') {
+      queryClient.setQueryData<Campaign[]>(['campaigns'], (old) =>
+        old
+          ? old.map((c) =>
+              c.id === entityId ? { ...c, subject: newSubject } : c,
+            )
+          : old,
+      )
+    } else {
+      queryClient.setQueryData<EmailTemplateData>(
+        ['templateData', entityId],
+        (old) => (old ? { ...old, subject: newSubject } : old),
+      )
+    }
   }
 
   const handleInsertAsset = (url: string, name: string) => {
@@ -139,28 +190,35 @@ const EditorContent: React.FC<{
     setShowAssetPicker(false)
   }
 
-  const lastSavedBody = useRef(data?.emailBody || '')
-  useDebouncedEffect(
-    () => {
-      if (localBody !== lastSavedBody.current) {
-        apiService.saveTemplate(campaignId, localBody)
-        lastSavedBody.current = localBody
-      }
-    },
-    1500,
-    [localBody, campaignId],
-  )
-
+  const lastSavedBody = useRef(remoteBody || '')
   const lastSavedSubject = useRef(initialSubject)
+
   useDebouncedEffect(
     () => {
-      if (localSubject !== lastSavedSubject.current) {
-        apiService.updateCampaign(campaignId, { subject: localSubject })
+      const bodyChanged = localBody !== lastSavedBody.current
+      const subjectChanged = localSubject !== lastSavedSubject.current
+
+      if (bodyChanged || subjectChanged) {
+        if (type === 'campaign') {
+          if (bodyChanged) apiService.saveTemplate(entityId, localBody)
+          if (subjectChanged)
+            apiService.updateCampaign(entityId, { subject: localSubject })
+        } else {
+          const updates: any = {}
+          if (subjectChanged) updates.subject = localSubject
+          apiService.updateGlobalTemplate(
+            entityId,
+            updates,
+            bodyChanged ? localBody : undefined,
+          )
+        }
+        lastSavedBody.current = localBody
         lastSavedSubject.current = localSubject
+        setSaveStatus('saved')
       }
     },
     1500,
-    [localSubject, campaignId],
+    [localBody, localSubject, entityId, type],
   )
 
   const handleFullscreenPreview = () => {
@@ -174,8 +232,8 @@ const EditorContent: React.FC<{
       target: { value: subject },
     } as React.ChangeEvent<HTMLInputElement>)
     handleBodyChange(body)
-    apiService.saveTemplate(campaignId, body)
-    apiService.updateCampaign(campaignId, { subject })
+    apiService.saveTemplate(entityId, body)
+    apiService.updateCampaign(entityId, { subject })
     toast.success('Template loaded successfully.')
   }
 
@@ -193,9 +251,28 @@ const EditorContent: React.FC<{
     <>
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <h2 className="text-heading-3 font-medium text-text-primary">
-            Email Content
-          </h2>
+          <div className="flex flex-col">
+            <h2 className="text-heading-3 font-medium text-text-primary">
+              Email Content
+            </h2>
+            <div className="h-4">
+              {saveStatus === 'saving' && (
+                <span className="text-[10px] uppercase tracking-widest font-bold text-accent-orange animate-pulse">
+                  ● Saving...
+                </span>
+              )}
+              {saveStatus === 'saved' && (
+                <span className="text-[10px] uppercase tracking-widest font-bold text-status-success-text">
+                  ✓ Saved
+                </span>
+              )}
+              {saveStatus === 'error' && (
+                <span className="text-[10px] uppercase tracking-widest font-bold text-status-danger-text">
+                  ⚠ Save Failed
+                </span>
+              )}
+            </div>
+          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowAssetPicker(true)}
@@ -203,18 +280,22 @@ const EditorContent: React.FC<{
             >
               <ImageIcon size={14} /> Insert Asset
             </button>
-            <button
-              onClick={() => setShowLoadModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
-            >
-              <Download size={14} /> Load Template
-            </button>
-            <button
-              onClick={() => setShowSaveModal(true)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
-            >
-              <Save size={14} /> Save as Template
-            </button>
+            {type === 'campaign' && (
+              <>
+                <button
+                  onClick={() => setShowLoadModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
+                >
+                  <Download size={14} /> Load Template
+                </button>
+                <button
+                  onClick={() => setShowSaveModal(true)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
+                >
+                  <Save size={14} /> Save as Template
+                </button>
+              </>
+            )}
           </div>
         </div>
         <button
@@ -230,7 +311,7 @@ const EditorContent: React.FC<{
           htmlFor="subject-input"
           className="block text-sm font-medium text-text-secondary mb-1 px-1"
         >
-          Email Subject
+          {type === 'campaign' ? 'Email Subject' : 'Template Subject Line'}
         </label>
         <input
           id="subject-input"
@@ -258,12 +339,14 @@ const EditorContent: React.FC<{
                   />
                 </div>
               </div>
-              <div className="flex-shrink-0 p-3 bg-surface-element border border-borders-primary rounded-lg">
-                <h4 className="text-sm font-medium text-text-secondary mb-2">
-                  Available Placeholders
-                </h4>
-                <PlaceholderList campaignId={campaignId} />
-              </div>
+              {type === 'campaign' && (
+                <div className="flex-shrink-0 p-3 bg-surface-element border border-borders-primary rounded-lg">
+                  <h4 className="text-sm font-medium text-text-secondary mb-2">
+                    Available Placeholders
+                  </h4>
+                  <PlaceholderList entityId={entityId} />
+                </div>
+              )}
             </div>
             <div className="flex-1 flex flex-col min-h-0">
               <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">
@@ -292,12 +375,14 @@ const EditorContent: React.FC<{
                 isActive={activeTab === 'preview'}
                 onClick={() => setActiveTab('preview')}
               />
-              <TabButton
-                label="Vars"
-                icon={<Braces size={16} />}
-                isActive={activeTab === 'placeholders'}
-                onClick={() => setActiveTab('placeholders')}
-              />
+              {type === 'campaign' && (
+                <TabButton
+                  label="Vars"
+                  icon={<Braces size={16} />}
+                  isActive={activeTab === 'placeholders'}
+                  onClick={() => setActiveTab('placeholders')}
+                />
+              )}
             </div>
             <div className="flex-grow relative mt-4">
               {activeTab === 'code' && (
@@ -328,12 +413,12 @@ const EditorContent: React.FC<{
                   />
                 </div>
               )}
-              {activeTab === 'placeholders' && (
+              {activeTab === 'placeholders' && type === 'campaign' && (
                 <div className="absolute inset-0 bg-surface-element border border-borders-primary rounded-b-lg rounded-tr-lg overflow-auto p-4 custom-scrollbar">
                   <h4 className="text-sm font-medium text-text-secondary mb-3">
                     Available Placeholders
                   </h4>
-                  <PlaceholderList campaignId={campaignId} />
+                  <PlaceholderList entityId={entityId} />
                 </div>
               )}
             </div>
@@ -347,13 +432,13 @@ const EditorContent: React.FC<{
           onSelect={handleInsertAsset}
         />
       )}
-      {showLoadModal && (
+      {showLoadModal && type === 'campaign' && (
         <LoadTemplateModal
           onClose={() => setShowLoadModal(false)}
           onLoad={handleLoadTemplate}
         />
       )}
-      {showSaveModal && (
+      {showSaveModal && type === 'campaign' && (
         <SaveTemplateModal
           onClose={() => setShowSaveModal(false)}
           currentSubject={localSubject}
@@ -365,11 +450,13 @@ const EditorContent: React.FC<{
 }
 
 export default function Editor({
-  campaignId,
+  entityId,
   subject,
+  type,
 }: {
-  campaignId: string
+  entityId: string
   subject: string
+  type: 'campaign' | 'template'
 }) {
   return (
     <MaximizableView layoutId="editor-container">
@@ -377,8 +464,9 @@ export default function Editor({
         <EditorContent
           isMaximized={isMaximized}
           onToggleMaximize={onToggle}
-          campaignId={campaignId}
+          entityId={entityId}
           initialSubject={subject}
+          type={type}
         />
       )}
     </MaximizableView>
