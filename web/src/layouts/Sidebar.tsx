@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import {
@@ -25,7 +25,8 @@ import type {
 import { apiService } from '@/services/apiService'
 
 export const Sidebar: React.FC = () => {
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const isCollapsed = useAppStore((state) => state.isSidebarCollapsed)
+  const setIsCollapsed = useAppStore((state) => state.setIsSidebarCollapsed)
   const connectionStatus = useAppStore((state) => state.connectionStatus)
   const routerState = useRouterState()
 

@@ -19,7 +19,7 @@ function CreateTemplate() {
     if (!name.trim()) return
 
     setIsSubmitting(true)
-    apiService.createGlobalTemplate(name.trim(), category.trim())
+    apiService.createGlobalTemplate(name.trim(), category.trim(), '', '', true)
   }
 
   return (

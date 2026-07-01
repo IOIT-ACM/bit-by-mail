@@ -76,6 +76,21 @@ class MailerService:
         try:
             self._broadcast_log("info", "Mailing process started.")
 
+            if not subject.strip() or not html_template.strip():
+                self._broadcast_log("error", "Cannot send: Subject or Email body is empty.")
+                return
+
+            accounts = config.get("accounts", [])
+            if not accounts:
+                self._broadcast_log("error", "No sender accounts configured in Settings.")
+                return
+
+            account = next((a for a in accounts if a.get("id") == campaign.get("sender_account_id")), None)
+            if not account:
+                account = next((a for a in accounts if a.get("is_default")), None)
+            if not account:
+                account = accounts[0]
+
             recipients_df = pd.DataFrame(recipients)
             if recipients_df.empty:
                 self._broadcast_log("info", "Recipient list is empty.")
@@ -105,7 +120,7 @@ class MailerService:
             total_to_send = len(recipients_to_process)
             self._broadcast_mailing_started(total_to_send)
 
-            with self._smtp_connect(config) as server:
+            with self._smtp_connect(account) as server:
                 for index, recipient_row in recipients_to_process.iterrows():
                     if self._stop_requested:
                         self._broadcast_log("warn", "Mailing process stopped by user.")
@@ -113,7 +128,7 @@ class MailerService:
 
                     recipient = recipient_row.to_dict()
                     status, details, timestamp = self._process_recipient(
-                        server, config, campaign, subject, html_template, recipient
+                        server, account, campaign, subject, html_template, recipient
                     )
 
                     recipients_df.loc[index, "Status"] = status
@@ -161,7 +176,7 @@ class MailerService:
             self._broadcast_finish()
 
     def _process_recipient(
-        self, server, config, campaign, subject_template, html_template, recipient
+        self, server, account, campaign, subject_template, html_template, recipient
     ):
         email = recipient.get("Email")
         if not email:
@@ -169,7 +184,7 @@ class MailerService:
 
         try:
             msg = MIMEMultipart()
-            msg["From"] = config["sender_email"]
+            msg["From"] = account["sender_email"]
             msg["To"] = email
 
             msg["X-Label"] = "bit by mail"
@@ -179,7 +194,8 @@ class MailerService:
             msg["Subject"] = subject
 
             body = self._replace_placeholders(html_template, recipient)
-            msg.attach(MIMEText(body, "html"))
+            is_html = campaign.get("is_html", True)
+            msg.attach(MIMEText(body, "html" if is_html else "plain"))
 
             send_attachments = campaign.get("send_attachments", False)
             if send_attachments:
@@ -214,14 +230,14 @@ class MailerService:
             return "ERROR", str(e), None
 
     @contextmanager
-    def _smtp_connect(self, config):
+    def _smtp_connect(self, account):
         server = None
         try:
-            smtp_server_host = config.get("smtp_server")
-            port = int(config.get("smtp_port", 587))
-            sender_email = config.get("sender_email")
-            password = config.get("sender_password")
-            use_ssl = config.get("use_ssl", False)
+            smtp_server_host = account.get("smtp_server")
+            port = int(account.get("smtp_port", 587))
+            sender_email = account.get("sender_email")
+            password = account.get("sender_password")
+            use_ssl = account.get("use_ssl", False)
 
             self._broadcast_log(
                 "info",

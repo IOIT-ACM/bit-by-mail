@@ -168,6 +168,21 @@ const RecipientTableContent: React.FC<{
     URL.revokeObjectURL(url)
   }
 
+  const handleDownloadSample = () => {
+    const csvContent =
+      'Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf;brochure.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING'
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', 'sample_recipients.csv')
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
+
   const columns = useMemo(() => {
     if (recipients.length === 0) return EMPTY_ARRAY
     const keys = Object.keys(recipients[0]).filter(
@@ -344,6 +359,14 @@ const RecipientTableContent: React.FC<{
           )}
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadSample}
+            className="p-1.5 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors flex items-center gap-1.5 px-3"
+            title="Download Sample CSV"
+          >
+            <Download size={16} />
+            <span className="text-sm font-medium hidden sm:inline">Sample</span>
+          </button>
           {recipients.length > 0 && (
             <>
               <div className="relative">
@@ -356,8 +379,39 @@ const RecipientTableContent: React.FC<{
                 </button>
                 {showColDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-surface-card border border-borders-primary rounded-md shadow-lg z-50 p-2">
-                    <div className="text-xs font-semibold text-text-tertiary mb-2 uppercase px-2">
-                      Columns
+                    <div className="flex justify-between items-center px-2 pb-2 mb-2 border-b border-borders-primary">
+                      <button
+                        className="text-xs font-medium text-accent-blue hover:text-accent-blue/80"
+                        onClick={() => {
+                          const newVis: Record<string, boolean> = {}
+                          table.getAllLeafColumns().forEach((c) => {
+                            newVis[c.id] = true
+                          })
+                          setColumnVisibility(newVis)
+                        }}
+                      >
+                        Select All
+                      </button>
+                      <button
+                        className="text-xs font-medium text-text-tertiary hover:text-text-primary"
+                        onClick={() => {
+                          const newVis: Record<string, boolean> = {}
+                          table.getAllLeafColumns().forEach((c) => {
+                            if (
+                              c.id === 'select' ||
+                              c.id === 'preview' ||
+                              c.id === 'Status'
+                            ) {
+                              newVis[c.id] = true
+                            } else {
+                              newVis[c.id] = false
+                            }
+                          })
+                          setColumnVisibility(newVis)
+                        }}
+                      >
+                        Deselect All
+                      </button>
                     </div>
                     {table.getAllLeafColumns().map((col) => {
                       if (
@@ -404,40 +458,43 @@ const RecipientTableContent: React.FC<{
       </div>
 
       <div className="overflow-auto flex-grow custom-scrollbar border border-borders-primary rounded-lg bg-[#1e1e2a]">
-        <table className="w-full text-sm text-left">
-          <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-[#1e1e2a] z-10 shadow-sm">
+        <table className="w-full text-sm text-left relative">
+          <thead className="text-xs text-text-secondary uppercase sticky top-0 bg-[#1e1e2a] z-30 shadow-sm">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-2 py-3 border-b border-borders-primary whitespace-nowrap"
-                    style={{
-                      width:
-                        header.getSize() !== 150 ? header.getSize() : 'auto',
-                    }}
-                  >
-                    {header.isPlaceholder ? null : (
-                      <div
-                        className={
-                          header.column.getCanSort()
-                            ? 'cursor-pointer select-none flex items-center gap-1'
-                            : 'flex justify-center'
-                        }
-                        onClick={header.column.getToggleSortingHandler()}
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                        {{
-                          asc: <ChevronUp size={14} />,
-                          desc: <ChevronDown size={14} />,
-                        }[header.column.getIsSorted() as string] ?? null}
-                      </div>
-                    )}
-                  </th>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const isStatus = header.column.id === 'Status'
+                  return (
+                    <th
+                      key={header.id}
+                      className={`px-2 py-3 border-b border-borders-primary whitespace-nowrap ${isStatus ? 'sticky right-0 bg-[#1e1e2a] z-40 shadow-[-4px_0_10px_rgba(0,0,0,0.3)]' : ''}`}
+                      style={{
+                        width:
+                          header.getSize() !== 150 ? header.getSize() : 'auto',
+                      }}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={
+                            header.column.getCanSort()
+                              ? 'cursor-pointer select-none flex items-center gap-1'
+                              : 'flex justify-center'
+                          }
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                          {{
+                            asc: <ChevronUp size={14} />,
+                            desc: <ChevronDown size={14} />,
+                          }[header.column.getIsSorted() as string] ?? null}
+                        </div>
+                      )}
+                    </th>
+                  )
+                })}
               </tr>
             ))}
           </thead>
@@ -446,17 +503,25 @@ const RecipientTableContent: React.FC<{
               const issue = recipientIssues[row.index]
               const status = row.original.Status?.toUpperCase()
               let rowClasses = 'hover:bg-surface-element/50 transition-colors'
+              let statusCellClasses = 'bg-[#1e1e2a]'
 
-              if (selectedRecipientIndices.has(row.index))
+              if (selectedRecipientIndices.has(row.index)) {
                 rowClasses = 'bg-accent-blue/20 hover:bg-accent-blue/30'
-              else if (
+                statusCellClasses = 'bg-[#1e1e2a]'
+              } else if (
                 contextType === 'campaign' &&
                 (issue?.type === 'error' || status === 'ERROR')
-              )
+              ) {
                 rowClasses =
                   'bg-status-danger-bg/20 hover:bg-status-danger-bg/30'
-              else if (contextType === 'campaign' && issue?.type === 'warning')
+                statusCellClasses = 'bg-[#1e1e2a]'
+              } else if (
+                contextType === 'campaign' &&
+                issue?.type === 'warning'
+              ) {
                 rowClasses = 'bg-accent-orange/20 hover:bg-accent-orange/30'
+                statusCellClasses = 'bg-[#1e1e2a]'
+              }
 
               return (
                 <tr
@@ -464,14 +529,20 @@ const RecipientTableContent: React.FC<{
                   className={`border-b border-borders-primary/50 ${rowClasses}`}
                   title={issue?.message}
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="align-middle">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </td>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const isStatus = cell.column.id === 'Status'
+                    return (
+                      <td
+                        key={cell.id}
+                        className={`align-middle ${isStatus ? `sticky right-0 ${statusCellClasses} z-20 shadow-[-4px_0_10px_rgba(0,0,0,0.3)]` : ''}`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    )
+                  })}
                 </tr>
               )
             })}

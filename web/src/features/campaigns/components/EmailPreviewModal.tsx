@@ -44,6 +44,15 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
   const activeCampaign = campaigns?.find((c) => c.id === campaignId)
   const subjectTemplate = activeCampaign?.subject ?? ''
 
+  const accounts = config?.accounts || []
+  let senderEmail = 'Not configured'
+  if (accounts.length > 0) {
+    let acc = accounts.find((a) => a.id === activeCampaign?.sender_account_id)
+    if (!acc) acc = accounts.find((a) => a.is_default)
+    if (!acc) acc = accounts[0]
+    senderEmail = acc.sender_email
+  }
+
   const [selectedAttachment, setSelectedAttachment] = useState<string | null>(
     null,
   )
@@ -90,7 +99,12 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
   if (!previewRecipient) return null
 
   const finalSubject = replacePlaceholders(subjectTemplate, previewRecipient)
-  const finalBody = replacePlaceholders(emailBody, previewRecipient)
+  let finalBody = replacePlaceholders(emailBody, previewRecipient)
+
+  if (activeCampaign && !activeCampaign.is_html) {
+    finalBody = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body style="margin:0;padding:16px;background:#fff;"><pre style="white-space:pre-wrap;font-family:sans-serif;font-size:14px;margin:0;color:#000;">${finalBody.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`
+  }
+
   const showAttachment =
     activeCampaign?.send_attachments && attachmentFiles.length > 0
   const attachmentUrl =
@@ -127,9 +141,7 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
           <div className="flex-shrink-0 space-y-2 mb-4 bg-surface-element p-4 rounded-lg border border-borders-primary">
             <p className="text-sm text-text-secondary">
               <strong>From:</strong>{' '}
-              <span className="text-text-primary">
-                {config?.sender_email || 'Not configured'}
-              </span>
+              <span className="text-text-primary">{senderEmail}</span>
             </p>
             <p className="text-sm text-text-secondary">
               <strong>To:</strong>{' '}

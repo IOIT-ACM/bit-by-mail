@@ -1,5 +1,6 @@
 import os
 import re
+import html
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, cast, Optional
 import pandas as pd
@@ -96,6 +97,10 @@ class PreflightService:
                 subject_template, first_recipient
             )
             preview_body = self._replace_placeholders(html_template, first_recipient)
+            is_html = campaign.get("is_html", True)
+            if not is_html:
+                safe_body = html.escape(preview_body)
+                preview_body = f'<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body style="margin:0;padding:16px;background:#fff;"><pre style="white-space:pre-wrap;font-family:sans-serif;font-size:14px;margin:0;color:#000;">{safe_body}</pre></body></html>'
 
         return {
             "total_recipients": total_recipients,
@@ -121,32 +126,28 @@ class PreflightService:
                 placeholders[placeholder].append(i + 1)
         return placeholders
 
-    def _check_config_variables(self, config: Dict[str, Any], result: PreflightResult):
+    def _check_config_variables(self, config: Dict[str, Any], campaign: Dict[str, Any], result: PreflightResult):
         errors = []
         warnings = []
+
+        accounts = config.get("accounts", [])
+        if not accounts:
+            result.errors.append("No sender accounts configured in Settings.")
+            return
+
+        account = next((a for a in accounts if a.get("id") == campaign.get("sender_account_id")), None)
+        if not account:
+            account = next((a for a in accounts if a.get("is_default")), None)
+        if not account:
+            account = accounts[0]
+
         required_vars = ["smtp_server", "sender_email", "sender_password", "smtp_port"]
-
-        is_partially_configured = bool(config.get("smtp_server")) or bool(
-            config.get("sender_email")
-        )
-
         for var in required_vars:
-            value = config.get(var)
-            if not value:
-                message = f"Configuration value '{var}' is not set."
-                if is_partially_configured:
-                    errors.append(message)
-                else:
-                    warnings.append(message)
-            elif var == "sender_password" and value == "<your-app-password>":
-                errors.append(
-                    f"Default placeholder password for '{var}' is still present."
-                )
+            if not account.get(var):
+                errors.append(f"Account '{account.get('name')}' is missing '{var}'.")
 
         if not errors and not warnings:
-            result.successes.append(
-                "Configuration variables (SMTP server, email, password, port) are present."
-            )
+            result.successes.append(f"Using account '{account.get('name')}' - all variables present.")
 
         result.errors.extend(errors)
         result.warnings.extend(warnings)
@@ -195,8 +196,13 @@ class PreflightService:
         send_attachments = campaign.get("send_attachments", False)
 
         html_template = await self.template_service.get_template(campaign_id)
-        if not html_template:
-            errors.append(f"Could not read or empty HTML template file for campaign.")
+        if not html_template or not html_template.strip():
+            errors.append("Email body is empty.")
+
+        if not subject_template or not subject_template.strip():
+            errors.append("Email subject is empty.")
+
+        if errors:
             result.errors.extend(errors)
             return
 
@@ -330,11 +336,10 @@ class PreflightService:
     ) -> PreflightResult:
         result = PreflightResult()
 
-        self._check_config_variables(config, result)
-
         campaigns = await self.campaign_service.get_campaigns()
         campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
 
+        self._check_config_variables(config, campaign, result)
         paths_ok = await self._check_paths(campaign_id, campaign, result)
 
         if paths_ok:

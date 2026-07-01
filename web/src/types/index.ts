@@ -1,10 +1,18 @@
-export interface Config {
+export interface Account {
+  id: string
+  name: string
   smtp_server: string
   smtp_port: number
   sender_email: string
   sender_password?: string
+  has_password?: boolean
   use_ssl: boolean
-  subject_template: string
+  is_default: boolean
+}
+
+export interface Config {
+  accounts: Account[]
+  server_pwd?: string
 }
 
 export interface Recipient {
@@ -53,6 +61,8 @@ export interface Campaign {
   sourceDbId?: string
   attachment_folder?: string
   send_attachments?: boolean
+  sender_account_id?: string
+  is_html?: boolean
 }
 
 export interface CampaignData {
@@ -79,6 +89,7 @@ export interface EmailTemplate {
   subject: string
   category: string
   createdAt: string
+  is_html?: boolean
 }
 
 export interface EmailTemplateData extends EmailTemplate {
@@ -93,11 +104,9 @@ export interface Asset {
 }
 
 export interface AppState {
-  sender_password: string
   logs: LogEntry[]
   isSending: boolean
   isStopping: boolean
-  isPasswordSet: boolean
   connectionStatus: 'connecting' | 'open' | 'closed'
   saveStatus: 'saved' | 'saving' | 'error'
   previewRecipient: Recipient | null
@@ -114,6 +123,7 @@ export interface AppState {
   selectedAssetIds: Set<string>
   selectedRecipientIndices: Set<number>
   isLogCollapsed: boolean
+  isSidebarCollapsed: boolean
   showAddRecipientModal: boolean
   showCampaignSettingsModal: boolean
 }

@@ -24,8 +24,10 @@ class CampaignService:
                 "id": default_campaign_id,
                 "name": "My First Campaign",
                 "subject": "Hello {{Name}}!",
-                "attachment_folder": "",
+                "attachment_folder": os.getcwd(),
                 "send_attachments": False,
+                "sender_account_id": "",
+                "is_html": True,
                 "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             }
             campaign_path = os.path.join(self.campaigns_dir, default_campaign_id)
@@ -72,9 +74,13 @@ class CampaignService:
                     count = 0
             campaign["recipientCount"] = int(count)
             if "attachment_folder" not in campaign:
-                campaign["attachment_folder"] = ""
+                campaign["attachment_folder"] = os.getcwd()
             if "send_attachments" not in campaign:
                 campaign["send_attachments"] = False
+            if "sender_account_id" not in campaign:
+                campaign["sender_account_id"] = ""
+            if "is_html" not in campaign:
+                campaign["is_html"] = True
 
             try:
                 reports = [
@@ -96,15 +102,17 @@ class CampaignService:
     async def get_campaigns(self):
         return await IOLoop.current().run_in_executor(None, self._get_campaigns_with_details)
 
-    async def create_campaign(self, name, subject=None, body=None, recipients=None, source_db_id=None):
+    async def create_campaign(self, name, subject=None, body=None, recipients=None, source_db_id=None, sender_account_id="", is_html=True):
         campaigns = self._read_manifest()
         new_id = str(uuid.uuid4())
         new_campaign = {
             "id": new_id,
             "name": name,
             "subject": subject if subject is not None else f"Subject for {name}",
-            "attachment_folder": "",
+            "attachment_folder": os.getcwd(),
             "send_attachments": False,
+            "sender_account_id": sender_account_id,
+            "is_html": is_html,
             "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         if source_db_id:
@@ -114,8 +122,8 @@ class CampaignService:
         campaign_path = self.get_campaign_path(new_id)
         os.makedirs(campaign_path, exist_ok=True)
 
-        template_content = body if body is not None else f"<h1>Email for {name}</h1>\n<p>Hello {{{{Name}}}}</p>"
-        if body is None:
+        template_content = body if body is not None else (f"<h1>Email for {name}</h1>\n<p>Hello {{{{Name}}}}</p>" if is_html else f"Email for {name}\nHello {{{{Name}}}}")
+        if body is None and is_html:
             root_template_path = os.path.join(self.base_dir, "email.html")
             if os.path.exists(root_template_path):
                 with open(root_template_path, "r", encoding="utf-8") as f:
@@ -167,4 +175,3 @@ class CampaignService:
                     shutil.rmtree(campaign_path)
             await IOLoop.current().run_in_executor(None, self._write_manifest, campaigns_to_keep)
         return await self.get_campaigns()
-

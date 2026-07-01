@@ -4,11 +4,11 @@ import { Button } from '@/components/common/Button'
 import { useQuery } from '@tanstack/react-query'
 import { apiService } from '@/services/apiService'
 import type { EmailTemplate } from '@/types'
-import { Download } from 'lucide-react'
+import { Download, FileText, Code } from 'lucide-react'
 
 export const LoadTemplateModal: React.FC<{
   onClose: () => void
-  onLoad: (subject: string, body: string) => void
+  onLoad: (subject: string, body: string, isHtml: boolean) => void
 }> = ({ onClose, onLoad }) => {
   const { data: templates = [] } = useQuery<EmailTemplate[]>({
     queryKey: ['templates'],
@@ -34,7 +34,7 @@ export const LoadTemplateModal: React.FC<{
         { template_id: selectedTemplate },
         'global_template_data',
       )
-      onLoad(res.subject || '', res.body || '')
+      onLoad(res.subject || '', res.body || '', res.is_html ?? true)
       onClose()
     } finally {
       setIsLoading(false)
@@ -75,11 +75,20 @@ export const LoadTemplateModal: React.FC<{
                     value={t.id}
                     checked={selectedTemplate === t.id}
                     onChange={() => setSelectedTemplate(t.id)}
-                    className="custom-checkbox rounded-full"
+                    className="custom-checkbox rounded-full flex-shrink-0"
                   />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-medium text-text-primary">
+                  <div className="flex flex-col flex-grow min-w-0">
+                    <span className="text-sm font-medium text-text-primary flex items-center gap-2">
                       {t.name}
+                      {t.is_html === false ? (
+                        <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-text-secondary bg-background-base px-1.5 py-0.5 rounded border border-borders-primary">
+                          <FileText size={10} /> Text
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[10px] uppercase font-bold text-accent-blue bg-accent-blue/10 px-1.5 py-0.5 rounded border border-accent-blue/20">
+                          <Code size={10} /> HTML
+                        </span>
+                      )}
                     </span>
                     {t.subject && (
                       <span className="text-xs text-text-secondary truncate max-w-[400px]">

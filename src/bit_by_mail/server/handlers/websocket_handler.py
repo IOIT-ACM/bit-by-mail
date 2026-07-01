@@ -1,4 +1,5 @@
 import json
+import os
 import tornado.websocket
 from urllib.parse import urlparse
 
@@ -77,8 +78,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     async def _handle_get_campaigns(self, _):
         campaigns = await self.campaign_service.get_campaigns()
         config = await self.settings_service.get_config()
-        is_password_set = bool(config.get("sender_password"))
-        config.pop("sender_password", None)
+        config["server_pwd"] = os.getcwd()
+
+        for acc in config.get("accounts", []):
+            acc["has_password"] = bool(acc.get("sender_password"))
 
         self.write_message(
             json.dumps(
@@ -87,7 +90,6 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                     "payload": {
                         "campaigns": campaigns,
                         "config": config,
-                        "is_password_set": is_password_set,
                     },
                 }
             )
@@ -117,6 +119,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         name = payload.get("name")
         db_id = payload.get("database_id")
         template_id = payload.get("template_id")
+        sender_account_id = payload.get("sender_account_id", "")
+        is_html = payload.get("is_html", True)
         if not name:
             return
 
@@ -129,11 +133,12 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             if t_data:
                 subject = t_data.get("subject")
                 body = t_data.get("body")
+                is_html = t_data.get("is_html", True)
 
         if db_id:
             recipients = await self.database_service.get_database_data(db_id)
 
-        new_campaign, all_campaigns = await self.campaign_service.create_campaign(name, subject, body, recipients, db_id)
+        new_campaign, all_campaigns = await self.campaign_service.create_campaign(name, subject, body, recipients, db_id, sender_account_id, is_html)
 
         self.application.settings["websocket_manager"].broadcast(
             {"action": "campaigns_list", "payload": all_campaigns}
@@ -178,10 +183,18 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_save_config(self, payload):
         await self.settings_service.save_config(payload)
+        config = await self.settings_service.get_config()
+        config["server_pwd"] = os.getcwd()
+        for acc in config.get("accounts", []):
+            acc["has_password"] = bool(acc.get("sender_password"))
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "config_updated", "payload": config}
+        )
 
     async def _handle_clear_config(self, _):
         await self.settings_service.clear_config()
         config = await self.settings_service.get_config()
+        config["server_pwd"] = os.getcwd()
         self.application.settings["websocket_manager"].broadcast(
             {"action": "config_cleared", "payload": config}
         )
@@ -233,17 +246,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             )
         else:
             stored_config = await self.settings_service.get_config()
-            client_config = payload.get("config", {})
-            if not client_config.get("sender_password"):
-                client_config["sender_password"] = stored_config.get("sender_password")
-
             campaigns = await self.campaign_service.get_campaigns()
             subject = next(
                 (c["subject"] for c in campaigns if c["id"] == campaign_id), ""
             )
 
             await self.mailer_service.start_mailing(
-                campaign_id, client_config, subject, recipient_indices
+                campaign_id, stored_config, subject, recipient_indices
             )
 
     async def _handle_stop_mailing(self, _):
@@ -255,15 +264,11 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             return
 
         stored_config = await self.settings_service.get_config()
-        client_config = payload.get("config", {})
-        if not client_config.get("sender_password"):
-            client_config["sender_password"] = stored_config.get("sender_password")
-
         campaigns = await self.campaign_service.get_campaigns()
         subject = next((c["subject"] for c in campaigns if c["id"] == campaign_id), "")
 
         result = await self.preflight_service.run_checks(
-            campaign_id, client_config, subject
+            campaign_id, stored_config, subject
         )
         self.write_message(
             json.dumps({"action": "preflight_result", "payload": result.to_dict()})
@@ -276,15 +281,11 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             return
 
         stored_config = await self.settings_service.get_config()
-        client_config = payload.get("config", {})
-        if not client_config.get("sender_password"):
-            client_config["sender_password"] = stored_config.get("sender_password")
-
         campaigns = await self.campaign_service.get_campaigns()
         subject = next((c["subject"] for c in campaigns if c["id"] == campaign_id), "")
 
         summary = await self.preflight_service.get_campaign_summary(
-            campaign_id, client_config, subject, recipient_indices
+            campaign_id, stored_config, subject, recipient_indices
         )
         self.write_message(
             json.dumps({"action": "campaign_summary", "payload": summary})
@@ -369,10 +370,11 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         category = payload.get("category", "")
         subject = payload.get("subject", "")
         body = payload.get("body", "")
+        is_html = payload.get("is_html", True)
         navigate = payload.get("navigate", True)
         if not name:
             return
-        new_t, all_t = await self.global_template_service.create_template(name, category, subject, body)
+        new_t, all_t = await self.global_template_service.create_template(name, category, subject, body, is_html)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "global_templates_list", "payload": all_t}
         )
@@ -450,4 +452,3 @@ class WebSocketManager:
                 connection.write_message(json.dumps(message))
             except tornado.websocket.WebSocketClosedError:
                 pass
-

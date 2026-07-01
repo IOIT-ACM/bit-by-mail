@@ -25,7 +25,6 @@ export const useWebSocket = () => {
   const setShowCampaignSummaryModal = useAppStore(
     (state) => state.setShowCampaignSummaryModal,
   )
-  const setIsPasswordSet = useAppStore((state) => state.setIsPasswordSet)
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) return
@@ -64,13 +63,14 @@ export const useWebSocket = () => {
         case 'initial_data':
           queryClient.setQueryData(['campaigns'], payload.campaigns)
           queryClient.setQueryData(['config'], payload.config)
-          setIsPasswordSet(payload.is_password_set)
           apiService.handleResponse('initial_data', payload)
           apiService.handleResponse('campaigns_list', payload.campaigns)
           break
         case 'config_cleared':
           queryClient.setQueryData(['config'], payload)
-          setIsPasswordSet(false)
+          break
+        case 'config_updated':
+          queryClient.setQueryData(['config'], payload)
           break
         case 'campaigns_list':
           queryClient.setQueryData(['campaigns'], payload)
@@ -90,11 +90,7 @@ export const useWebSocket = () => {
           )
           apiService.handleResponse('campaign_data', payload)
           clearLogs()
-          const currentConfig = queryClient.getQueryData(['config'])
-          apiService.runPreflightCheck(
-            payload.campaign_id,
-            currentConfig as any,
-          )
+          apiService.runPreflightCheck(payload.campaign_id)
           break
         case 'recipients_updated':
           {
@@ -289,7 +285,6 @@ export const useWebSocket = () => {
     clearRecipientIssues,
     setCampaignSummary,
     setShowCampaignSummaryModal,
-    setIsPasswordSet,
     setConnectionStatus,
     router,
   ])

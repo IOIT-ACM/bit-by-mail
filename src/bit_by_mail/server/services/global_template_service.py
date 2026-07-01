@@ -35,6 +35,9 @@ class GlobalTemplateService:
 
     def _get_templates(self):
         templates = self._read_manifest()
+        for t in templates:
+            if "is_html" not in t:
+                t["is_html"] = True
         templates.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
         return templates
 
@@ -58,6 +61,7 @@ class GlobalTemplateService:
             "name": template["name"],
             "subject": template.get("subject", ""),
             "category": template.get("category", ""),
+            "is_html": template.get("is_html", True),
             "createdAt": template["createdAt"],
             "body": body
         }
@@ -65,7 +69,7 @@ class GlobalTemplateService:
     async def get_template_data(self, template_id):
         return await IOLoop.current().run_in_executor(None, self._get_template_data, template_id)
 
-    async def create_template(self, name, category="", subject="", body=""):
+    async def create_template(self, name, category="", subject="", body="", is_html=True):
         templates = self._read_manifest()
         new_id = str(uuid.uuid4())
         new_template = {
@@ -73,6 +77,7 @@ class GlobalTemplateService:
             "name": name,
             "category": category,
             "subject": subject,
+            "is_html": is_html,
             "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         }
         templates.append(new_template)
@@ -94,6 +99,8 @@ class GlobalTemplateService:
                     t["subject"] = updates["subject"]
                 if "category" in updates:
                     t["category"] = updates["category"]
+                if "is_html" in updates:
+                    t["is_html"] = updates["is_html"]
                 break
 
         if body is not None:
@@ -129,6 +136,7 @@ class GlobalTemplateService:
             "name": source["name"] + " (Copy)",
             "category": source.get("category", ""),
             "subject": source.get("subject", ""),
+            "is_html": source.get("is_html", True),
             "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         }
         templates.append(new_template)

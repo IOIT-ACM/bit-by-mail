@@ -5,7 +5,8 @@ export const MonacoEditorWrapper: React.FC<{
   value: string
   onChange: (value: string) => void
   onMount?: (editor: any) => void
-}> = ({ value, onChange, onMount }) => {
+  language?: 'html' | 'plaintext'
+}> = ({ value, onChange, onMount, language = 'html' }) => {
   const editorRef = useRef<HTMLDivElement>(null)
   const monacoInstance = useRef<any>(null)
   const emmetDisposeRef = useRef<any>(null)
@@ -14,6 +15,9 @@ export const MonacoEditorWrapper: React.FC<{
 
   const latestValueRef = useRef(value)
   latestValueRef.current = value
+
+  const latestLanguageRef = useRef(language)
+  latestLanguageRef.current = language
 
   const [isLoading, setIsLoading] = useState(true)
 
@@ -68,7 +72,7 @@ export const MonacoEditorWrapper: React.FC<{
 
         editor = monaco.editor.create(editorNode, {
           value: latestValueRef.current,
-          language: 'html',
+          language: latestLanguageRef.current,
           theme: 'BitByMailDark',
           automaticLayout: true,
           fontFamily:
@@ -124,6 +128,16 @@ export const MonacoEditorWrapper: React.FC<{
       editor.setValue(value)
     }
   }, [value])
+
+  useEffect(() => {
+    if (monacoInstance.current && (window as any).monaco) {
+      const monaco = (window as any).monaco
+      const model = monacoInstance.current.getModel()
+      if (model) {
+        monaco.editor.setModelLanguage(model, language)
+      }
+    }
+  }, [language])
 
   return (
     <div className="relative w-full h-full">

@@ -1,5 +1,4 @@
 import type { Config, Recipient } from '@/types'
-import { queryClient } from '@/services/queryClient'
 
 class ApiService {
   private socket: WebSocket | null = null
@@ -59,11 +58,19 @@ class ApiService {
     this.sendMessage('get_campaign_data', { campaign_id: campaignId })
   }
 
-  createCampaign(name: string, databaseId?: string, templateId?: string) {
+  createCampaign(
+    name: string,
+    databaseId?: string,
+    templateId?: string,
+    senderAccountId?: string,
+    isHtml?: boolean,
+  ) {
     this.sendMessage('create_campaign', {
       name,
       database_id: databaseId,
       template_id: templateId,
+      sender_account_id: senderAccountId,
+      is_html: isHtml !== undefined ? isHtml : true,
     })
   }
 
@@ -75,6 +82,8 @@ class ApiService {
       sourceDbId?: string
       attachment_folder?: string
       send_attachments?: boolean
+      sender_account_id?: string
+      is_html?: boolean
     },
   ) {
     this.sendMessage('update_campaign', { campaign_id: campaignId, updates })
@@ -99,34 +108,12 @@ class ApiService {
     })
   }
 
-  saveConfig(
-    config: Partial<Omit<Config, 'subject_template'>>,
-    sender_password?: string,
-  ) {
-    const currentConfig =
-      (queryClient.getQueryData(['config']) as Partial<Config>) || {}
-    const fullConfig = { ...currentConfig, ...config, sender_password }
-    this.sendMessage('save_config', fullConfig)
+  saveConfig(config: Partial<Config>) {
+    this.sendMessage('save_config', config)
   }
 
   clearConfig() {
     this.sendMessage('clear_config')
-  }
-
-  saveAndTestConfig(
-    config: Omit<Config, 'sender_password' | 'subject_template'>,
-    password: string,
-    activeCampaignId?: string,
-  ) {
-    const fullConfig = { ...config, sender_password: password }
-    queryClient.setQueryData(['config'], config)
-    this.sendMessage('save_config', fullConfig)
-    if (activeCampaignId) {
-      this.sendMessage('preflight_check', {
-        campaign_id: activeCampaignId,
-        config: fullConfig,
-      })
-    }
   }
 
   saveRecipients(campaignId: string, recipients: Recipient[]) {
@@ -141,10 +128,8 @@ class ApiService {
   }
 
   startMailing(campaignId: string, indices?: number[]) {
-    const config = queryClient.getQueryData(['config'])
     this.sendMessage('start_mailing', {
       campaign_id: campaignId,
-      config: config,
       recipient_indices: indices,
     })
   }
@@ -154,20 +139,15 @@ class ApiService {
   }
 
   getCampaignSummary(campaignId: string, indices?: number[]) {
-    const config = queryClient.getQueryData(['config'])
     this.sendMessage('get_campaign_summary', {
       campaign_id: campaignId,
-      config: config,
       recipient_indices: indices,
     })
   }
 
-  runPreflightCheck(campaignId: string, configOverride?: Config) {
-    const config = queryClient.getQueryData(['config'])
-    const configPayload = configOverride ? configOverride : config
+  runPreflightCheck(campaignId: string) {
     this.sendMessage('preflight_check', {
       campaign_id: campaignId,
-      config: configPayload,
     })
   }
 
@@ -223,6 +203,7 @@ class ApiService {
     category: string = '',
     subject: string = '',
     body: string = '',
+    isHtml: boolean = true,
     navigate: boolean = true,
   ) {
     this.sendMessage('create_global_template', {
@@ -230,6 +211,7 @@ class ApiService {
       category,
       subject,
       body,
+      is_html: isHtml,
       navigate,
     })
   }

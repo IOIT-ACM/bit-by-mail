@@ -1,5 +1,4 @@
 import {
-  Download,
   Send,
   TestTube,
   Upload,
@@ -14,7 +13,8 @@ import React, { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
-import type { Campaign } from '@/types'
+import { queryClient } from '@/services/queryClient'
+import type { Campaign, CampaignData } from '@/types'
 import { Button } from '@/components/common/Button'
 import { ImportFromDbModal } from './ImportFromDbModal'
 import { SyncDbModal } from './SyncDbModal'
@@ -71,21 +71,6 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
     }
   }
 
-  const handleDownloadSample = () => {
-    const csvContent =
-      'Name,Email,AttachmentFile,Status\nJohn Doe,john.doe@example.com,certificate_john.pdf;brochure.pdf,PENDING\nJane Smith,jane.smith@example.com,certificate_jane.pdf,PENDING'
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'sample_recipients.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  }
-
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file && campaignId) {
@@ -109,12 +94,36 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
   }
 
   const handlePreflight = () => {
+    if (!campaign.subject?.trim()) {
+      toast.error('Email subject cannot be empty.')
+      return
+    }
+    const currentData = queryClient.getQueryData<CampaignData>([
+      'campaignData',
+      campaignId,
+    ])
+    if (!currentData?.emailBody?.trim()) {
+      toast.error('Email body cannot be empty.')
+      return
+    }
     apiService.flushQueue()
     apiService.runPreflightCheck(campaignId)
   }
 
   const handleSend = () => {
     if (isSending) return
+    if (!campaign.subject?.trim()) {
+      toast.error('Email subject cannot be empty.')
+      return
+    }
+    const currentData = queryClient.getQueryData<CampaignData>([
+      'campaignData',
+      campaignId,
+    ])
+    if (!currentData?.emailBody?.trim()) {
+      toast.error('Email body cannot be empty.')
+      return
+    }
     apiService.flushQueue()
     clearRecipientSelection()
     apiService.getCampaignSummary(campaignId)
@@ -183,11 +192,6 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
               <span className="hidden lg:inline">Sync DB</span>
             </Button>
           )}
-
-          <Button onClick={handleDownloadSample} variant="secondary">
-            <Download size={16} />
-            <span className="hidden lg:inline">Sample</span>
-          </Button>
 
           <Button
             onClick={() => setShowImportDbModal(true)}

@@ -7,8 +7,9 @@ import { Save } from 'lucide-react'
 export const SaveTemplateModal: React.FC<{
   currentSubject: string
   currentBody: string
+  currentIsHtml: boolean
   onClose: () => void
-}> = ({ currentSubject, currentBody, onClose }) => {
+}> = ({ currentSubject, currentBody, currentIsHtml, onClose }) => {
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -21,6 +22,7 @@ export const SaveTemplateModal: React.FC<{
       category.trim(),
       currentSubject,
       currentBody,
+      currentIsHtml,
       false,
     )
     onClose()

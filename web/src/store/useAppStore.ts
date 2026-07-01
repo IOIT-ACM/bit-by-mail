@@ -10,7 +10,6 @@ import type {
 type ConnectionStatus = 'connecting' | 'open' | 'closed'
 
 interface AppActions {
-  setSenderPassword: (password: string) => void
   addLog: (log: LogEntry) => void
   clearLogs: () => void
   setIsSending: (isSending: boolean) => void
@@ -42,20 +41,18 @@ interface AppActions {
   clearAssetSelection: () => void
   toggleAssetSelection: (id: string) => void
   setIsLogCollapsed: (isCollapsed: boolean) => void
+  setIsSidebarCollapsed: (isCollapsed: boolean) => void
   toggleRecipientSelection: (index: number) => void
   clearRecipientSelection: () => void
   selectAllRecipients: (count: number) => void
   setShowAddRecipientModal: (show: boolean) => void
-  setIsPasswordSet: (isSet: boolean) => void
   setShowCampaignSettingsModal: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState & AppActions>((set) => ({
-  sender_password: '',
   logs: [],
   isSending: false,
   isStopping: false,
-  isPasswordSet: false,
   connectionStatus: 'connecting',
   saveStatus: 'saved',
   previewRecipient: null,
@@ -69,10 +66,10 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   selectedAssetIds: new Set(),
   selectedRecipientIndices: new Set(),
   isLogCollapsed: false,
+  isSidebarCollapsed: false,
   showAddRecipientModal: false,
   showCampaignSettingsModal: false,
 
-  setSenderPassword: (password) => set({ sender_password: password }),
   addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
   clearLogs: () => set({ logs: [] }),
   setIsSending: (isSending) => {
@@ -167,6 +164,8 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       return { selectedAssetIds: newSelection }
     }),
   setIsLogCollapsed: (isCollapsed) => set({ isLogCollapsed: isCollapsed }),
+  setIsSidebarCollapsed: (isCollapsed) =>
+    set({ isSidebarCollapsed: isCollapsed }),
   toggleRecipientSelection: (index) =>
     set((state) => {
       const newSelection = new Set(state.selectedRecipientIndices)
@@ -185,7 +184,6 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       ),
     }),
   setShowAddRecipientModal: (show) => set({ showAddRecipientModal: show }),
-  setIsPasswordSet: (isSet) => set({ isPasswordSet: isSet }),
   setShowCampaignSettingsModal: (show) =>
     set({ showCampaignSettingsModal: show }),
 }))

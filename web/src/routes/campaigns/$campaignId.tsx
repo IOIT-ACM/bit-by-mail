@@ -23,6 +23,14 @@ function CampaignDetail() {
   const { data: campaigns } = useQuery<Campaign[]>({ queryKey: ['campaigns'] })
   const campaign = campaigns?.find((c) => c.id === campaignId)
 
+  const setIsSidebarCollapsed = useAppStore(
+    (state) => state.setIsSidebarCollapsed,
+  )
+
+  useEffect(() => {
+    setIsSidebarCollapsed(true)
+  }, [setIsSidebarCollapsed])
+
   useEffect(() => {
     if (campaignId) {
       apiService.getCampaignData(campaignId)
