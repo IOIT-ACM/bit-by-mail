@@ -54,7 +54,7 @@ class DatabaseService:
     async def get_databases(self):
         return await IOLoop.current().run_in_executor(None, self._get_databases_with_details)
 
-    async def create_database(self, name):
+    async def create_database(self, name, base64_content=None):
         dbs = self._read_manifest()
         new_id = str(uuid.uuid4())
         new_db = {
@@ -65,8 +65,21 @@ class DatabaseService:
         dbs.append(new_db)
         db_path = self.get_db_path(new_id)
         os.makedirs(db_path, exist_ok=True)
-        with open(os.path.join(db_path, "recipients.csv"), "w", encoding="utf-8") as f:
-            f.write("Name,Email,AttachmentFile\n")
+
+        csv_path = os.path.join(db_path, "recipients.csv")
+
+        if base64_content:
+            content_str = base64.b64decode(base64_content).decode("utf-8")
+            df = pd.read_csv(io.StringIO(content_str)).fillna("")
+            if "Status" in df.columns:
+                df = df.drop(columns=["Status"])
+            if "SentTimestamp" in df.columns:
+                df = df.drop(columns=["SentTimestamp"])
+            df.to_csv(csv_path, index=False)
+        else:
+            with open(csv_path, "w", encoding="utf-8") as f:
+                f.write("Name,Email,AttachmentFile\n")
+
         await IOLoop.current().run_in_executor(None, self._write_manifest, dbs)
         all_dbs = await self.get_databases()
         new_db_detail = next((d for d in all_dbs if d["id"] == new_id), None)

@@ -179,8 +179,8 @@ class ApiService {
     this.sendMessage('get_database_data', { database_id: databaseId })
   }
 
-  createDatabase(name: string) {
-    this.sendMessage('create_database', { name })
+  createDatabase(name: string, content?: string) {
+    this.sendMessage('create_database', { name, content })
   }
 
   updateDatabase(databaseId: string, updates: { name?: string }) {

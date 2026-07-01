@@ -227,7 +227,7 @@ const RecipientTableContent: React.FC<{
 
       cols.push({
         accessorKey: k,
-        header: ({ column }: any) => (
+        header: () => (
           <div className="flex items-center gap-2 group">
             <span>{k}</span>
             {canRename && (

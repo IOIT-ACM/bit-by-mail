@@ -70,7 +70,11 @@ export const DatabaseViewHeader: React.FC<DatabaseViewHeaderProps> = ({
       reader.onload = (e) => {
         const text = e.target?.result as string
         const base64Content = btoa(text)
-        setPendingCsvContent(base64Content)
+        if (database.recipientCount === 0) {
+          apiService.importCsvToDatabase(databaseId, base64Content, 'replace')
+        } else {
+          setPendingCsvContent(base64Content)
+        }
       }
       reader.readAsText(file)
     }

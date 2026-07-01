@@ -155,18 +155,6 @@ export const Sidebar: React.FC = () => {
             <BookOpen size={20} />
             {!isCollapsed && <span>Documentation</span>}
           </Link>
-          <Link
-            to="/settings"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              routerState.location.pathname === '/settings'
-                ? 'bg-accent-blue/10 text-accent-blue'
-                : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
-            } ${isCollapsed ? 'justify-center' : ''}`}
-            title="Global Settings"
-          >
-            <Settings size={20} />
-            {!isCollapsed && <span>Global Settings</span>}
-          </Link>
         </div>
 
         {!isCollapsed && recentCampaigns.length > 0 && (
@@ -244,6 +232,19 @@ export const Sidebar: React.FC = () => {
           </div>
         )}
       </nav>
+
+      <Link
+        to="/settings"
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          routerState.location.pathname === '/settings'
+            ? 'bg-accent-blue/30 text-accent-blue'
+            : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+        } ${isCollapsed ? 'justify-center' : ''}`}
+        title="Settings"
+      >
+        <Settings size={20} />
+        {!isCollapsed && <span>Settings</span>}
+      </Link>
 
       <div
         className={`p-4 border-t border-borders-primary flex-shrink-0 flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'}`}

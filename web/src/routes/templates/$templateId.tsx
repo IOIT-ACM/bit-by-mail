@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import type { EmailTemplate, EmailTemplateData } from '@/types'
+import type { EmailTemplate } from '@/types'
 import { useState, useRef, useEffect } from 'react'
 import { apiService } from '@/services/apiService'
 import { Loader, Pencil, Check } from 'lucide-react'

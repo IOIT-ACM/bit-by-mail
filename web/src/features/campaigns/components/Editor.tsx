@@ -207,13 +207,13 @@ const EditorContent: React.FC<{
               onClick={() => setShowLoadModal(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
             >
-              <Download size={14} /> Load Library
+              <Download size={14} /> Load Template
             </button>
             <button
               onClick={() => setShowSaveModal(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
             >
-              <Save size={14} /> Save Library
+              <Save size={14} /> Save as Template
             </button>
           </div>
         </div>

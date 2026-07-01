@@ -306,9 +306,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_create_database(self, payload):
         name = payload.get("name")
+        content = payload.get("content")
         if not name:
             return
-        new_db, all_dbs = await self.database_service.create_database(name)
+        new_db, all_dbs = await self.database_service.create_database(name, content)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "databases_list", "payload": all_dbs}
         )
