@@ -1,14 +1,13 @@
 import { useQuery } from '@tanstack/react-query'
 import {
-  Braces,
-  Code,
   Expand,
-  Eye,
   Maximize,
   Minimize,
   Download,
   Save,
   Image as ImageIcon,
+  PanelRightClose,
+  PanelRightOpen,
 } from 'lucide-react'
 import React, { useEffect, useState, useRef } from 'react'
 import { toast } from 'sonner'
@@ -27,22 +26,6 @@ import { LoadTemplateModal } from './LoadTemplateModal'
 import { SaveTemplateModal } from './SaveTemplateModal'
 import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
 import { useAppStore } from '@/store/useAppStore'
-
-const TabButton: React.FC<{
-  label: string
-  icon: React.ReactNode
-  isActive: boolean
-  onClick: () => void
-}> = ({ label, icon, isActive, onClick }) => (
-  <button
-    onClick={onClick}
-    aria-label={`${label} tab`}
-    className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-t-lg border-b-2 transition-colors ${isActive ? 'text-text-primary border-accent-blue' : 'text-text-secondary border-transparent hover:text-text-primary'}`}
-  >
-    {icon}
-    {label}
-  </button>
-)
 
 const PlaceholderList: React.FC<{ entityId: string }> = ({ entityId }) => {
   const { data } = useQuery<CampaignData>({
@@ -63,7 +46,6 @@ const PlaceholderList: React.FC<{ entityId: string }> = ({ entityId }) => {
         No recipients uploaded yet.
       </p>
     )
-
   return (
     <div className="flex flex-wrap gap-2">
       {availablePlaceholders.map((placeholder) => (
@@ -91,12 +73,10 @@ const EditorContent: React.FC<{
     queryKey: ['campaignData', entityId],
     enabled: type === 'campaign',
   })
-
   const { data: templateData } = useQuery<EmailTemplateData>({
     queryKey: ['templateData', entityId],
     enabled: type === 'template',
   })
-
   const { data: campaigns } = useQuery<Campaign[]>({ queryKey: ['campaigns'] })
   const campaign = campaigns?.find((c) => c.id === entityId)
 
@@ -113,10 +93,6 @@ const EditorContent: React.FC<{
       ? (campaign?.is_html ?? true)
       : (template?.is_html ?? true)
 
-  const [activeTab, setActiveTab] = useState<
-    'code' | 'preview' | 'placeholders'
-  >('code')
-
   const [localSubject, setLocalSubject] = useState(initialSubject)
   const [localBody, setLocalBody] = useState('')
   const [localIsHtml, setLocalIsHtml] = useState(initialIsHtml)
@@ -125,6 +101,7 @@ const EditorContent: React.FC<{
   const [showLoadModal, setShowLoadModal] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
+  const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false)
 
   const setSaveStatus = useAppStore((state) => state.setSaveStatus)
   const saveStatus = useAppStore((state) => state.saveStatus)
@@ -139,11 +116,9 @@ const EditorContent: React.FC<{
       setLocalBody((prev) => (prev !== remoteBody ? remoteBody : prev))
     }
   }, [remoteBody])
-
   useEffect(() => {
     setLocalSubject((prev) => (prev !== initialSubject ? initialSubject : prev))
   }, [initialSubject])
-
   useEffect(() => {
     if (connectionStatus === 'closed') {
       setSaveStatus('error')
@@ -387,108 +362,92 @@ const EditorContent: React.FC<{
       </div>
 
       <div className="flex-grow flex flex-col md:flex-row gap-4 min-h-0">
-        {isMaximized ? (
-          <>
-            <div className="flex-1 flex flex-col min-h-0 gap-4">
-              <div className="flex-grow flex flex-col min-h-0">
-                <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">
-                  Code
-                </h3>
-                <div className="w-full flex-grow bg-surface-element border border-borders-primary rounded-lg overflow-hidden">
-                  <MonacoEditorWrapper
-                    value={localBody}
-                    onChange={handleBodyChange}
-                    onMount={setEditorInstance}
-                    language={localIsHtml ? 'html' : 'plaintext'}
-                  />
-                </div>
-              </div>
-              {type === 'campaign' && (
-                <div className="flex-shrink-0 p-3 bg-surface-element border border-borders-primary rounded-lg">
-                  <h4 className="text-sm font-medium text-text-secondary mb-2">
-                    Available Placeholders
-                  </h4>
-                  <PlaceholderList entityId={entityId} />
-                </div>
+        <div className="flex-1 flex flex-col min-h-0 gap-4">
+          <div className="flex-grow flex flex-col min-h-0">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h3 className="text-sm font-medium text-text-secondary">
+                {localIsHtml ? 'HTML' : 'Text'}
+              </h3>
+            </div>
+            <div className="w-full flex-grow bg-surface-element border border-borders-primary rounded-lg overflow-hidden flex">
+              {!localIsHtml ? (
+                <textarea
+                  value={localBody}
+                  onChange={(e) => handleBodyChange(e.target.value)}
+                  className="w-full h-full bg-[#1e1e2a] text-text-primary p-4 resize-none outline-none font-mono text-sm custom-scrollbar"
+                  spellCheck={false}
+                />
+              ) : (
+                <MonacoEditorWrapper
+                  value={localBody}
+                  onChange={handleBodyChange}
+                  onMount={setEditorInstance}
+                  language="html"
+                />
               )}
             </div>
-            <div className="flex-1 flex flex-col min-h-0">
-              <h3 className="text-sm font-medium text-text-secondary mb-2 px-1">
+          </div>
+          {type === 'campaign' && (
+            <div className="flex-shrink-0 p-3 bg-surface-element border border-borders-primary rounded-lg max-h-40 overflow-auto custom-scrollbar">
+              <h4 className="text-sm font-medium text-text-secondary mb-2">
+                Available Placeholders
+              </h4>
+              <PlaceholderList entityId={entityId} />
+            </div>
+          )}
+        </div>
+
+        <div
+          className={`${
+            isPreviewCollapsed
+              ? 'w-12 flex-shrink-0 cursor-pointer bg-surface-element hover:bg-surface-element-hover border border-borders-primary rounded-lg flex flex-col items-center py-4 gap-4 transition-colors'
+              : 'flex-1'
+          } flex flex-col min-h-0 transition-all duration-300`}
+          onClick={() => {
+            if (isPreviewCollapsed) setIsPreviewCollapsed(false)
+          }}
+        >
+          {isPreviewCollapsed ? (
+            <>
+              <PanelRightOpen size={20} className="text-text-secondary" />
+              <span
+                className="text-sm font-medium text-text-secondary uppercase tracking-widest mt-4"
+                style={{ writingMode: 'vertical-rl' }}
+              >
                 Preview
-              </h3>
+              </span>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <h3 className="text-sm font-medium text-text-secondary">
+                  Preview
+                </h3>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleFullscreenPreview}
+                    className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors border border-borders-primary"
+                  >
+                    <Expand size={14} />
+                    Fullscreen
+                  </button>
+                  <button
+                    onClick={() => setIsPreviewCollapsed(true)}
+                    className="flex items-center justify-center w-8 h-8 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors border border-borders-primary"
+                  >
+                    <PanelRightClose size={16} />
+                  </button>
+                </div>
+              </div>
               <iframe
                 srcDoc={previewContent}
                 title="Email Preview"
                 className="w-full h-full bg-white border border-borders-primary rounded-lg"
                 sandbox="allow-same-origin"
               />
-            </div>
-          </>
-        ) : (
-          <div className="flex-grow flex flex-col min-h-0">
-            <div className="flex items-center border-b border-borders-primary flex-shrink-0">
-              <TabButton
-                label={localIsHtml ? 'HTML' : 'Text'}
-                icon={<Code size={16} />}
-                isActive={activeTab === 'code'}
-                onClick={() => setActiveTab('code')}
-              />
-              <TabButton
-                label="Preview"
-                icon={<Eye size={16} />}
-                isActive={activeTab === 'preview'}
-                onClick={() => setActiveTab('preview')}
-              />
-              {type === 'campaign' && (
-                <TabButton
-                  label="Vars"
-                  icon={<Braces size={16} />}
-                  isActive={activeTab === 'placeholders'}
-                  onClick={() => setActiveTab('placeholders')}
-                />
-              )}
-            </div>
-            <div className="flex-grow relative mt-4">
-              {activeTab === 'code' && (
-                <div className="absolute inset-0 bg-surface-element border border-borders-primary rounded-b-lg rounded-tr-lg overflow-hidden">
-                  <MonacoEditorWrapper
-                    value={localBody}
-                    onChange={handleBodyChange}
-                    onMount={setEditorInstance}
-                    language={localIsHtml ? 'html' : 'plaintext'}
-                  />
-                </div>
-              )}
-              {activeTab === 'preview' && (
-                <div className="absolute inset-0 flex flex-col bg-surface-element border border-borders-primary rounded-b-lg rounded-tr-lg overflow-hidden">
-                  <div className="flex justify-end p-2 border-b border-borders-primary bg-surface-element-hover/50">
-                    <button
-                      onClick={handleFullscreenPreview}
-                      className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md text-text-secondary bg-surface-element hover:bg-black/30 hover:text-text-primary transition-colors"
-                    >
-                      <Expand size={14} />
-                      Fullscreen
-                    </button>
-                  </div>
-                  <iframe
-                    srcDoc={previewContent}
-                    title="Email Preview"
-                    className="w-full h-full flex-grow bg-white"
-                    sandbox="allow-same-origin"
-                  />
-                </div>
-              )}
-              {activeTab === 'placeholders' && type === 'campaign' && (
-                <div className="absolute inset-0 bg-surface-element border border-borders-primary rounded-b-lg rounded-tr-lg overflow-auto p-4 custom-scrollbar">
-                  <h4 className="text-sm font-medium text-text-secondary mb-3">
-                    Available Placeholders
-                  </h4>
-                  <PlaceholderList entityId={entityId} />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
       {showAssetPicker && (
@@ -525,7 +484,10 @@ export default function Editor({
   type: 'campaign' | 'template'
 }) {
   return (
-    <MaximizableView layoutId="editor-container">
+    <MaximizableView
+      layoutId="editor-container"
+      className="bg-[#1a1a24] backdrop-blur-xl border border-borders-primary/80 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-accent-blue/20 p-5 flex flex-col h-full"
+    >
       {({ isMaximized, onToggle }) => (
         <EditorContent
           isMaximized={isMaximized}

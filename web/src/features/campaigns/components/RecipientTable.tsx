@@ -14,8 +14,9 @@ import {
   Download,
   ChevronDown,
   ChevronUp,
-  Columns,
   Pencil,
+  Upload,
+  MoreHorizontal,
 } from 'lucide-react'
 import React, { useState, useMemo } from 'react'
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
@@ -27,6 +28,7 @@ import { EditableCell } from '@/components/common/EditableCell'
 import { MaximizableView } from '@/components/common/MaximizableView'
 import { Modal } from '@/components/common/Modal'
 import { Button } from '@/components/common/Button'
+import { toast } from 'sonner'
 
 const EMPTY_ARRAY: any[] = []
 
@@ -73,7 +75,7 @@ const RecipientTableContent: React.FC<{
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
-  const [showColDropdown, setShowColDropdown] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [renamingCol, setRenamingCol] = useState<string | null>(null)
   const [newColName, setNewColName] = useState('')
 
@@ -181,6 +183,28 @@ const RecipientTableContent: React.FC<{
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+  }
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file && contextId && contextType === 'campaign') {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const text = e.target?.result as string
+        const lines = text.split('\n')
+        const header = lines[0].toLowerCase()
+        if (!header.includes('email') || !header.includes('name')) {
+          toast.error(
+            'Invalid CSV: Must contain at least "Name" and "Email" columns.',
+          )
+          if (event.target) event.target.value = ''
+          return
+        }
+        const base64Content = btoa(text)
+        apiService.uploadRecipients(contextId, base64Content)
+      }
+      reader.readAsText(file)
+    }
   }
 
   const columns = useMemo(() => {
@@ -341,13 +365,13 @@ const RecipientTableContent: React.FC<{
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-heading-3 font-medium text-text-primary">
+            <h2 className="text-heading-3 font-medium text-text-primary truncate max-w-[200px] sm:max-w-none">
               Recipients ({recipients.length})
             </h2>
             <button
               onClick={() => setShowAddRecipientModal(true)}
               aria-label="Add Recipient"
-              className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+              className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors flex-shrink-0"
             >
               <Plus size={16} />
             </button>
@@ -358,95 +382,111 @@ const RecipientTableContent: React.FC<{
             </p>
           )}
         </div>
+
         <div className="flex items-center gap-2">
-          <button
-            onClick={handleDownloadSample}
-            className="p-1.5 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors flex items-center gap-1.5 px-3"
-            title="Download Sample CSV"
-          >
-            <Download size={16} />
-            <span className="text-sm font-medium hidden sm:inline">Sample</span>
-          </button>
-          {recipients.length > 0 && (
+          {contextType === 'campaign' && (
             <>
-              <div className="relative">
-                <button
-                  onClick={() => setShowColDropdown(!showColDropdown)}
-                  className="p-1.5 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
-                  title="Toggle Columns"
-                >
-                  <Columns size={16} />
-                </button>
-                {showColDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-surface-card border border-borders-primary rounded-md shadow-lg z-50 p-2">
-                    <div className="flex justify-between items-center px-2 pb-2 mb-2 border-b border-borders-primary">
-                      <button
-                        className="text-xs font-medium text-accent-blue hover:text-accent-blue/80"
-                        onClick={() => {
-                          const newVis: Record<string, boolean> = {}
-                          table.getAllLeafColumns().forEach((c) => {
-                            newVis[c.id] = true
-                          })
-                          setColumnVisibility(newVis)
-                        }}
-                      >
-                        Select All
-                      </button>
-                      <button
-                        className="text-xs font-medium text-text-tertiary hover:text-text-primary"
-                        onClick={() => {
-                          const newVis: Record<string, boolean> = {}
-                          table.getAllLeafColumns().forEach((c) => {
-                            if (
-                              c.id === 'select' ||
-                              c.id === 'preview' ||
-                              c.id === 'Status'
-                            ) {
-                              newVis[c.id] = true
-                            } else {
-                              newVis[c.id] = false
-                            }
-                          })
-                          setColumnVisibility(newVis)
-                        }}
-                      >
-                        Deselect All
-                      </button>
-                    </div>
-                    {table.getAllLeafColumns().map((col) => {
-                      if (
-                        col.id === 'select' ||
-                        col.id === 'preview' ||
-                        col.id === 'Status'
-                      )
-                        return null
-                      return (
-                        <label
-                          key={col.id}
-                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-element rounded cursor-pointer"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={col.getIsVisible()}
-                            onChange={col.getToggleVisibilityHandler()}
-                            className="custom-checkbox"
-                          />
-                          <span className="text-sm truncate">{col.id}</span>
-                        </label>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={exportCSV}
-                className="p-1.5 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
-                title="Export CSV"
+              <input
+                type="file"
+                id="csv-upload-table"
+                accept=".csv"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+              <Button
+                as="label"
+                htmlFor="csv-upload-table"
+                variant="secondary"
+                className="cursor-pointer px-3 h-8 text-xs font-medium bg-surface-element hover:bg-surface-element-hover"
               >
-                <Download size={16} />
-              </button>
+                <Upload size={14} />
+                <span className="hidden sm:inline">Upload CSV</span>
+              </Button>
             </>
           )}
+
+          <div className="relative">
+            <button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              className="p-1.5 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+              title="More Options"
+            >
+              <MoreHorizontal size={16} />
+            </button>
+            {showMoreMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-surface-card border border-borders-primary rounded-md shadow-lg z-50 p-2">
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => {
+                      handleDownloadSample()
+                      setShowMoreMenu(false)
+                    }}
+                    className="text-left text-sm px-2 py-1.5 hover:bg-surface-element rounded flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    <Download size={14} /> Download Sample
+                  </button>
+                  {recipients.length > 0 && (
+                    <>
+                      <button
+                        onClick={() => {
+                          exportCSV()
+                          setShowMoreMenu(false)
+                        }}
+                        className="text-left text-sm px-2 py-1.5 hover:bg-surface-element rounded flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
+                      >
+                        <Download size={14} /> Export CSV
+                      </button>
+                      <div className="h-px bg-borders-primary my-1"></div>
+                      <div className="px-2 py-1 flex justify-between items-center">
+                        <span className="text-xs font-medium text-text-tertiary uppercase">
+                          Columns
+                        </span>
+                        <button
+                          className="text-[10px] text-accent-blue hover:underline"
+                          onClick={() => {
+                            const newVis: Record<string, boolean> = {}
+                            table.getAllLeafColumns().forEach((c) => {
+                              newVis[c.id] = true
+                            })
+                            setColumnVisibility(newVis)
+                          }}
+                        >
+                          All
+                        </button>
+                      </div>
+                      <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                        {table.getAllLeafColumns().map((col) => {
+                          if (
+                            col.id === 'select' ||
+                            col.id === 'preview' ||
+                            col.id === 'Status'
+                          )
+                            return null
+                          return (
+                            <label
+                              key={col.id}
+                              className="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-element rounded cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={col.getIsVisible()}
+                                onChange={col.getToggleVisibilityHandler()}
+                                className="custom-checkbox flex-shrink-0"
+                              />
+                              <span className="text-sm truncate text-text-secondary hover:text-text-primary transition-colors">
+                                {col.id}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={onToggleMaximize}
             aria-label={isMaximized ? 'Minimize Table' : 'Maximize Table'}

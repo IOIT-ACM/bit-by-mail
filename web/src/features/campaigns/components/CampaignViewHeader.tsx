@@ -1,16 +1,13 @@
 import {
   Send,
   TestTube,
-  Upload,
   XCircle,
   Pencil,
   Check,
-  Database,
-  RefreshCw,
-  Settings,
+  MoreHorizontal,
+  Users,
 } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
-import { toast } from 'sonner'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
 import { queryClient } from '@/services/queryClient'
@@ -18,6 +15,7 @@ import type { Campaign, CampaignData } from '@/types'
 import { Button } from '@/components/common/Button'
 import { ImportFromDbModal } from './ImportFromDbModal'
 import { SyncDbModal } from './SyncDbModal'
+import { toast } from 'sonner'
 
 interface CampaignViewHeaderProps {
   campaign: Campaign
@@ -37,11 +35,19 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
   const setShowCampaignSettingsModal = useAppStore(
     (state) => state.setShowCampaignSettingsModal,
   )
+  const setIsLogCollapsed = useAppStore((state) => state.setIsLogCollapsed)
+  const isRecipientsCollapsed = useAppStore(
+    (state) => state.isRecipientsCollapsed,
+  )
+  const setIsRecipientsCollapsed = useAppStore(
+    (state) => state.setIsRecipientsCollapsed,
+  )
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaign.name)
   const [showImportDbModal, setShowImportDbModal] = useState(false)
   const [showSyncModal, setShowSyncModal] = useState(false)
+  const [showMoreMenu, setShowMoreMenu] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -71,28 +77,6 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
     }
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file && campaignId) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
-        const lines = text.split('\n')
-        const header = lines[0].toLowerCase()
-        if (!header.includes('email') || !header.includes('name')) {
-          toast.error(
-            'Invalid CSV: Must contain at least "Name" and "Email" columns.',
-          )
-          if (event.target) event.target.value = ''
-          return
-        }
-        const base64Content = btoa(text)
-        apiService.uploadRecipients(campaignId, base64Content)
-      }
-      reader.readAsText(file)
-    }
-  }
-
   const handlePreflight = () => {
     if (!campaign.subject?.trim()) {
       toast.error('Email subject cannot be empty.')
@@ -106,6 +90,7 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
       toast.error('Email body cannot be empty.')
       return
     }
+    setIsLogCollapsed(false)
     apiService.flushQueue()
     apiService.runPreflightCheck(campaignId)
   }
@@ -124,6 +109,7 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
       toast.error('Email body cannot be empty.')
       return
     }
+    setIsLogCollapsed(false)
     apiService.flushQueue()
     clearRecipientSelection()
     apiService.getCampaignSummary(campaignId)
@@ -177,53 +163,72 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
           )}
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+        <div className="flex items-center gap-2 overflow-x-visible pb-1 md:pb-0">
           <Button
-            onClick={() => setShowCampaignSettingsModal(true)}
-            variant="secondary"
+            onClick={() => setIsRecipientsCollapsed(!isRecipientsCollapsed)}
+            variant={isRecipientsCollapsed ? 'secondary' : 'primary'}
           >
-            <Settings size={16} />
-            <span className="hidden lg:inline">Settings</span>
+            <Users size={16} />
+            <span className="hidden md:inline">Recipients</span>
+            {campaign.recipientCount > 0 && (
+              <span className="ml-1 bg-background-base text-text-primary px-1.5 py-0.5 rounded-full text-xs border border-borders-primary">
+                {campaign.recipientCount}
+              </span>
+            )}
           </Button>
 
-          {campaign.sourceDbId && (
-            <Button onClick={() => setShowSyncModal(true)} variant="secondary">
-              <RefreshCw size={16} />
-              <span className="hidden lg:inline">Sync DB</span>
+          <div className="h-6 w-px bg-borders-primary mx-1"></div>
+
+          <div className="relative">
+            <Button
+              onClick={() => setShowMoreMenu(!showMoreMenu)}
+              variant="secondary"
+              title="More Options"
+            >
+              <MoreHorizontal size={16} />
             </Button>
-          )}
 
-          <Button
-            onClick={() => setShowImportDbModal(true)}
-            variant="secondary"
-          >
-            <Database size={16} />
-            <span className="hidden lg:inline">Import</span>
-          </Button>
-
-          <input
-            type="file"
-            id="csv-upload"
-            accept=".csv"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          <Button
-            as="label"
-            htmlFor="csv-upload"
-            variant="success"
-            className="cursor-pointer"
-          >
-            <Upload size={16} />
-            <span className="hidden lg:inline">Upload CSV</span>
-          </Button>
+            {showMoreMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-surface-card border border-borders-primary rounded-md shadow-lg z-50 py-1 flex flex-col">
+                <button
+                  onClick={() => {
+                    setShowCampaignSettingsModal(true)
+                    setShowMoreMenu(false)
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-surface-element text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Settings
+                </button>
+                {campaign.sourceDbId && (
+                  <button
+                    onClick={() => {
+                      setShowSyncModal(true)
+                      setShowMoreMenu(false)
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-surface-element text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    Sync Database
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowImportDbModal(true)
+                    setShowMoreMenu(false)
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm hover:bg-surface-element text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  Import from Database
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="h-6 w-px bg-borders-primary mx-1"></div>
 
           <Button
             onClick={handlePreflight}
             disabled={isSending}
-            variant="warning"
+            variant="secondary"
           >
             <TestTube size={16} />
             <span className="hidden md:inline">Preflight</span>

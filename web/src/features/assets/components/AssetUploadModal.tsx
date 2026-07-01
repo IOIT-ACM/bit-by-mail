@@ -20,13 +20,22 @@ export const AssetUploadModal: React.FC<{
     )
   }, [])
 
+  const isValidUrl = useMemo(() => {
+    try {
+      const parsedUrl = new URL(url.trim())
+      return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:'
+    } catch {
+      return false
+    }
+  }, [url])
+
   const isGDrive = useMemo(() => {
     return /(?:drive\.google\.com|drive\.usercontent\.google\.com)/i.test(url)
   }, [url])
 
   const handleImport = () => {
-    if (!name.trim() || !url.trim()) {
-      toast.error('Name and URL are required')
+    if (!name.trim() || !isValidUrl) {
+      toast.error('Name and a valid URL are required')
       return
     }
     setIsUploading(true)
@@ -78,7 +87,7 @@ export const AssetUploadModal: React.FC<{
                   Valid Google Drive link detected. Ensure sharing is "Anyone
                   with the link".
                 </p>
-              ) : url.trim() ? (
+              ) : isValidUrl ? (
                 <p className="text-xs text-text-tertiary">
                   Direct URL format detected.
                 </p>
@@ -90,7 +99,7 @@ export const AssetUploadModal: React.FC<{
             <Button
               variant="primary"
               onClick={handleImport}
-              disabled={!url.trim() || !name.trim() || isUploading}
+              disabled={!isValidUrl || !name.trim() || isUploading}
             >
               <LinkIcon size={16} />
               <span>Add Asset</span>

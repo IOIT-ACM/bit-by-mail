@@ -123,6 +123,7 @@ export interface AppState {
   selectedAssetIds: Set<string>
   selectedRecipientIndices: Set<number>
   isLogCollapsed: boolean
+  isRecipientsCollapsed: boolean
   isSidebarCollapsed: boolean
   showAddRecipientModal: boolean
   showCampaignSettingsModal: boolean

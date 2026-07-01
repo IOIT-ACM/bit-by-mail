@@ -58,6 +58,9 @@ function CampaignDetail() {
   const showCampaignSettingsModal = useAppStore(
     (state) => state.showCampaignSettingsModal,
   )
+  const isRecipientsCollapsed = useAppStore(
+    (state) => state.isRecipientsCollapsed,
+  )
   const setPreviewRecipient = useAppStore((state) => state.setPreviewRecipient)
 
   if (!campaign)
@@ -74,17 +77,21 @@ function CampaignDetail() {
         <CampaignViewHeader campaign={campaign} campaignId={campaignId} />
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row gap-4 px-4 pb-4 min-h-0">
-        <div className="w-full md:w-1/2 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 px-4 pb-4 min-h-0 relative">
+        <div
+          className={`flex flex-col min-h-0 transition-all duration-300 ease-in-out ${isRecipientsCollapsed ? 'w-full' : 'w-full lg:w-1/2 xl:w-2/3'}`}
+        >
           <Editor
             entityId={campaignId}
             subject={campaign.subject}
             type="campaign"
           />
         </div>
-        <div className="w-full md:w-1/2 flex flex-col min-h-0">
-          <RecipientTable contextId={campaignId} contextType="campaign" />
-        </div>
+        {!isRecipientsCollapsed && (
+          <div className="w-full lg:w-1/2 xl:w-1/3 flex flex-col min-h-0 transition-all duration-300 ease-in-out">
+            <RecipientTable contextId={campaignId} contextType="campaign" />
+          </div>
+        )}
       </div>
 
       <div className="flex-shrink-0 relative">

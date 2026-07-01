@@ -41,6 +41,7 @@ interface AppActions {
   clearAssetSelection: () => void
   toggleAssetSelection: (id: string) => void
   setIsLogCollapsed: (isCollapsed: boolean) => void
+  setIsRecipientsCollapsed: (isCollapsed: boolean) => void
   setIsSidebarCollapsed: (isCollapsed: boolean) => void
   toggleRecipientSelection: (index: number) => void
   clearRecipientSelection: () => void
@@ -65,7 +66,8 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   selectedTemplateIds: new Set(),
   selectedAssetIds: new Set(),
   selectedRecipientIndices: new Set(),
-  isLogCollapsed: false,
+  isLogCollapsed: true,
+  isRecipientsCollapsed: true,
   isSidebarCollapsed: false,
   showAddRecipientModal: false,
   showCampaignSettingsModal: false,
@@ -164,6 +166,8 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       return { selectedAssetIds: newSelection }
     }),
   setIsLogCollapsed: (isCollapsed) => set({ isLogCollapsed: isCollapsed }),
+  setIsRecipientsCollapsed: (isCollapsed) =>
+    set({ isRecipientsCollapsed: isCollapsed }),
   setIsSidebarCollapsed: (isCollapsed) =>
     set({ isSidebarCollapsed: isCollapsed }),
   toggleRecipientSelection: (index) =>

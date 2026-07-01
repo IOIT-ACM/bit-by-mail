@@ -68,18 +68,38 @@ const LogViewerContent: React.FC<{
   const percentage =
     progress.total > 0 ? (progress.sent / progress.total) * 100 : 0
 
+  const lastLog = logs.length > 0 ? logs[logs.length - 1] : null
+
   return (
     <div
-      className={`flex flex-col w-full bg-surface-header transition-all duration-300 ${isLogCollapsed && !isMaximized ? 'h-12' : isMaximized ? 'h-full' : 'h-64'}`}
+      className={`flex flex-col w-full bg-surface-header transition-all duration-300 ${isLogCollapsed && !isMaximized ? 'h-[46px] border-t border-borders-primary' : isMaximized ? 'h-full' : 'h-64 border-t border-borders-primary'}`}
     >
-      <div className="flex justify-between items-center p-2 ">
+      <div className="flex justify-between items-center p-2 h-[45px] flex-shrink-0">
         <div
-          className="flex items-center gap-4 flex-grow cursor-pointer"
+          className="flex items-center gap-4 flex-grow cursor-pointer overflow-hidden pr-4"
           onClick={() => !isMaximized && setIsLogCollapsed(!isLogCollapsed)}
         >
-          <h3 className="text-sm font-medium text-text-secondary">Live Logs</h3>
+          <h3 className="text-sm font-medium text-text-secondary whitespace-nowrap pl-2">
+            Live Logs
+          </h3>
+
+          {isLogCollapsed && !isMaximized && lastLog && !isSending && (
+            <div className="flex items-center gap-2 truncate opacity-80 border-l border-borders-primary pl-4 ml-2">
+              <span
+                className={`text-xs font-medium ${getLogColor(lastLog.level)} uppercase`}
+              >
+                [{lastLog.level}]
+              </span>
+              <span
+                className={`text-xs truncate ${getLogColor(lastLog.level)}`}
+              >
+                {lastLog.message}
+              </span>
+            </div>
+          )}
+
           {isSending && progress.total > 0 && (
-            <div className="flex items-center gap-2 w-64">
+            <div className="flex items-center gap-2 w-64 border-l border-borders-primary pl-4 ml-2">
               <div className="w-full bg-surface-element rounded-full h-2">
                 <div
                   className="bg-accent-blue h-2 rounded-full transition-all duration-300 ease-linear"
@@ -153,7 +173,10 @@ const LogViewerContent: React.FC<{
 
 const StatusBar: React.FC = () => {
   return (
-    <MaximizableView layoutId="log-viewer-container">
+    <MaximizableView
+      layoutId="log-viewer-container"
+      className="flex flex-col h-full bg-surface-header"
+    >
       {({ isMaximized, onToggle }) => (
         <LogViewerContent
           isMaximized={isMaximized}

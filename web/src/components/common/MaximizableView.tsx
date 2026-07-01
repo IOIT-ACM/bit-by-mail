@@ -1,20 +1,32 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface MaximizableViewProps {
-  children: (props: { isMaximized: boolean; onToggle: () => void }) => React.ReactNode;
-  layoutId: string;
+  children: (props: {
+    isMaximized: boolean
+    onToggle: () => void
+  }) => React.ReactNode
+  layoutId: string
+  className?: string
 }
 
-export const MaximizableView: React.FC<MaximizableViewProps> = ({ children, layoutId }) => {
-  const [isMaximized, setIsMaximized] = useState(false);
-  const onToggle = () => setIsMaximized(!isMaximized);
+export const MaximizableView: React.FC<MaximizableViewProps> = ({
+  children,
+  layoutId,
+  className,
+}) => {
+  const [isMaximized, setIsMaximized] = useState(false)
+  const onToggle = () => setIsMaximized(!isMaximized)
+
+  const defaultClasses =
+    'bg-surface-card backdrop-blur-xl border border-borders-primary rounded-card shadow-card p-4 flex flex-col h-full'
+  const appliedClasses = className || defaultClasses
 
   return (
     <>
       <motion.div
         layoutId={layoutId}
-        className="bg-surface-card backdrop-blur-xl border border-borders-primary rounded-card shadow-card p-4 flex flex-col h-full"
+        className={appliedClasses}
         style={{ visibility: isMaximized ? 'hidden' : 'visible' }}
       >
         {children({ isMaximized: false, onToggle })}
@@ -32,7 +44,7 @@ export const MaximizableView: React.FC<MaximizableViewProps> = ({ children, layo
             />
             <motion.div
               layoutId={layoutId}
-              className="relative w-full h-full bg-surface-card border border-borders-primary rounded-card shadow-card p-4 flex flex-col"
+              className={`relative w-full h-full ${appliedClasses}`}
             >
               {children({ isMaximized: true, onToggle })}
             </motion.div>
@@ -40,5 +52,5 @@ export const MaximizableView: React.FC<MaximizableViewProps> = ({ children, layo
         )}
       </AnimatePresence>
     </>
-  );
-};
+  )
+}
