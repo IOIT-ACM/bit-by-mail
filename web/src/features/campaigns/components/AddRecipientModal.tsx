@@ -13,7 +13,12 @@ export const AddRecipientModal: React.FC<{
   contextId: string
   contextType: 'campaign' | 'database'
 }> = ({ contextId, contextType }) => {
-  const { showAddRecipientModal, setShowAddRecipientModal } = useAppStore()
+  const showAddRecipientModal = useAppStore(
+    (state) => state.showAddRecipientModal,
+  )
+  const setShowAddRecipientModal = useAppStore(
+    (state) => state.setShowAddRecipientModal,
+  )
 
   const { data: campaignData } = useQuery<CampaignData>({
     queryKey: ['campaignData', contextId],

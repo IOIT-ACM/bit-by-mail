@@ -20,7 +20,12 @@ export const RecipientActionPopup: React.FC = () => {
   const contextId = campaignId || databaseId
   const contextType = campaignId ? 'campaign' : databaseId ? 'database' : null
 
-  const { selectedRecipientIndices, clearRecipientSelection } = useAppStore()
+  const selectedRecipientIndices = useAppStore(
+    (state) => state.selectedRecipientIndices,
+  )
+  const clearRecipientSelection = useAppStore(
+    (state) => state.clearRecipientSelection,
+  )
   const selectedCount = selectedRecipientIndices.size
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)

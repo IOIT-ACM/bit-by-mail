@@ -10,19 +10,22 @@ export const useWebSocket = () => {
   const router = useRouter()
   const ws = useRef<WebSocket | null>(null)
   const reconnectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const {
-    addLog,
-    setIsSending,
-    setIsStopping,
-    clearLogs,
-    setConnectionStatus,
-    setProgress,
-    setRecipientIssues,
-    clearRecipientIssues,
-    setCampaignSummary,
-    setShowCampaignSummaryModal,
-    setIsPasswordSet,
-  } = useAppStore()
+
+  const addLog = useAppStore((state) => state.addLog)
+  const setIsSending = useAppStore((state) => state.setIsSending)
+  const setIsStopping = useAppStore((state) => state.setIsStopping)
+  const clearLogs = useAppStore((state) => state.clearLogs)
+  const setConnectionStatus = useAppStore((state) => state.setConnectionStatus)
+  const setProgress = useAppStore((state) => state.setProgress)
+  const setRecipientIssues = useAppStore((state) => state.setRecipientIssues)
+  const clearRecipientIssues = useAppStore(
+    (state) => state.clearRecipientIssues,
+  )
+  const setCampaignSummary = useAppStore((state) => state.setCampaignSummary)
+  const setShowCampaignSummaryModal = useAppStore(
+    (state) => state.setShowCampaignSummaryModal,
+  )
+  const setIsPasswordSet = useAppStore((state) => state.setIsPasswordSet)
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) return

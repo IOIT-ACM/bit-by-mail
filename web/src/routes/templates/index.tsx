@@ -16,7 +16,10 @@ function TemplatesList() {
     queryKey: ['templates'],
   })
 
-  const { toggleTemplateSelection, selectedTemplateIds } = useAppStore()
+  const toggleTemplateSelection = useAppStore(
+    (state) => state.toggleTemplateSelection,
+  )
+  const selectedTemplateIds = useAppStore((state) => state.selectedTemplateIds)
 
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')

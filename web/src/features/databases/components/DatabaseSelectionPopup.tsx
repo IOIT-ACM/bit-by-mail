@@ -15,7 +15,10 @@ export const DatabaseSelectionPopup: React.FC = () => {
   const { data: databases = [] } = useQuery<Database[]>({
     queryKey: ['databases'],
   })
-  const { selectedDatabaseIds, clearDatabaseSelection } = useAppStore()
+  const selectedDatabaseIds = useAppStore((state) => state.selectedDatabaseIds)
+  const clearDatabaseSelection = useAppStore(
+    (state) => state.clearDatabaseSelection,
+  )
   const selectedCount = selectedDatabaseIds.size
 
   const [showConfirm, setShowConfirm] = useState(false)

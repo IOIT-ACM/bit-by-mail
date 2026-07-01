@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2, ArrowRight } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
 import { apiService } from '@/services/apiService'
 import { Button } from '@/components/common/Button'
@@ -8,27 +8,18 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { toast } from 'sonner'
 import { useQuery } from '@tanstack/react-query'
 import type { Campaign } from '@/types'
-import { useRouter } from '@tanstack/react-router'
 
 export const SelectionPopup: React.FC = () => {
-  const router = useRouter()
   const { data: campaigns = [] } = useQuery<Campaign[]>({
     queryKey: ['campaigns'],
   })
-  const { selectedCampaignIds, clearCampaignSelection } = useAppStore()
+  const selectedCampaignIds = useAppStore((state) => state.selectedCampaignIds)
+  const clearCampaignSelection = useAppStore(
+    (state) => state.clearCampaignSelection,
+  )
   const selectedCount = selectedCampaignIds.size
 
   const [showConfirm, setShowConfirm] = useState(false)
-
-  const handleOpen = () => {
-    if (selectedCount !== 1) return
-    const id = selectedCampaignIds.values().next().value
-    router.navigate({
-      to: '/campaigns/$campaignId',
-      params: { campaignId: id ?? 'undefined' },
-    })
-    clearCampaignSelection()
-  }
 
   const confirmDelete = () => {
     apiService.deleteCampaigns(Array.from(selectedCampaignIds))
@@ -62,12 +53,6 @@ export const SelectionPopup: React.FC = () => {
                 selected
               </p>
               <div className="flex flex-col gap-2">
-                {selectedCount === 1 && (
-                  <Button onClick={handleOpen} variant="secondary">
-                    <ArrowRight size={16} />
-                    <span>Open Campaign</span>
-                  </Button>
-                )}
                 <Button onClick={() => setShowConfirm(true)} variant="danger">
                   <Trash2 size={16} />
                   <span>Delete Selected</span>

@@ -22,6 +22,10 @@ export const DatabaseViewHeader: React.FC<DatabaseViewHeaderProps> = ({
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    setEditedName(database.name)
+  }, [database.name])
+
+  useEffect(() => {
     if (isEditingName && inputRef.current) {
       inputRef.current.focus()
     }

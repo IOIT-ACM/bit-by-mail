@@ -29,7 +29,8 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
     string,
     string | undefined
   >
-  const { previewRecipient, setPreviewRecipient } = useAppStore()
+  const previewRecipient = useAppStore((state) => state.previewRecipient)
+  const setPreviewRecipient = useAppStore((state) => state.setPreviewRecipient)
 
   const { data: config } = useQuery<Config>({ queryKey: ['config'] })
   const { data: campaigns } = useQuery<Campaign[]>({ queryKey: ['campaigns'] })

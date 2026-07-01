@@ -27,14 +27,22 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
   campaign,
   campaignId,
 }) => {
-  const { isSending, isStopping, setIsStopping, clearRecipientSelection } =
-    useAppStore()
+  const isSending = useAppStore((state) => state.isSending)
+  const isStopping = useAppStore((state) => state.isStopping)
+  const setIsStopping = useAppStore((state) => state.setIsStopping)
+  const clearRecipientSelection = useAppStore(
+    (state) => state.clearRecipientSelection,
+  )
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaign.name)
   const [showImportDbModal, setShowImportDbModal] = useState(false)
   const [showSyncModal, setShowSyncModal] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setEditedName(campaign.name)
+  }, [campaign.name])
 
   useEffect(() => {
     if (isEditingName && inputRef.current) {

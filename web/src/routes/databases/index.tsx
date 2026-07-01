@@ -15,7 +15,10 @@ function DatabasesList() {
     queryKey: ['databases'],
   })
 
-  const { toggleDatabaseSelection, selectedDatabaseIds } = useAppStore()
+  const toggleDatabaseSelection = useAppStore(
+    (state) => state.toggleDatabaseSelection,
+  )
+  const selectedDatabaseIds = useAppStore((state) => state.selectedDatabaseIds)
 
   return (
     <div className="p-8 h-full overflow-y-auto custom-scrollbar relative">

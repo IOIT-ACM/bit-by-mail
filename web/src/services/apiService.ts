@@ -78,6 +78,10 @@ class ApiService {
     this.sendMessage('delete_campaigns', { campaign_ids: campaignIds })
   }
 
+  duplicateCampaign(campaignId: string) {
+    this.sendMessage('duplicate_campaign', { campaign_id: campaignId })
+  }
+
   saveTemplate(campaignId: string, emailBody: string) {
     this.sendMessage('save_template', {
       campaign_id: campaignId,

@@ -28,6 +28,8 @@ import { MaximizableView } from '@/components/common/MaximizableView'
 import { Modal } from '@/components/common/Modal'
 import { Button } from '@/components/common/Button'
 
+const EMPTY_ARRAY: any[] = []
+
 const RecipientTableContent: React.FC<{
   isMaximized: boolean
   onToggleMaximize: () => void
@@ -46,19 +48,25 @@ const RecipientTableContent: React.FC<{
 
   const recipients =
     contextType === 'campaign'
-      ? (campaignData?.recipients ?? [])
-      : (databaseData?.recipients ?? [])
+      ? (campaignData?.recipients ?? EMPTY_ARRAY)
+      : (databaseData?.recipients ?? EMPTY_ARRAY)
   const showAttachments = config?.send_attachments ?? true
 
-  const {
-    setPreviewRecipient,
-    recipientIssues,
-    selectedRecipientIndices,
-    toggleRecipientSelection,
-    selectAllRecipients,
-    clearRecipientSelection,
-    setShowAddRecipientModal,
-  } = useAppStore()
+  const setPreviewRecipient = useAppStore((state) => state.setPreviewRecipient)
+  const recipientIssues = useAppStore((state) => state.recipientIssues)
+  const selectedRecipientIndices = useAppStore(
+    (state) => state.selectedRecipientIndices,
+  )
+  const toggleRecipientSelection = useAppStore(
+    (state) => state.toggleRecipientSelection,
+  )
+  const selectAllRecipients = useAppStore((state) => state.selectAllRecipients)
+  const clearRecipientSelection = useAppStore(
+    (state) => state.clearRecipientSelection,
+  )
+  const setShowAddRecipientModal = useAppStore(
+    (state) => state.setShowAddRecipientModal,
+  )
 
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({})
@@ -158,7 +166,7 @@ const RecipientTableContent: React.FC<{
   }
 
   const columns = useMemo(() => {
-    if (recipients.length === 0) return []
+    if (recipients.length === 0) return EMPTY_ARRAY
     const keys = Object.keys(recipients[0]).filter(
       (k) => k !== 'Status' && k !== 'SentTimestamp',
     )

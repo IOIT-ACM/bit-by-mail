@@ -35,7 +35,9 @@ function DatabaseDetail() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const { showAddRecipientModal } = useAppStore()
+  const showAddRecipientModal = useAppStore(
+    (state) => state.showAddRecipientModal,
+  )
 
   if (!database)
     return (

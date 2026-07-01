@@ -39,12 +39,14 @@ function CampaignDetail() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  const {
-    showCampaignSummaryModal,
-    previewRecipient,
-    showAddRecipientModal,
-    setPreviewRecipient,
-  } = useAppStore()
+  const showCampaignSummaryModal = useAppStore(
+    (state) => state.showCampaignSummaryModal,
+  )
+  const previewRecipient = useAppStore((state) => state.previewRecipient)
+  const showAddRecipientModal = useAppStore(
+    (state) => state.showAddRecipientModal,
+  )
+  const setPreviewRecipient = useAppStore((state) => state.setPreviewRecipient)
 
   if (!campaign)
     return (

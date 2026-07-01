@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import type { Campaign } from '@/types'
 import { Button } from '@/components/common/Button'
 import { Mail, Plus, Loader } from 'lucide-react'
+import { useAppStore } from '@/store/useAppStore'
+import { SelectionPopup } from '@/features/campaigns/components/SelectionPopup'
 
 export const Route = createFileRoute('/campaigns/')({
   component: CampaignsList,
@@ -13,8 +15,13 @@ function CampaignsList() {
     queryKey: ['campaigns'],
   })
 
+  const toggleCampaignSelection = useAppStore(
+    (state) => state.toggleCampaignSelection,
+  )
+  const selectedCampaignIds = useAppStore((state) => state.selectedCampaignIds)
+
   return (
-    <div className="p-8 h-full overflow-y-auto custom-scrollbar">
+    <div className="p-8 h-full overflow-y-auto custom-scrollbar relative">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Campaigns</h1>
       </div>
@@ -40,35 +47,48 @@ function CampaignsList() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {campaigns.map((c) => (
-            <div
-              key={c.id}
-              className="bg-surface-card p-6 rounded-card border border-borders-primary shadow-card flex flex-col h-full hover:border-accent-blue/50 transition-colors"
-            >
-              <h2
-                className="text-xl font-semibold mb-1 truncate"
-                title={c.name}
+          {campaigns.map((c) => {
+            const isSelected = selectedCampaignIds.has(c.id)
+            return (
+              <div
+                key={c.id}
+                className={`bg-surface-card p-6 rounded-card border shadow-card flex flex-col h-full transition-colors relative ${isSelected ? 'border-accent-blue bg-accent-blue/5' : 'border-borders-primary hover:border-accent-blue/50'}`}
               >
-                {c.name}
-              </h2>
-              <p className="text-xs text-text-tertiary mb-4 font-mono">
-                {new Date(c.createdAt).toLocaleDateString()}
-              </p>
-              <div className="flex-grow">
-                <p className="text-text-secondary mb-6 flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-accent-blue"></span>
-                  {c.recipientCount || 0} Recipients
+                <div className="absolute top-4 right-4">
+                  <input
+                    type="checkbox"
+                    className="custom-checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleCampaignSelection(c.id)}
+                  />
+                </div>
+                <h2
+                  className="text-xl font-semibold mb-1 truncate pr-8"
+                  title={c.name}
+                >
+                  {c.name}
+                </h2>
+                <p className="text-xs text-text-tertiary mb-4 font-mono">
+                  {new Date(c.createdAt).toLocaleDateString()}
                 </p>
+                <div className="flex-grow">
+                  <p className="text-text-secondary mb-6 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-accent-blue"></span>
+                    {c.recipientCount || 0} Recipients
+                  </p>
+                </div>
+                <Link to="/campaigns/$campaignId" params={{ campaignId: c.id }}>
+                  <Button variant="secondary" className="w-full">
+                    Open Campaign
+                  </Button>
+                </Link>
               </div>
-              <Link to="/campaigns/$campaignId" params={{ campaignId: c.id }}>
-                <Button variant="primary" className="w-full">
-                  Open Campaign
-                </Button>
-              </Link>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
+
+      <SelectionPopup />
     </div>
   )
 }

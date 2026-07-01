@@ -34,13 +34,19 @@ export const CampaignSummaryModal: React.FC = () => {
     string,
     string | undefined
   >
-  const {
-    campaignSummary,
-    showCampaignSummaryModal,
-    setShowCampaignSummaryModal,
-    selectedRecipientIndices,
-    clearRecipientSelection,
-  } = useAppStore()
+  const campaignSummary = useAppStore((state) => state.campaignSummary)
+  const showCampaignSummaryModal = useAppStore(
+    (state) => state.showCampaignSummaryModal,
+  )
+  const setShowCampaignSummaryModal = useAppStore(
+    (state) => state.setShowCampaignSummaryModal,
+  )
+  const selectedRecipientIndices = useAppStore(
+    (state) => state.selectedRecipientIndices,
+  )
+  const clearRecipientSelection = useAppStore(
+    (state) => state.clearRecipientSelection,
+  )
 
   if (!campaignSummary) return null
 

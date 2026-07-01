@@ -15,7 +15,10 @@ export const TemplateSelectionPopup: React.FC = () => {
   const { data: templates = [] } = useQuery<EmailTemplate[]>({
     queryKey: ['templates'],
   })
-  const { selectedTemplateIds, clearTemplateSelection } = useAppStore()
+  const selectedTemplateIds = useAppStore((state) => state.selectedTemplateIds)
+  const clearTemplateSelection = useAppStore(
+    (state) => state.clearTemplateSelection,
+  )
   const selectedCount = selectedTemplateIds.size
 
   const [showConfirm, setShowConfirm] = useState(false)
