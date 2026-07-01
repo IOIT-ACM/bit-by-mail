@@ -13,9 +13,15 @@ import {
   PanelLeft,
   Database,
   LayoutTemplate,
+  Image as ImageIcon,
 } from 'lucide-react'
 import { useAppStore } from '@/store/useAppStore'
-import type { Campaign, Database as DatabaseType, EmailTemplate } from '@/types'
+import type {
+  Campaign,
+  Database as DatabaseType,
+  EmailTemplate,
+  Asset,
+} from '@/types'
 import { apiService } from '@/services/apiService'
 
 export const Sidebar: React.FC = () => {
@@ -37,6 +43,10 @@ export const Sidebar: React.FC = () => {
 
   const { data: templates = [] } = useQuery<EmailTemplate[]>({
     queryKey: ['templates'],
+  })
+
+  const { data: assets = [] } = useQuery<Asset[]>({
+    queryKey: ['assets'],
   })
 
   const recentCampaigns = campaigns.slice(0, 5)
@@ -95,7 +105,7 @@ export const Sidebar: React.FC = () => {
             title="Campaigns"
           >
             <Home size={20} />
-            {!isCollapsed && <span>Campaigns</span>}
+            {!isCollapsed && <span>Campaigns ({campaigns.length})</span>}
           </Link>
           <Link
             to="/databases"
@@ -107,7 +117,7 @@ export const Sidebar: React.FC = () => {
             title="Databases"
           >
             <Database size={20} />
-            {!isCollapsed && <span>Databases</span>}
+            {!isCollapsed && <span>Databases ({databases.length})</span>}
           </Link>
           <Link
             to="/templates"
@@ -119,7 +129,19 @@ export const Sidebar: React.FC = () => {
             title="Templates"
           >
             <LayoutTemplate size={20} />
-            {!isCollapsed && <span>Templates</span>}
+            {!isCollapsed && <span>Templates ({templates.length})</span>}
+          </Link>
+          <Link
+            to="/assets"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              routerState.location.pathname.startsWith('/assets')
+                ? 'bg-accent-blue/10 text-accent-blue'
+                : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+            } ${isCollapsed ? 'justify-center' : ''}`}
+            title="Assets"
+          >
+            <ImageIcon size={20} />
+            {!isCollapsed && <span>Assets ({assets.length})</span>}
           </Link>
           <Link
             to="/docs"

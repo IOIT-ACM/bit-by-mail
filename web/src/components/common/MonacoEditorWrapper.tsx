@@ -4,7 +4,8 @@ import { Loader } from 'lucide-react'
 export const MonacoEditorWrapper: React.FC<{
   value: string
   onChange: (value: string) => void
-}> = ({ value, onChange }) => {
+  onMount?: (editor: any) => void
+}> = ({ value, onChange, onMount }) => {
   const editorRef = useRef<HTMLDivElement>(null)
   const monacoInstance = useRef<any>(null)
   const emmetDisposeRef = useRef<any>(null)
@@ -92,6 +93,7 @@ export const MonacoEditorWrapper: React.FC<{
 
         monacoInstance.current = editor
         setIsLoading(false)
+        if (onMount) onMount(editor)
 
         editor.onDidChangeModelContent(() => {
           const currentValue = editor?.getValue()
@@ -114,7 +116,7 @@ export const MonacoEditorWrapper: React.FC<{
       }
       monacoInstance.current = null
     }
-  }, [])
+  }, [onMount])
 
   useEffect(() => {
     const editor = monacoInstance.current

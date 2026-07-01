@@ -8,6 +8,7 @@ import {
   Minimize,
   Download,
   Save,
+  Image as ImageIcon,
 } from 'lucide-react'
 import React, { useEffect, useState, useRef } from 'react'
 import { toast } from 'sonner'
@@ -19,6 +20,7 @@ import { MaximizableView } from '@/components/common/MaximizableView'
 import { MonacoEditorWrapper } from '@/components/common/MonacoEditorWrapper'
 import { LoadTemplateModal } from './LoadTemplateModal'
 import { SaveTemplateModal } from './SaveTemplateModal'
+import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
 
 const TabButton: React.FC<{
   label: string
@@ -87,9 +89,11 @@ const EditorContent: React.FC<{
 
   const [localSubject, setLocalSubject] = useState(initialSubject)
   const [localBody, setLocalBody] = useState('')
+  const [editorInstance, setEditorInstance] = useState<any>(null)
 
   const [showLoadModal, setShowLoadModal] = useState(false)
   const [showSaveModal, setShowSaveModal] = useState(false)
+  const [showAssetPicker, setShowAssetPicker] = useState(false)
 
   useEffect(() => {
     if (data?.emailBody !== undefined) {
@@ -121,6 +125,18 @@ const EditorContent: React.FC<{
           )
         : old,
     )
+  }
+
+  const handleInsertAsset = (url: string, name: string) => {
+    const tag = `<img src="${url}" alt="${name}" />`
+    if (editorInstance) {
+      const selection = editorInstance.getSelection()
+      const op = { range: selection, text: tag, forceMoveMarkers: true }
+      editorInstance.executeEdits('source', [op])
+    } else {
+      handleBodyChange(localBody + tag)
+    }
+    setShowAssetPicker(false)
   }
 
   const lastSavedBody = useRef(data?.emailBody || '')
@@ -182,6 +198,12 @@ const EditorContent: React.FC<{
           </h2>
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setShowAssetPicker(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
+            >
+              <ImageIcon size={14} /> Insert Asset
+            </button>
+            <button
               onClick={() => setShowLoadModal(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
             >
@@ -232,6 +254,7 @@ const EditorContent: React.FC<{
                   <MonacoEditorWrapper
                     value={localBody}
                     onChange={handleBodyChange}
+                    onMount={setEditorInstance}
                   />
                 </div>
               </div>
@@ -282,6 +305,7 @@ const EditorContent: React.FC<{
                   <MonacoEditorWrapper
                     value={localBody}
                     onChange={handleBodyChange}
+                    onMount={setEditorInstance}
                   />
                 </div>
               )}
@@ -317,6 +341,12 @@ const EditorContent: React.FC<{
         )}
       </div>
 
+      {showAssetPicker && (
+        <AssetPickerModal
+          onClose={() => setShowAssetPicker(false)}
+          onSelect={handleInsertAsset}
+        />
+      )}
       {showLoadModal && (
         <LoadTemplateModal
           onClose={() => setShowLoadModal(false)}

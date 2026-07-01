@@ -40,6 +40,7 @@ export const useWebSocket = () => {
       apiService.getCampaigns()
       apiService.getDatabases()
       apiService.getGlobalTemplates()
+      apiService.getAssets()
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current)
         reconnectTimeout.current = null
@@ -272,6 +273,9 @@ export const useWebSocket = () => {
         case 'global_template_data':
           queryClient.setQueryData(['templateData', payload.id], payload)
           apiService.handleResponse('global_template_data', payload)
+          break
+        case 'assets_list':
+          queryClient.setQueryData(['assets'], payload)
           break
       }
     }

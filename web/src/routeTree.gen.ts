@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TemplatesIndexRouteImport } from './routes/templates/index'
 import { Route as DatabasesIndexRouteImport } from './routes/databases/index'
 import { Route as CampaignsIndexRouteImport } from './routes/campaigns/index'
+import { Route as AssetsIndexRouteImport } from './routes/assets/index'
 import { Route as TemplatesNewRouteImport } from './routes/templates/new'
 import { Route as TemplatesTemplateIdRouteImport } from './routes/templates/$templateId'
 import { Route as DatabasesNewRouteImport } from './routes/databases/new'
@@ -50,6 +51,11 @@ const DatabasesIndexRoute = DatabasesIndexRouteImport.update({
 const CampaignsIndexRoute = CampaignsIndexRouteImport.update({
   id: '/campaigns/',
   path: '/campaigns/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssetsIndexRoute = AssetsIndexRouteImport.update({
+  id: '/assets/',
+  path: '/assets/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TemplatesNewRoute = TemplatesNewRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/databases/new': typeof DatabasesNewRoute
   '/templates/$templateId': typeof TemplatesTemplateIdRoute
   '/templates/new': typeof TemplatesNewRoute
+  '/assets/': typeof AssetsIndexRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/databases/': typeof DatabasesIndexRoute
   '/templates/': typeof TemplatesIndexRoute
@@ -107,6 +114,7 @@ export interface FileRoutesByTo {
   '/databases/new': typeof DatabasesNewRoute
   '/templates/$templateId': typeof TemplatesTemplateIdRoute
   '/templates/new': typeof TemplatesNewRoute
+  '/assets': typeof AssetsIndexRoute
   '/campaigns': typeof CampaignsIndexRoute
   '/databases': typeof DatabasesIndexRoute
   '/templates': typeof TemplatesIndexRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/databases/new': typeof DatabasesNewRoute
   '/templates/$templateId': typeof TemplatesTemplateIdRoute
   '/templates/new': typeof TemplatesNewRoute
+  '/assets/': typeof AssetsIndexRoute
   '/campaigns/': typeof CampaignsIndexRoute
   '/databases/': typeof DatabasesIndexRoute
   '/templates/': typeof TemplatesIndexRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
     | '/databases/new'
     | '/templates/$templateId'
     | '/templates/new'
+    | '/assets/'
     | '/campaigns/'
     | '/databases/'
     | '/templates/'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/databases/new'
     | '/templates/$templateId'
     | '/templates/new'
+    | '/assets'
     | '/campaigns'
     | '/databases'
     | '/templates'
@@ -166,6 +177,7 @@ export interface FileRouteTypes {
     | '/databases/new'
     | '/templates/$templateId'
     | '/templates/new'
+    | '/assets/'
     | '/campaigns/'
     | '/databases/'
     | '/templates/'
@@ -181,6 +193,7 @@ export interface RootRouteChildren {
   DatabasesNewRoute: typeof DatabasesNewRoute
   TemplatesTemplateIdRoute: typeof TemplatesTemplateIdRoute
   TemplatesNewRoute: typeof TemplatesNewRoute
+  AssetsIndexRoute: typeof AssetsIndexRoute
   CampaignsIndexRoute: typeof CampaignsIndexRoute
   DatabasesIndexRoute: typeof DatabasesIndexRoute
   TemplatesIndexRoute: typeof TemplatesIndexRoute
@@ -228,6 +241,13 @@ declare module '@tanstack/react-router' {
       path: '/campaigns'
       fullPath: '/campaigns/'
       preLoaderRoute: typeof CampaignsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assets/': {
+      id: '/assets/'
+      path: '/assets'
+      fullPath: '/assets/'
+      preLoaderRoute: typeof AssetsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/templates/new': {
@@ -285,6 +305,7 @@ const rootRouteChildren: RootRouteChildren = {
   DatabasesNewRoute: DatabasesNewRoute,
   TemplatesTemplateIdRoute: TemplatesTemplateIdRoute,
   TemplatesNewRoute: TemplatesNewRoute,
+  AssetsIndexRoute: AssetsIndexRoute,
   CampaignsIndexRoute: CampaignsIndexRoute,
   DatabasesIndexRoute: DatabasesIndexRoute,
   TemplatesIndexRoute: TemplatesIndexRoute,

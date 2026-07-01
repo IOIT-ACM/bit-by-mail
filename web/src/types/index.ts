@@ -85,6 +85,13 @@ export interface EmailTemplateData extends EmailTemplate {
   body: string
 }
 
+export interface Asset {
+  id: string
+  name: string
+  url: string
+  createdAt: string
+}
+
 export interface AppState {
   sender_password: string
   logs: LogEntry[]
@@ -103,6 +110,7 @@ export interface AppState {
   selectedCampaignIds: Set<string>
   selectedDatabaseIds: Set<string>
   selectedTemplateIds: Set<string>
+  selectedAssetIds: Set<string>
   selectedRecipientIndices: Set<number>
   isLogCollapsed: boolean
   showAddRecipientModal: boolean

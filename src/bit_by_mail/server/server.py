@@ -14,6 +14,7 @@ from .services.preflight_service import PreflightService
 from .services.campaign_service import CampaignService
 from .services.database_service import DatabaseService
 from .services.global_template_service import GlobalTemplateService
+from .services.asset_service import AssetService
 
 def make_app():
     try:
@@ -31,6 +32,7 @@ def make_app():
     campaign_service = CampaignService(base_dir)
     database_service = DatabaseService(base_dir)
     global_template_service = GlobalTemplateService(base_dir)
+    asset_service = AssetService(base_dir)
     recipient_service = RecipientService(campaign_service)
     template_service = TemplateService(campaign_service)
     preflight_service = PreflightService(base_dir, campaign_service, recipient_service, template_service)
@@ -53,6 +55,7 @@ def make_app():
         "campaign_service": campaign_service,
         "database_service": database_service,
         "global_template_service": global_template_service,
+        "asset_service": asset_service,
         "websocket_manager": websocket_manager,
     }
 

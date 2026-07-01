@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { Code, Expand, Eye, Maximize, Minimize } from 'lucide-react'
+import {
+  Code,
+  Expand,
+  Eye,
+  Maximize,
+  Minimize,
+  Image as ImageIcon,
+} from 'lucide-react'
 import React, { useEffect, useState, useRef } from 'react'
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
 import { apiService } from '@/services/apiService'
@@ -7,6 +14,7 @@ import { queryClient } from '@/services/queryClient'
 import type { EmailTemplateData } from '@/types'
 import { MaximizableView } from '@/components/common/MaximizableView'
 import { MonacoEditorWrapper } from '@/components/common/MonacoEditorWrapper'
+import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
 
 const TabButton: React.FC<{
   label: string
@@ -36,6 +44,8 @@ const GlobalEditorContent: React.FC<{
   const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code')
   const [localSubject, setLocalSubject] = useState(initialSubject)
   const [localBody, setLocalBody] = useState('')
+  const [editorInstance, setEditorInstance] = useState<any>(null)
+  const [showAssetPicker, setShowAssetPicker] = useState(false)
 
   useEffect(() => {
     if (data?.body !== undefined) {
@@ -64,6 +74,18 @@ const GlobalEditorContent: React.FC<{
       ['templateData', templateId],
       (old) => (old ? { ...old, subject: newSubject } : old),
     )
+  }
+
+  const handleInsertAsset = (url: string, name: string) => {
+    const tag = `<img src="${url}" alt="${name}" />`
+    if (editorInstance) {
+      const selection = editorInstance.getSelection()
+      const op = { range: selection, text: tag, forceMoveMarkers: true }
+      editorInstance.executeEdits('source', [op])
+    } else {
+      handleBodyChange(localBody + tag)
+    }
+    setShowAssetPicker(false)
   }
 
   const lastSavedBody = useRef(data?.body || '')
@@ -107,10 +129,18 @@ const GlobalEditorContent: React.FC<{
   return (
     <>
       <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <div>
+        <div className="flex items-center gap-4">
           <h2 className="text-heading-3 font-medium text-text-primary">
             Email Content
           </h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAssetPicker(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
+            >
+              <ImageIcon size={14} /> Insert Asset
+            </button>
+          </div>
         </div>
         <button
           onClick={onToggleMaximize}
@@ -149,6 +179,7 @@ const GlobalEditorContent: React.FC<{
                   <MonacoEditorWrapper
                     value={localBody}
                     onChange={handleBodyChange}
+                    onMount={setEditorInstance}
                   />
                 </div>
               </div>
@@ -187,6 +218,7 @@ const GlobalEditorContent: React.FC<{
                   <MonacoEditorWrapper
                     value={localBody}
                     onChange={handleBodyChange}
+                    onMount={setEditorInstance}
                   />
                 </div>
               )}
@@ -213,6 +245,13 @@ const GlobalEditorContent: React.FC<{
           </div>
         )}
       </div>
+
+      {showAssetPicker && (
+        <AssetPickerModal
+          onClose={() => setShowAssetPicker(false)}
+          onSelect={handleInsertAsset}
+        />
+      )}
     </>
   )
 }

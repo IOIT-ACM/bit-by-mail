@@ -37,6 +37,9 @@ interface AppActions {
   toggleTemplateSelection: (id: string) => void
   selectSingleTemplate: (id: string) => void
   selectAllTemplates: (ids: string[]) => void
+  setSelectedAssetIds: (ids: Set<string>) => void
+  clearAssetSelection: () => void
+  toggleAssetSelection: (id: string) => void
   setIsLogCollapsed: (isCollapsed: boolean) => void
   toggleRecipientSelection: (index: number) => void
   clearRecipientSelection: () => void
@@ -61,6 +64,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   selectedCampaignIds: new Set(),
   selectedDatabaseIds: new Set(),
   selectedTemplateIds: new Set(),
+  selectedAssetIds: new Set(),
   selectedRecipientIndices: new Set(),
   isLogCollapsed: false,
   showAddRecipientModal: false,
@@ -147,6 +151,18 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
       return { selectedTemplateIds: new Set([id]) }
     }),
   selectAllTemplates: (ids) => set({ selectedTemplateIds: new Set(ids) }),
+  setSelectedAssetIds: (ids) => set({ selectedAssetIds: ids }),
+  clearAssetSelection: () => set({ selectedAssetIds: new Set() }),
+  toggleAssetSelection: (id) =>
+    set((state) => {
+      const newSelection = new Set(state.selectedAssetIds)
+      if (newSelection.has(id)) {
+        newSelection.delete(id)
+      } else {
+        newSelection.add(id)
+      }
+      return { selectedAssetIds: newSelection }
+    }),
   setIsLogCollapsed: (isCollapsed) => set({ isLogCollapsed: isCollapsed }),
   toggleRecipientSelection: (index) =>
     set((state) => {

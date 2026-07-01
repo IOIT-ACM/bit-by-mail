@@ -249,6 +249,22 @@ class ApiService {
   duplicateGlobalTemplate(templateId: string) {
     this.sendMessage('duplicate_global_template', { template_id: templateId })
   }
+
+  getAssets() {
+    this.sendMessage('get_assets')
+  }
+
+  createAsset(name: string, url: string, is_gdrive: boolean) {
+    this.sendMessage('create_asset', { name, url, is_gdrive })
+  }
+
+  deleteAssets(assetIds: string[]) {
+    this.sendMessage('delete_assets', { asset_ids: assetIds })
+  }
+
+  updateAsset(assetId: string, updates: any) {
+    this.sendMessage('update_asset', { asset_id: assetId, updates })
+  }
 }
 
 export const apiService = new ApiService()

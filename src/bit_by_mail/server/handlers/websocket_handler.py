@@ -13,6 +13,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.campaign_service = self.application.settings["campaign_service"]
         self.database_service = self.application.settings["database_service"]
         self.global_template_service = self.application.settings["global_template_service"]
+        self.asset_service = self.application.settings["asset_service"]
         self.action_handlers = {
             "get_campaigns": self._handle_get_campaigns,
             "get_campaign_data": self._handle_get_campaign_data,
@@ -42,6 +43,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "update_global_template": self._handle_update_global_template,
             "delete_global_templates": self._handle_delete_global_templates,
             "duplicate_global_template": self._handle_duplicate_global_template,
+            "get_assets": self._handle_get_assets,
+            "create_asset": self._handle_create_asset,
+            "delete_assets": self._handle_delete_assets,
+            "update_asset": self._handle_update_asset,
         }
 
     def on_close(self):
@@ -403,6 +408,22 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.application.settings["websocket_manager"].broadcast(
             {"action": "global_templates_list", "payload": all_t}
         )
+
+    async def _handle_get_assets(self, _):
+        assets = await self.asset_service.get_assets()
+        self.write_message(json.dumps({"action": "assets_list", "payload": assets}))
+
+    async def _handle_create_asset(self, payload):
+        assets = await self.asset_service.create_asset(payload.get("name"), payload.get("url"), payload.get("is_gdrive"))
+        self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
+
+    async def _handle_delete_assets(self, payload):
+        assets = await self.asset_service.delete_assets(payload.get("asset_ids"))
+        self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
+
+    async def _handle_update_asset(self, payload):
+        assets = await self.asset_service.update_asset(payload.get("asset_id"), payload.get("updates"))
+        self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
 
     def check_origin(self, origin):
         if self.application.settings.get("debug", False):
