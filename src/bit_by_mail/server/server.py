@@ -33,12 +33,12 @@ def make_app():
     global_template_service = GlobalTemplateService(base_dir)
     recipient_service = RecipientService(campaign_service)
     template_service = TemplateService(campaign_service)
-    preflight_service = PreflightService(base_dir, recipient_service, template_service)
+    preflight_service = PreflightService(base_dir, campaign_service, recipient_service, template_service)
     websocket_manager = WebSocketManager()
 
     ioloop = tornado.ioloop.IOLoop.current()
     mailer_service = MailerService(
-        template_service, recipient_service, websocket_manager, ioloop
+        template_service, recipient_service, campaign_service, websocket_manager, ioloop
     )
 
     settings = {
@@ -63,7 +63,7 @@ def make_app():
                 r"/attachments/(.*)/(.*)",
                 AttachmentHandler,
                 {
-                    "settings_service": settings_service,
+                    "campaign_service": campaign_service,
                     "recipient_service": recipient_service,
                     "base_dir": base_dir,
                 },

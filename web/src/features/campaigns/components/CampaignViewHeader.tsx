@@ -8,6 +8,7 @@ import {
   Check,
   Database,
   RefreshCw,
+  Settings,
 } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { toast } from 'sonner'
@@ -32,6 +33,9 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
   const setIsStopping = useAppStore((state) => state.setIsStopping)
   const clearRecipientSelection = useAppStore(
     (state) => state.clearRecipientSelection,
+  )
+  const setShowCampaignSettingsModal = useAppStore(
+    (state) => state.setShowCampaignSettingsModal,
   )
 
   const [isEditingName, setIsEditingName] = useState(false)
@@ -165,6 +169,14 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 custom-scrollbar">
+          <Button
+            onClick={() => setShowCampaignSettingsModal(true)}
+            variant="secondary"
+          >
+            <Settings size={16} />
+            <span className="hidden lg:inline">Settings</span>
+          </Button>
+
           {campaign.sourceDbId && (
             <Button onClick={() => setShowSyncModal(true)} variant="secondary">
               <RefreshCw size={16} />

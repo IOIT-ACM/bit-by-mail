@@ -43,6 +43,7 @@ interface AppActions {
   selectAllRecipients: (count: number) => void
   setShowAddRecipientModal: (show: boolean) => void
   setIsPasswordSet: (isSet: boolean) => void
+  setShowCampaignSettingsModal: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState & AppActions>((set) => ({
@@ -63,6 +64,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   selectedRecipientIndices: new Set(),
   isLogCollapsed: false,
   showAddRecipientModal: false,
+  showCampaignSettingsModal: false,
 
   setSenderPassword: (password) => set({ sender_password: password }),
   addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
@@ -165,4 +167,6 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
     }),
   setShowAddRecipientModal: (show) => set({ showAddRecipientModal: show }),
   setIsPasswordSet: (isSet) => set({ isPasswordSet: isSet }),
+  setShowCampaignSettingsModal: (show) =>
+    set({ showCampaignSettingsModal: show }),
 }))

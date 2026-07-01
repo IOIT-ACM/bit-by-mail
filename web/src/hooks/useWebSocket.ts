@@ -67,6 +67,10 @@ export const useWebSocket = () => {
           apiService.handleResponse('initial_data', payload)
           apiService.handleResponse('campaigns_list', payload.campaigns)
           break
+        case 'config_cleared':
+          queryClient.setQueryData(['config'], payload)
+          setIsPasswordSet(false)
+          break
         case 'campaigns_list':
           queryClient.setQueryData(['campaigns'], payload)
           apiService.handleResponse('campaigns_list', payload)

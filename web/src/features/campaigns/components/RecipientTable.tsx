@@ -22,7 +22,7 @@ import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
 import { queryClient } from '@/services/queryClient'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
-import type { CampaignData, DatabaseData, Config } from '@/types'
+import type { CampaignData, DatabaseData, Campaign } from '@/types'
 import { EditableCell } from '@/components/common/EditableCell'
 import { MaximizableView } from '@/components/common/MaximizableView'
 import { Modal } from '@/components/common/Modal'
@@ -44,13 +44,16 @@ const RecipientTableContent: React.FC<{
     queryKey: ['databaseData', contextId],
     enabled: contextType === 'database',
   })
-  const { data: config } = useQuery<Config>({ queryKey: ['config'] })
+  const { data: campaigns } = useQuery<Campaign[]>({ queryKey: ['campaigns'] })
 
   const recipients =
     contextType === 'campaign'
       ? (campaignData?.recipients ?? EMPTY_ARRAY)
       : (databaseData?.recipients ?? EMPTY_ARRAY)
-  const showAttachments = config?.send_attachments ?? true
+
+  const campaign = campaigns?.find((c) => c.id === contextId)
+  const showAttachments =
+    contextType === 'campaign' ? (campaign?.send_attachments ?? false) : false
 
   const setPreviewRecipient = useAppStore((state) => state.setPreviewRecipient)
   const recipientIssues = useAppStore((state) => state.recipientIssues)

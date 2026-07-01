@@ -5,8 +5,6 @@ export interface Config {
   sender_password?: string
   use_ssl: boolean
   subject_template: string
-  attachment_folder: string
-  send_attachments: boolean
 }
 
 export interface Recipient {
@@ -53,6 +51,8 @@ export interface Campaign {
   recipientCount: number
   latestReportUrl?: string | null
   sourceDbId?: string
+  attachment_folder?: string
+  send_attachments?: boolean
 }
 
 export interface CampaignData {
@@ -106,4 +106,5 @@ export interface AppState {
   selectedRecipientIndices: Set<number>
   isLogCollapsed: boolean
   showAddRecipientModal: boolean
+  showCampaignSettingsModal: boolean
 }

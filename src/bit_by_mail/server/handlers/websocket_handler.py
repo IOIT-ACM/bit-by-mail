@@ -21,6 +21,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "delete_campaign": self._handle_delete_campaign,
             "delete_campaigns": self._handle_delete_campaigns,
             "save_config": self._handle_save_config,
+            "clear_config": self._handle_clear_config,
             "save_template": self._handle_save_template,
             "upload_recipients": self._handle_upload_recipients,
             "save_recipients": self._handle_save_recipients,
@@ -109,9 +110,25 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_create_campaign(self, payload):
         name = payload.get("name")
+        db_id = payload.get("database_id")
+        template_id = payload.get("template_id")
         if not name:
             return
-        new_campaign, all_campaigns = await self.campaign_service.create_campaign(name)
+
+        subject = None
+        body = None
+        recipients = None
+
+        if template_id:
+            t_data = await self.global_template_service.get_template_data(template_id)
+            if t_data:
+                subject = t_data.get("subject")
+                body = t_data.get("body")
+
+        if db_id:
+            recipients = await self.database_service.get_database_data(db_id)
+
+        new_campaign, all_campaigns = await self.campaign_service.create_campaign(name, subject, body, recipients, db_id)
 
         self.application.settings["websocket_manager"].broadcast(
             {"action": "campaigns_list", "payload": all_campaigns}
@@ -156,6 +173,13 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_save_config(self, payload):
         await self.settings_service.save_config(payload)
+
+    async def _handle_clear_config(self, _):
+        await self.settings_service.clear_config()
+        config = await self.settings_service.get_config()
+        self.application.settings["websocket_manager"].broadcast(
+            {"action": "config_cleared", "payload": config}
+        )
 
     async def _handle_save_template(self, payload):
         campaign_id = payload.get("campaign_id")

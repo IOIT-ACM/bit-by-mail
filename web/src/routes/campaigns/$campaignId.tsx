@@ -8,6 +8,7 @@ import StatusBar from '@/layouts/StatusBar'
 import { CampaignSummaryModal } from '@/features/campaigns/components/CampaignSummaryModal'
 import { EmailPreviewModal } from '@/features/campaigns/components/EmailPreviewModal'
 import { AddRecipientModal } from '@/features/campaigns/components/AddRecipientModal'
+import { CampaignSettingsModal } from '@/features/campaigns/components/CampaignSettingsModal'
 import { useAppStore } from '@/store/useAppStore'
 import { useEffect } from 'react'
 import { apiService } from '@/services/apiService'
@@ -46,6 +47,9 @@ function CampaignDetail() {
   const showAddRecipientModal = useAppStore(
     (state) => state.showAddRecipientModal,
   )
+  const showCampaignSettingsModal = useAppStore(
+    (state) => state.showCampaignSettingsModal,
+  )
   const setPreviewRecipient = useAppStore((state) => state.setPreviewRecipient)
 
   if (!campaign)
@@ -76,6 +80,9 @@ function CampaignDetail() {
       </div>
 
       {showCampaignSummaryModal && <CampaignSummaryModal />}
+      {showCampaignSettingsModal && (
+        <CampaignSettingsModal campaign={campaign} />
+      )}
       {previewRecipient && (
         <EmailPreviewModal onClose={() => setPreviewRecipient(null)} />
       )}

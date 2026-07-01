@@ -59,13 +59,23 @@ class ApiService {
     this.sendMessage('get_campaign_data', { campaign_id: campaignId })
   }
 
-  createCampaign(name: string) {
-    this.sendMessage('create_campaign', { name })
+  createCampaign(name: string, databaseId?: string, templateId?: string) {
+    this.sendMessage('create_campaign', {
+      name,
+      database_id: databaseId,
+      template_id: templateId,
+    })
   }
 
   updateCampaign(
     campaignId: string,
-    updates: { name?: string; subject?: string; sourceDbId?: string },
+    updates: {
+      name?: string
+      subject?: string
+      sourceDbId?: string
+      attachment_folder?: string
+      send_attachments?: boolean
+    },
   ) {
     this.sendMessage('update_campaign', { campaign_id: campaignId, updates })
   }
@@ -97,6 +107,10 @@ class ApiService {
       (queryClient.getQueryData(['config']) as Partial<Config>) || {}
     const fullConfig = { ...currentConfig, ...config, sender_password }
     this.sendMessage('save_config', fullConfig)
+  }
+
+  clearConfig() {
+    this.sendMessage('clear_config')
   }
 
   saveAndTestConfig(

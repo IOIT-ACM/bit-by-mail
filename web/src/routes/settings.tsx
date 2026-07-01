@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react'
 import { apiService } from '@/services/apiService'
 import type { Config } from '@/types'
 import { Button } from '@/components/common/Button'
-import { Save, Server, Shield } from 'lucide-react'
+import { Save, Server, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 export const Route = createFileRoute('/settings')({
   component: SettingsPage,
@@ -15,6 +16,7 @@ function SettingsPage() {
   const { data: config } = useQuery<Config>({ queryKey: ['config'] })
   const [formData, setFormData] = useState<Partial<Config>>({})
   const [password, setPassword] = useState('')
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
 
   useEffect(() => {
     if (config) {
@@ -46,10 +48,23 @@ function SettingsPage() {
     if (password) setPassword('')
   }
 
+  const handleClear = () => {
+    apiService.clearConfig()
+    toast.success('Settings cleared successfully.')
+    setShowClearConfirm(false)
+    setPassword('')
+  }
+
   return (
     <div className="p-8 h-full overflow-y-auto custom-scrollbar">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Global Settings</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Global Settings</h1>
+          <Button variant="danger" onClick={() => setShowClearConfirm(true)}>
+            <Trash2 size={16} />
+            Clear Settings
+          </Button>
+        </div>
         <form onSubmit={handleSave} className="space-y-8">
           <section className="bg-surface-card p-6 rounded-card border border-borders-primary shadow-card">
             <div className="flex items-center gap-2 mb-6 text-text-primary">
@@ -135,47 +150,6 @@ function SettingsPage() {
             </div>
           </section>
 
-          <section className="bg-surface-card p-6 rounded-card border border-borders-primary shadow-card">
-            <div className="flex items-center gap-2 mb-6 text-text-primary">
-              <Shield size={20} />
-              <h2 className="text-xl font-semibold">Attachment Settings</h2>
-            </div>
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="send_attachments"
-                  name="send_attachments"
-                  checked={formData.send_attachments !== false}
-                  onChange={handleChange}
-                  className="custom-checkbox"
-                />
-                <label
-                  htmlFor="send_attachments"
-                  className="text-sm font-medium text-text-primary"
-                >
-                  Enable Attachments Globally
-                </label>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-2">
-                  Attachment Folder Absolute Path (Server)
-                </label>
-                <input
-                  type="text"
-                  name="attachment_folder"
-                  value={formData.attachment_folder || ''}
-                  onChange={handleChange}
-                  placeholder="/home/user/Desktop"
-                  className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary focus:ring-2 focus:ring-accent-blue"
-                />
-                <p className="text-xs text-text-tertiary mt-2">
-                  The backend will look for CSV filenames inside this directory.
-                </p>
-              </div>
-            </div>
-          </section>
-
           <div className="flex justify-end pt-4">
             <Button type="submit" variant="primary">
               <Save size={18} />
@@ -184,6 +158,15 @@ function SettingsPage() {
           </div>
         </form>
       </div>
+      <ConfirmDialog
+        isOpen={showClearConfirm}
+        title="Clear Settings"
+        message="Are you sure you want to completely clear your global SMTP configuration? This action cannot be undone."
+        confirmText="Clear Settings"
+        isDestructive={true}
+        onConfirm={handleClear}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   )
 }

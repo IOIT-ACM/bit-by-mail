@@ -91,7 +91,8 @@ export const EmailPreviewModal: React.FC<EmailPreviewModalProps> = ({
 
   const finalSubject = replacePlaceholders(subjectTemplate, previewRecipient)
   const finalBody = replacePlaceholders(emailBody, previewRecipient)
-  const showAttachment = config?.send_attachments && attachmentFiles.length > 0
+  const showAttachment =
+    activeCampaign?.send_attachments && attachmentFiles.length > 0
   const attachmentUrl =
     showAttachment && selectedAttachment && campaignId
       ? `/attachments/${campaignId}/${currentIndex}?file=${encodeURIComponent(selectedAttachment)}`

@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Any, cast, Optional
 import pandas as pd
 
-
 @dataclass
 class PreflightResult:
     errors: List[str] = field(default_factory=list)
@@ -25,10 +24,10 @@ class PreflightResult:
             "recipient_issues": self.recipient_issues,
         }
 
-
 class PreflightService:
-    def __init__(self, base_dir: str, recipient_service, template_service):
+    def __init__(self, base_dir: str, campaign_service, recipient_service, template_service):
         self.base_dir = base_dir
+        self.campaign_service = campaign_service
         self.recipient_service = recipient_service
         self.template_service = template_service
 
@@ -67,10 +66,13 @@ class PreflightService:
         ]
         recipients_to_send_count = len(recipients_to_send_df)
 
+        campaigns = await self.campaign_service.get_campaigns()
+        campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
+
         total_attachment_size = 0
-        attachment_folder = config.get("attachment_folder", "")
+        attachment_folder = campaign.get("attachment_folder", "")
         if (
-            config.get("send_attachments", True)
+            campaign.get("send_attachments", False)
             and attachment_folder
             and os.path.isdir(attachment_folder)
         ):
@@ -150,10 +152,10 @@ class PreflightService:
         result.warnings.extend(warnings)
 
     async def _check_paths(
-        self, campaign_id: str, config: Dict[str, Any], result: PreflightResult
+        self, campaign_id: str, campaign: Dict[str, Any], result: PreflightResult
     ) -> bool:
         errors = []
-        attachment_folder = config.get("attachment_folder", "")
+        attachment_folder = campaign.get("attachment_folder", "")
 
         recipients_path = self.recipient_service.get_recipients_path(campaign_id)
         template_path = self.template_service.get_template_path(campaign_id)
@@ -168,7 +170,7 @@ class PreflightService:
                 f"HTML Template file not found for this campaign at '{template_path}'."
             )
 
-        if config.get("send_attachments", True):
+        if campaign.get("send_attachments", False):
             if not attachment_folder or not os.path.isdir(attachment_folder):
                 errors.append(
                     f"Attachment Folder not found or is not a directory at '{attachment_folder}'."
@@ -184,13 +186,13 @@ class PreflightService:
     async def _check_recipients_and_attachments(
         self,
         campaign_id: str,
-        config: Dict[str, Any],
+        campaign: Dict[str, Any],
         subject_template: str,
         result: PreflightResult,
     ):
         errors, warnings = [], []
-        attachment_folder = config.get("attachment_folder", "")
-        send_attachments = config.get("send_attachments", True)
+        attachment_folder = campaign.get("attachment_folder", "")
+        send_attachments = campaign.get("send_attachments", False)
 
         html_template = await self.template_service.get_template(campaign_id)
         if not html_template:
@@ -330,11 +332,15 @@ class PreflightService:
 
         self._check_config_variables(config, result)
 
-        paths_ok = await self._check_paths(campaign_id, config, result)
+        campaigns = await self.campaign_service.get_campaigns()
+        campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
+
+        paths_ok = await self._check_paths(campaign_id, campaign, result)
 
         if paths_ok:
             await self._check_recipients_and_attachments(
-                campaign_id, config, subject_template, result
+                campaign_id, campaign, subject_template, result
             )
 
         return result
+

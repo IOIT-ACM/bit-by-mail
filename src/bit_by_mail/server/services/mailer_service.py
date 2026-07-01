@@ -9,11 +9,11 @@ from contextlib import contextmanager
 from datetime import datetime
 from typing import List, Optional
 
-
 class MailerService:
-    def __init__(self, template_service, recipient_service, websocket_manager, ioloop):
+    def __init__(self, template_service, recipient_service, campaign_service, websocket_manager, ioloop):
         self.template_service = template_service
         self.recipient_service = recipient_service
+        self.campaign_service = campaign_service
         self.websockets = websocket_manager
         self.ioloop = ioloop
         self._is_running = False
@@ -41,12 +41,15 @@ class MailerService:
 
         html_template = await self.template_service.get_template(campaign_id)
         recipients = await self.recipient_service.get_recipients(campaign_id)
+        campaigns = await self.campaign_service.get_campaigns()
+        campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
 
         self.ioloop.run_in_executor(
             None,
             self._run_mailing_loop,
             campaign_id,
             config,
+            campaign,
             subject,
             recipients,
             html_template,
@@ -63,6 +66,7 @@ class MailerService:
         self,
         campaign_id,
         config,
+        campaign,
         subject,
         recipients,
         html_template,
@@ -109,7 +113,7 @@ class MailerService:
 
                     recipient = recipient_row.to_dict()
                     status, details, timestamp = self._process_recipient(
-                        server, config, subject, html_template, recipient
+                        server, config, campaign, subject, html_template, recipient
                     )
 
                     recipients_df.loc[index, "Status"] = status
@@ -157,7 +161,7 @@ class MailerService:
             self._broadcast_finish()
 
     def _process_recipient(
-        self, server, config, subject_template, html_template, recipient
+        self, server, config, campaign, subject_template, html_template, recipient
     ):
         email = recipient.get("Email")
         if not email:
@@ -177,7 +181,7 @@ class MailerService:
             body = self._replace_placeholders(html_template, recipient)
             msg.attach(MIMEText(body, "html"))
 
-            send_attachments = config.get("send_attachments", True)
+            send_attachments = campaign.get("send_attachments", False)
             if send_attachments:
                 attachment_files_str = str(recipient.get("AttachmentFile", "")).strip()
 
@@ -188,7 +192,7 @@ class MailerService:
 
                     for filename in attachment_files:
                         attachment_path = os.path.join(
-                            config["attachment_folder"], filename
+                            campaign.get("attachment_folder", ""), filename
                         )
                         if not os.path.exists(attachment_path):
                             raise FileNotFoundError(f"Attachment not found: {filename}")
@@ -306,3 +310,4 @@ class MailerService:
 
     def _broadcast_report_ready(self, url):
         self._broadcast({"action": "report_generated", "payload": {"url": url}})
+

@@ -2,10 +2,9 @@ import os
 import mimetypes
 import tornado.web
 
-
 class AttachmentHandler(tornado.web.RequestHandler):
-    def initialize(self, settings_service, recipient_service, base_dir):
-        self.settings_service = settings_service
+    def initialize(self, campaign_service, recipient_service, base_dir):
+        self.campaign_service = campaign_service
         self.recipient_service = recipient_service
         self.base_dir = base_dir
 
@@ -44,13 +43,14 @@ class AttachmentHandler(tornado.web.RequestHandler):
                 raise tornado.web.HTTPError(404, "No valid attachments found")
             filename = available_files[0]
 
-        config = await self.settings_service.get_config()
-        attachment_folder = config.get("attachment_folder", "attachments")
+        campaigns = await self.campaign_service.get_campaigns()
+        campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
+        attachment_folder = campaign.get("attachment_folder", "")
 
         if ".." in filename or filename.startswith("/"):
             raise tornado.web.HTTPError(403, "Forbidden")
 
-        file_path = os.path.join(self.base_dir, attachment_folder, filename)
+        file_path = os.path.join(attachment_folder, filename)
 
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
             raise tornado.web.HTTPError(404, "File not found on server")
@@ -63,3 +63,4 @@ class AttachmentHandler(tornado.web.RequestHandler):
 
         with open(file_path, "rb") as f:
             self.write(f.read())
+
