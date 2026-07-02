@@ -25,6 +25,7 @@ export const CampaignSettingsModal: React.FC<{ campaign: Campaign }> = ({
   const [senderAccountId, setSenderAccountId] = useState(
     campaign.sender_account_id || '',
   )
+  const [delay, setDelay] = useState(campaign.delay || 0)
 
   const hasDefaultAccount = accounts.some((a) => a.is_default)
 
@@ -39,6 +40,7 @@ export const CampaignSettingsModal: React.FC<{ campaign: Campaign }> = ({
       attachment_folder: folder,
       send_attachments: sendAttachments,
       sender_account_id: senderAccountId,
+      delay,
     })
     setShowCampaignSettingsModal(false)
   }
@@ -115,6 +117,25 @@ export const CampaignSettingsModal: React.FC<{ campaign: Campaign }> = ({
               No accounts configured in Global Settings.
             </div>
           )}
+        </div>
+
+        <div className="pt-4 border-t border-borders-primary/50">
+          <div>
+            <label className="block text-sm font-medium text-text-secondary mb-2">
+              Delay Between Emails (Seconds)
+            </label>
+            <input
+              type="number"
+              min="0"
+              value={delay}
+              onChange={(e) => setDelay(Number(e.target.value))}
+              className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary focus:ring-2 focus:ring-accent-blue outline-none"
+            />
+            <p className="text-xs text-text-tertiary mt-2">
+              Add a delay to prevent triggering SMTP rate limits or spam
+              filters.
+            </p>
+          </div>
         </div>
 
         <div className="pt-4 border-t border-borders-primary/50">

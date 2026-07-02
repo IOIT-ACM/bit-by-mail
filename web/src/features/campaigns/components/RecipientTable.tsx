@@ -185,26 +185,24 @@ const RecipientTableContent: React.FC<{
     URL.revokeObjectURL(url)
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = event.target.files?.[0]
     if (file && contextId && contextType === 'campaign') {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
-        const lines = text.split('\n')
-        const header = lines[0].toLowerCase()
-        if (!header.includes('email') || !header.includes('name')) {
-          toast.error(
-            'Invalid CSV: Must contain at least "Name" and "Email" columns.',
-          )
-          if (event.target) event.target.value = ''
-          return
-        }
-        const base64Content = btoa(text)
-        apiService.uploadRecipients(contextId, base64Content)
+      try {
+        const res = await apiService.uploadRecipientsHttp(contextId, file)
+        queryClient.setQueryData<CampaignData>(
+          ['campaignData', contextId],
+          (old) => (old ? { ...old, recipients: res.recipients } : old),
+        )
+        toast.success(`${res.recipients.length} recipients loaded successfully`)
+        apiService.runPreflightCheck(contextId)
+      } catch (e) {
+        toast.error('Upload failed. Check file format.')
       }
-      reader.readAsText(file)
     }
+    if (event.target) event.target.value = ''
   }
 
   const columns = useMemo(() => {

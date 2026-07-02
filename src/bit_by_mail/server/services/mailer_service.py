@@ -1,5 +1,6 @@
 import os
 import smtplib
+import time
 import pandas as pd
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -118,6 +119,7 @@ class MailerService:
 
             sent_count = 0
             total_to_send = len(recipients_to_process)
+            delay = int(campaign.get("delay", 0))
             self._broadcast_mailing_started(total_to_send)
 
             with self._smtp_connect(account) as server:
@@ -145,6 +147,9 @@ class MailerService:
                         total_to_send,
                     )
 
+                    if delay > 0 and sent_count < total_to_send and not self._stop_requested:
+                        time.sleep(delay)
+
             self._broadcast_log("success", "Mailing process finished.")
         except Exception as e:
             self._broadcast_log(
@@ -164,7 +169,10 @@ class MailerService:
                     ),
                     report_filename,
                 )
-                recipients_df.to_csv(report_path, index=False)
+                from filelock import FileLock
+                with FileLock(report_path + ".lock"):
+                    recipients_df.to_csv(report_path, index=False)
+
                 self._broadcast_log(
                     "info", f"Generated final report: {report_filename}"
                 )
@@ -176,7 +184,7 @@ class MailerService:
             self._broadcast_finish()
 
     def _process_recipient(
-        self, server, account, campaign, subject_template, html_template, recipient
+        self, server, account, campaign, subject_template, html_template, recipient, retry=True
     ):
         email = recipient.get("Email")
         if not email:
@@ -207,11 +215,12 @@ class MailerService:
                     ]
 
                     for filename in attachment_files:
+                        safe_filename = os.path.basename(filename)
                         attachment_path = os.path.join(
-                            campaign.get("attachment_folder", ""), filename
+                            campaign.get("attachment_folder", ""), safe_filename
                         )
                         if not os.path.exists(attachment_path):
-                            raise FileNotFoundError(f"Attachment not found: {filename}")
+                            raise FileNotFoundError(f"Attachment not found: {safe_filename}")
 
                         with open(attachment_path, "rb") as attachment:
                             part = MIMEBase("application", "octet-stream")
@@ -219,13 +228,34 @@ class MailerService:
 
                         encoders.encode_base64(part)
                         part.add_header(
-                            "Content-Disposition", f"attachment; filename= {filename}"
+                            "Content-Disposition", f"attachment; filename= {safe_filename}"
                         )
                         msg.attach(part)
 
             server.send_message(msg)
             timestamp = datetime.now().isoformat()
             return "SENT", "Email sent successfully.", timestamp
+        except smtplib.SMTPServerDisconnected:
+            if retry:
+                try:
+                    self._broadcast_log("warn", "SMTP connection lost. Attempting to reconnect...")
+                    smtp_server_host = account.get("smtp_server")
+                    port = int(account.get("smtp_port", 587))
+                    sender_email = account.get("sender_email")
+                    password = account.get("sender_password")
+                    use_ssl = account.get("use_ssl", False)
+
+                    if use_ssl:
+                        server.connect(smtp_server_host, port)
+                    else:
+                        server.connect(smtp_server_host, port)
+                        server.starttls()
+                    server.login(sender_email, password)
+                    self._broadcast_log("info", "Reconnected successfully. Retrying email...")
+                    return self._process_recipient(server, account, campaign, subject_template, html_template, recipient, False)
+                except Exception as reconnect_err:
+                    return "ERROR", f"Connection lost and reconnect failed: {str(reconnect_err)}", None
+            return "ERROR", "SMTP connection lost.", None
         except Exception as e:
             return "ERROR", str(e), None
 
@@ -288,7 +318,10 @@ class MailerService:
         finally:
             if server:
                 self._broadcast_log("info", "Closing SMTP connection.")
-                server.quit()
+                try:
+                    server.quit()
+                except Exception:
+                    pass
                 self._broadcast_log("success", "Connection closed.")
 
     def _broadcast(self, message):

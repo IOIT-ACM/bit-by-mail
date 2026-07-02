@@ -4,6 +4,8 @@ import { apiService } from '@/services/apiService'
 import type { Database } from '@/types'
 import { Button } from '@/components/common/Button'
 import { ImportCsvModal } from './ImportCsvModal'
+import { toast } from 'sonner'
+import { queryClient } from '@/services/queryClient'
 
 interface DatabaseViewHeaderProps {
   database: Database
@@ -16,9 +18,7 @@ export const DatabaseViewHeader: React.FC<DatabaseViewHeaderProps> = ({
 }) => {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(database.name)
-  const [pendingCsvContent, setPendingCsvContent] = useState<string | null>(
-    null,
-  )
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -66,17 +66,24 @@ export const DatabaseViewHeader: React.FC<DatabaseViewHeaderProps> = ({
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file && databaseId) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const text = e.target?.result as string
-        const base64Content = btoa(text)
-        if (database.recipientCount === 0) {
-          apiService.importCsvToDatabase(databaseId, base64Content, 'replace')
-        } else {
-          setPendingCsvContent(base64Content)
-        }
+      if (database.recipientCount === 0) {
+        apiService
+          .uploadDatabaseHttp(databaseId, file, 'replace')
+          .then((res) => {
+            queryClient.setQueryData(
+              ['databaseData', databaseId],
+              (old: any) =>
+                old ? { ...old, recipients: res.recipients } : old,
+            )
+            toast.success(
+              `${res.recipients.length} recipients imported successfully`,
+            )
+            apiService.getDatabases()
+          })
+          .catch(() => toast.error('Upload failed. Check file format.'))
+      } else {
+        setPendingFile(file)
       }
-      reader.readAsText(file)
     }
     if (event.target) event.target.value = ''
   }
@@ -145,11 +152,11 @@ export const DatabaseViewHeader: React.FC<DatabaseViewHeaderProps> = ({
         </div>
       </div>
 
-      {pendingCsvContent && (
+      {pendingFile && (
         <ImportCsvModal
           databaseId={databaseId}
-          base64Content={pendingCsvContent}
-          onClose={() => setPendingCsvContent(null)}
+          pendingFile={pendingFile}
+          onClose={() => setPendingFile(null)}
         />
       )}
     </>

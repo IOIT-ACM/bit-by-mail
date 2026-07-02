@@ -4,8 +4,8 @@ import pandas as pd
 import base64
 import io
 from tornado.ioloop import IOLoop
+from filelock import FileLock
 from . import crypto_service
-
 
 class ConfigService:
     def __init__(self, base_dir):
@@ -26,21 +26,22 @@ class ConfigService:
         }
         if not os.path.exists(self.settings_path):
             return defaults
-        try:
-            with open(self.settings_path, "r") as f:
-                stored_settings = json.load(f)
+        with FileLock(self.settings_path + ".lock"):
+            try:
+                with open(self.settings_path, "r") as f:
+                    stored_settings = json.load(f)
 
-            if "sender_password_encrypted" in stored_settings:
-                decrypted_password = crypto_service.decrypt(
-                    stored_settings["sender_password_encrypted"]
-                )
-                stored_settings["sender_password"] = decrypted_password
-                del stored_settings["sender_password_encrypted"]
+                if "sender_password_encrypted" in stored_settings:
+                    decrypted_password = crypto_service.decrypt(
+                        stored_settings["sender_password_encrypted"]
+                    )
+                    stored_settings["sender_password"] = decrypted_password
+                    del stored_settings["sender_password_encrypted"]
 
-            defaults.update(stored_settings)
-            return defaults
-        except (IOError, json.JSONDecodeError):
-            return defaults
+                defaults.update(stored_settings)
+                return defaults
+            except (IOError, json.JSONDecodeError):
+                return defaults
 
     def _write_config(self, data):
         current_config = self._read_config()
@@ -67,36 +68,42 @@ class ConfigService:
             )
             config_to_update["sender_password_encrypted"] = encrypted_password
 
-        with open(self.settings_path, "w") as f:
-            json.dump(config_to_update, f, indent=2)
+        with FileLock(self.settings_path + ".lock"):
+            with open(self.settings_path, "w") as f:
+                json.dump(config_to_update, f, indent=2)
 
     def _read_recipients(self):
         if not os.path.exists(self.recipients_path):
             return []
-        df = pd.read_csv(self.recipients_path).fillna("")
-        return df.to_dict(orient="records")
+        with FileLock(self.recipients_path + ".lock"):
+            df = pd.read_csv(self.recipients_path).fillna("")
+            return df.to_dict(orient="records")
 
     def _write_recipients_from_base64(self, base64_content):
         file_content = base64.b64decode(base64_content).decode("utf-8")
         string_io = io.StringIO(file_content)
-        df = pd.read_csv(string_io)
-        if "Status" not in df.columns:
-            df["Status"] = "PENDING"
-        df.to_csv(self.recipients_path, index=False)
+        with FileLock(self.recipients_path + ".lock"):
+            df = pd.read_csv(string_io)
+            if "Status" not in df.columns:
+                df["Status"] = "PENDING"
+            df.to_csv(self.recipients_path, index=False)
 
     def write_recipients_from_json(self, recipients_data):
-        df = pd.DataFrame(recipients_data)
-        df.to_csv(self.recipients_path, index=False)
+        with FileLock(self.recipients_path + ".lock"):
+            df = pd.DataFrame(recipients_data)
+            df.to_csv(self.recipients_path, index=False)
 
     def _read_file(self, path):
         if not os.path.exists(path):
             return ""
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
+        with FileLock(path + ".lock"):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
 
     def _write_file(self, path, content):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
+        with FileLock(path + ".lock"):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
 
     async def get_full_config(self):
         return await IOLoop.current().run_in_executor(None, self._read_config)
@@ -126,3 +133,4 @@ class ConfigService:
         await IOLoop.current().run_in_executor(
             None, self._write_file, self.template_path, content
         )
+

@@ -1,6 +1,6 @@
 import os
 from tornado.ioloop import IOLoop
-
+from filelock import FileLock
 
 class TemplateService:
     def __init__(self, campaign_service):
@@ -14,12 +14,14 @@ class TemplateService:
     def _read_file(self, path):
         if not os.path.exists(path):
             return ""
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
+        with FileLock(path + ".lock"):
+            with open(path, "r", encoding="utf-8") as f:
+                return f.read()
 
     def _write_file(self, path, content):
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(content)
+        with FileLock(path + ".lock"):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(content)
 
     async def get_template(self, campaign_id):
         template_path = self.get_template_path(campaign_id)
@@ -32,3 +34,4 @@ class TemplateService:
         await IOLoop.current().run_in_executor(
             None, self._write_file, template_path, content
         )
+

@@ -3,7 +3,7 @@ import pandas as pd
 import base64
 import io
 from tornado.ioloop import IOLoop
-
+from filelock import FileLock
 
 class RecipientService:
     def __init__(self, campaign_service):
@@ -18,25 +18,28 @@ class RecipientService:
         recipients_path = self.get_recipients_path(campaign_id)
         if not os.path.exists(recipients_path):
             return []
-        try:
-            df = pd.read_csv(recipients_path).fillna("")
-            return df.to_dict(orient="records")
-        except (pd.errors.EmptyDataError, pd.errors.ParserError):
-            return []
+        with FileLock(recipients_path + ".lock"):
+            try:
+                df = pd.read_csv(recipients_path).fillna("")
+                return df.to_dict(orient="records")
+            except (pd.errors.EmptyDataError, pd.errors.ParserError):
+                return []
 
     def _write_recipients_from_base64(self, campaign_id, base64_content):
         recipients_path = self.get_recipients_path(campaign_id)
         file_content = base64.b64decode(base64_content).decode("utf-8")
         string_io = io.StringIO(file_content)
-        df = pd.read_csv(string_io)
-        if "Status" not in df.columns:
-            df["Status"] = "PENDING"
-        df.to_csv(recipients_path, index=False)
+        with FileLock(recipients_path + ".lock"):
+            df = pd.read_csv(string_io)
+            if "Status" not in df.columns:
+                df["Status"] = "PENDING"
+            df.to_csv(recipients_path, index=False)
 
     def write_recipients_from_json(self, campaign_id, recipients_data):
         recipients_path = self.get_recipients_path(campaign_id)
-        df = pd.DataFrame(recipients_data)
-        df.to_csv(recipients_path, index=False)
+        with FileLock(recipients_path + ".lock"):
+            df = pd.DataFrame(recipients_data)
+            df.to_csv(recipients_path, index=False)
 
     async def get_recipients(self, campaign_id):
         return await IOLoop.current().run_in_executor(
@@ -52,3 +55,4 @@ class RecipientService:
         await IOLoop.current().run_in_executor(
             None, self.write_recipients_from_json, campaign_id, data
         )
+

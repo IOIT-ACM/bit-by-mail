@@ -49,6 +49,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "delete_assets": self._handle_delete_assets,
             "update_asset": self._handle_update_asset,
         }
+        self.current_req_id = None
 
     def on_close(self):
         self.application.settings["websocket_manager"].remove(self)
@@ -57,6 +58,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if self.ws_connection is None or self.ws_connection.is_closing():
             return
         try:
+            data = json.loads(message_str)
+            if hasattr(self, 'current_req_id') and self.current_req_id:
+                data['req_id'] = self.current_req_id
+                message_str = json.dumps(data)
             await self.write_message(message_str)
         except tornado.websocket.WebSocketClosedError:
             pass
@@ -68,6 +73,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             data = json.loads(message)
             action = data.get("action")
             payload = data.get("payload")
+            self.current_req_id = data.get("req_id")
 
             handler = self.action_handlers.get(action)
             if handler:
@@ -76,14 +82,26 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 raise ValueError(f"Unknown action: {action}")
 
         except Exception as e:
-            await self.safe_write_message(
-                json.dumps(
-                    {
-                        "action": "log",
-                        "payload": {"level": "error", "message": str(e)},
-                    }
-                )
-            )
+            req_id = getattr(self, 'current_req_id', None)
+            try:
+                action = json.loads(message).get("action", "unknown")
+            except:
+                action = "unknown"
+
+            error_msg = {
+                "action": "action_error",
+                "payload": {"original_action": action, "message": str(e)}
+            }
+            if req_id:
+                error_msg["req_id"] = req_id
+
+            await self.safe_write_message(json.dumps(error_msg))
+            await self.safe_write_message(json.dumps({
+                "action": "log",
+                "payload": {"level": "error", "message": str(e)}
+            }))
+        finally:
+            self.current_req_id = None
 
     async def _handle_get_campaigns(self, _):
         campaigns = await self.campaign_service.get_campaigns()
@@ -318,13 +336,14 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     async def _handle_create_database(self, payload):
         name = payload.get("name")
         content = payload.get("content")
+        navigate = payload.get("navigate", True)
         if not name:
             return
         new_db, all_dbs = await self.database_service.create_database(name, content)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "databases_list", "payload": all_dbs}
         )
-        await self.safe_write_message(json.dumps({"action": "database_created", "payload": new_db}))
+        await self.safe_write_message(json.dumps({"action": "database_created", "payload": {"id": new_db["id"], "navigate": navigate}}))
 
     async def _handle_update_database(self, payload):
         db_id = payload.get("database_id")
@@ -439,12 +458,11 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
 
     def check_origin(self, origin):
-        if self.application.settings.get("debug", False):
-            return True
         parsed_origin = urlparse(origin)
         origin_host = parsed_origin.netloc.lower()
-        request_host = self.request.host.lower()
-        return origin_host == request_host
+        if origin_host.startswith("localhost") or origin_host.startswith("127.0.0.1"):
+            return True
+        return False
 
 class WebSocketManager:
     def __init__(self):
@@ -464,7 +482,7 @@ class WebSocketManager:
             try:
                 fut = connection.write_message(msg_str)
                 if fut is not None:
-                    # Consume exception to avoid "Task exception was never retrieved" warning if socket drops
                     fut.add_done_callback(lambda f: f.exception())
             except Exception:
                 pass
+

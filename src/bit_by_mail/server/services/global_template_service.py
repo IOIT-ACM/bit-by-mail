@@ -4,6 +4,7 @@ import uuid
 import shutil
 from datetime import datetime, timezone
 from tornado.ioloop import IOLoop
+from filelock import FileLock
 
 class GlobalTemplateService:
     def __init__(self, base_dir):
@@ -16,19 +17,23 @@ class GlobalTemplateService:
     def _initialize_storage(self):
         os.makedirs(self.templates_dir, exist_ok=True)
         if not os.path.exists(self.manifest_path):
-            with open(self.manifest_path, "w") as f:
-                json.dump([], f)
+            with FileLock(self.manifest_path + ".lock"):
+                if not os.path.exists(self.manifest_path):
+                    with open(self.manifest_path, "w") as f:
+                        json.dump([], f)
 
     def _read_manifest(self):
-        try:
-            with open(self.manifest_path, "r") as f:
-                return json.load(f)
-        except (IOError, json.JSONDecodeError):
-            return []
+        with FileLock(self.manifest_path + ".lock"):
+            try:
+                with open(self.manifest_path, "r") as f:
+                    return json.load(f)
+            except (IOError, json.JSONDecodeError):
+                return []
 
     def _write_manifest(self, templates):
-        with open(self.manifest_path, "w") as f:
-            json.dump(templates, f, indent=2)
+        with FileLock(self.manifest_path + ".lock"):
+            with open(self.manifest_path, "w") as f:
+                json.dump(templates, f, indent=2)
 
     def get_template_path(self, template_id):
         return os.path.join(self.templates_dir, f"{template_id}.html")
@@ -53,8 +58,9 @@ class GlobalTemplateService:
         body = ""
         path = self.get_template_path(template_id)
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as f:
-                body = f.read()
+            with FileLock(path + ".lock"):
+                with open(path, "r", encoding="utf-8") as f:
+                    body = f.read()
 
         return {
             "id": template["id"],
@@ -83,8 +89,9 @@ class GlobalTemplateService:
         templates.append(new_template)
 
         path = self.get_template_path(new_id)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(body)
+        with FileLock(path + ".lock"):
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(body)
 
         await IOLoop.current().run_in_executor(None, self._write_manifest, templates)
         return new_template, await self.get_templates()
@@ -105,8 +112,9 @@ class GlobalTemplateService:
 
         if body is not None:
             path = self.get_template_path(template_id)
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(body)
+            with FileLock(path + ".lock"):
+                with open(path, "w", encoding="utf-8") as f:
+                    f.write(body)
 
         await IOLoop.current().run_in_executor(None, self._write_manifest, templates)
         return await self.get_templates()
@@ -143,11 +151,13 @@ class GlobalTemplateService:
 
         src_path = self.get_template_path(template_id)
         dst_path = self.get_template_path(new_id)
-        if os.path.exists(src_path):
-            shutil.copy(src_path, dst_path)
-        else:
-            with open(dst_path, "w", encoding="utf-8") as f:
-                f.write("")
+
+        with FileLock(dst_path + ".lock"):
+            if os.path.exists(src_path):
+                shutil.copy(src_path, dst_path)
+            else:
+                with open(dst_path, "w", encoding="utf-8") as f:
+                    f.write("")
 
         await IOLoop.current().run_in_executor(None, self._write_manifest, templates)
         return await self.get_templates()

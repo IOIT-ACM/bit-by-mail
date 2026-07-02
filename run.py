@@ -18,14 +18,11 @@ def setup_environment():
                 secret_key = f.read().strip()
 
         if not secret_key:
-            print("Secret key not found. Generating a new one...")
             secret_key = Fernet.generate_key().decode()
             with open(key_path, "w") as f:
                 f.write(secret_key)
-            print(f"New secret key saved to {key_path}")
 
     except IOError as e:
-        print(f"FATAL: Could not read/write secret key: {e}", file=sys.stderr)
         sys.exit(1)
 
     os.environ["SECRET_KEY"] = secret_key
@@ -41,15 +38,10 @@ def main():
     port = 8888
     app.listen(port)
 
-    print("====================================================")
-    print(f"Backend development server running on http://localhost:{port}")
-    print("Tornado auto-reloading is enabled.")
-    print("====================================================")
-
     try:
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
-        print("\nShutting down server.")
+        pass
 
 
 if __name__ == "__main__":

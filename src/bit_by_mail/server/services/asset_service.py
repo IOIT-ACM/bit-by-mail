@@ -4,6 +4,7 @@ import uuid
 import re
 from datetime import datetime, timezone
 from tornado.ioloop import IOLoop
+from filelock import FileLock
 
 class AssetService:
     def __init__(self, base_dir):
@@ -15,19 +16,23 @@ class AssetService:
     def _initialize_storage(self):
         os.makedirs(self.data_dir, exist_ok=True)
         if not os.path.exists(self.manifest_path):
-            with open(self.manifest_path, "w") as f:
-                json.dump([], f)
+            with FileLock(self.manifest_path + ".lock"):
+                if not os.path.exists(self.manifest_path):
+                    with open(self.manifest_path, "w") as f:
+                        json.dump([], f)
 
     def _read_manifest(self):
-        try:
-            with open(self.manifest_path, "r") as f:
-                return json.load(f)
-        except Exception:
-            return []
+        with FileLock(self.manifest_path + ".lock"):
+            try:
+                with open(self.manifest_path, "r") as f:
+                    return json.load(f)
+            except Exception:
+                return []
 
     def _write_manifest(self, assets):
-        with open(self.manifest_path, "w") as f:
-            json.dump(assets, f, indent=2)
+        with FileLock(self.manifest_path + ".lock"):
+            with open(self.manifest_path, "w") as f:
+                json.dump(assets, f, indent=2)
 
     def _get_assets(self):
         assets = self._read_manifest()
@@ -74,3 +79,4 @@ class AssetService:
                 break
         await IOLoop.current().run_in_executor(None, self._write_manifest, assets)
         return await self.get_assets()
+

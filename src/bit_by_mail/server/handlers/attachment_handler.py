@@ -47,10 +47,8 @@ class AttachmentHandler(tornado.web.RequestHandler):
         campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
         attachment_folder = campaign.get("attachment_folder", "")
 
-        if ".." in filename or filename.startswith("/"):
-            raise tornado.web.HTTPError(403, "Forbidden")
-
-        file_path = os.path.join(attachment_folder, filename)
+        safe_filename = os.path.basename(filename)
+        file_path = os.path.join(attachment_folder, safe_filename)
 
         if not os.path.exists(file_path) or not os.path.isfile(file_path):
             raise tornado.web.HTTPError(404, "File not found on server")
@@ -58,7 +56,7 @@ class AttachmentHandler(tornado.web.RequestHandler):
         content_type, _ = mimetypes.guess_type(file_path)
         self.set_header("Content-Type", content_type or "application/octet-stream")
         self.set_header(
-            "Content-Disposition", f'inline; filename="{os.path.basename(filename)}"'
+            "Content-Disposition", f'inline; filename="{safe_filename}"'
         )
 
         with open(file_path, "rb") as f:

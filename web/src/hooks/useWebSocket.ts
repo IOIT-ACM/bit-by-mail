@@ -28,7 +28,11 @@ export const useWebSocket = () => {
 
   const connect = useCallback(() => {
     if (ws.current?.readyState === WebSocket.OPEN) return
-    const socket = new WebSocket('ws://localhost:8888/ws')
+    const wsUrl =
+      window.location.port === '3000'
+        ? 'ws://localhost:8888/ws'
+        : `ws://${window.location.host}/ws`
+    const socket = new WebSocket(wsUrl)
     ws.current = socket
     apiService.setSocket(socket)
     setConnectionStatus('connecting')
@@ -57,9 +61,17 @@ export const useWebSocket = () => {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data)
-      const { action, payload } = data
+      const { action, payload, req_id } = data
+
+      if (req_id && action !== 'action_error') {
+        apiService.handleResponse(req_id, payload)
+      }
 
       switch (action) {
+        case 'action_error':
+          if (req_id) apiService.handleError(req_id, payload.message)
+          toast.error(payload.message)
+          break
         case 'initial_data':
           queryClient.setQueryData(['campaigns'], payload.campaigns)
           queryClient.setQueryData(['config'], payload.config)
@@ -225,10 +237,12 @@ export const useWebSocket = () => {
           break
         case 'database_created':
           queryClient.invalidateQueries({ queryKey: ['databases'] })
-          router.navigate({
-            to: '/databases/$databaseId',
-            params: { databaseId: payload.id },
-          })
+          if (payload.navigate !== false) {
+            router.navigate({
+              to: '/databases/$databaseId',
+              params: { databaseId: payload.id || payload },
+            })
+          }
           break
         case 'database_data':
           queryClient.setQueryData(

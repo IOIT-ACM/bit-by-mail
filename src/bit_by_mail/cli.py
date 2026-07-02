@@ -24,42 +24,25 @@ def main():
                 f.write(secret_key)
 
     except IOError as e:
-        print(f"\n--- FATAL ERROR ---")
-        print(f"Could not read or write the secret key at: {key_path}")
-        print(f"Error: {e}")
-        print("Please check file permissions for the 'data' directory.")
-        print("-------------------\n")
         sys.exit(1)
 
     os.environ["SECRET_KEY"] = secret_key
 
     if not os.environ.get("SECRET_KEY"):
-        print("\n--- FATAL ERROR ---")
-        print("The 'SECRET_KEY' could not be configured.")
-        print("Please ensure the 'data/fernet.key' file is readable.")
-        print("-------------------\n")
         sys.exit(1)
 
     app = make_app()
 
     static_path = app.settings.get("static_path")
     if not static_path or not os.path.exists(os.path.join(static_path, "index.html")):
-        print("\n--- ERROR ---")
-        print("Frontend assets are missing from the package.")
-        print("This is an installation issue. Please try reinstalling the package.")
-        print("If developing, ensure you have run the build process correctly.")
-        print("-------------\n")
         sys.exit(1)
 
     port = 8888
     app.listen(port)
-    print(f"Server is running on http://localhost:{port}")
-    print("Access the application in your browser.")
 
     loop = asyncio.get_event_loop()
 
     def shutdown_handler():
-        print("Shutting down server...")
         mailer_service = app.settings.get("mailer_service")
         if mailer_service:
             mailer_service.stop()
@@ -86,7 +69,6 @@ def main():
             loop.run_until_complete(gather_cancelled())
 
         loop.close()
-        print("Server shut down gracefully.")
 
 
 if __name__ == "__main__":

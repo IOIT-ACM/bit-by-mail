@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { apiService } from '@/services/apiService'
 import { Button } from '@/components/common/Button'
 import { Plus, Upload, X } from 'lucide-react'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/databases/new')({
   component: CreateDatabase,
@@ -12,17 +13,16 @@ function CreateDatabase() {
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [csvContent, setCsvContent] = useState<string>('')
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
   const [previewRows, setPreviewRows] = useState<string[][]>([])
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      setPendingFile(file)
       const reader = new FileReader()
       reader.onload = (event) => {
         const text = event.target?.result as string
-        setCsvContent(btoa(text))
-
         const lines = text.split('\n').filter((l) => l.trim() !== '')
         const rows = lines.slice(0, 6).map((l) => l.split(','))
         setPreviewRows(rows)
@@ -32,16 +32,33 @@ function CreateDatabase() {
   }
 
   const clearFile = () => {
-    setCsvContent('')
+    setPendingFile(null)
     setPreviewRows([])
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim()) return
 
     setIsSubmitting(true)
-    apiService.createDatabase(name.trim(), csvContent || undefined)
+
+    try {
+      const res = await apiService.request(
+        'create_database',
+        { name: name.trim(), navigate: false },
+        'database_created',
+      )
+      const dbId = res.id
+
+      if (pendingFile) {
+        await apiService.uploadDatabaseHttp(dbId, pendingFile, 'replace')
+      }
+
+      navigate({ to: '/databases/$databaseId', params: { databaseId: dbId } })
+    } catch (err) {
+      toast.error('Failed to create database')
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -82,7 +99,7 @@ function CreateDatabase() {
                 Initial Data (Optional)
               </label>
 
-              {!csvContent ? (
+              {!pendingFile ? (
                 <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-borders-primary rounded-lg bg-surface-element">
                   <Upload size={32} className="text-text-tertiary mb-4" />
                   <p className="text-sm text-text-secondary mb-4 text-center">

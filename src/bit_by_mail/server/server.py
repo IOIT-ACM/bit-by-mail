@@ -6,6 +6,7 @@ import importlib.resources
 from .handlers.websocket_handler import WebSocketHandler, WebSocketManager
 from .handlers.attachment_handler import AttachmentHandler
 from .handlers.report_handler import ReportHandler
+from .handlers.upload_handler import RecipientUploadHandler, DatabaseUploadHandler
 from .services.settings_service import SettingsService
 from .services.recipient_service import RecipientService
 from .services.template_service import TemplateService
@@ -62,6 +63,16 @@ def make_app():
     return tornado.web.Application(
         [
             (r"/ws", WebSocketHandler),
+            (
+                r"/api/upload/recipients/(.*)",
+                RecipientUploadHandler,
+                {"recipient_service": recipient_service},
+            ),
+            (
+                r"/api/upload/database/(.*)",
+                DatabaseUploadHandler,
+                {"database_service": database_service},
+            ),
             (
                 r"/attachments/(.*)/(.*)",
                 AttachmentHandler,

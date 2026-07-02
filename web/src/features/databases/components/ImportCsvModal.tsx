@@ -2,17 +2,33 @@ import React, { useState } from 'react'
 import { Modal } from '@/components/common/Modal'
 import { Button } from '@/components/common/Button'
 import { apiService } from '@/services/apiService'
+import { toast } from 'sonner'
+import { queryClient } from '@/services/queryClient'
 
 export const ImportCsvModal: React.FC<{
   databaseId: string
-  base64Content: string
+  pendingFile: File
   onClose: () => void
-}> = ({ databaseId, base64Content, onClose }) => {
+}> = ({ databaseId, pendingFile, onClose }) => {
   const [isImporting, setIsImporting] = useState(false)
 
-  const handleImport = (mode: 'merge' | 'replace') => {
+  const handleImport = async (mode: 'merge' | 'replace') => {
     setIsImporting(true)
-    apiService.importCsvToDatabase(databaseId, base64Content, mode)
+    try {
+      const res = await apiService.uploadDatabaseHttp(
+        databaseId,
+        pendingFile,
+        mode,
+      )
+      queryClient.setQueryData(['databaseData', databaseId], (old: any) =>
+        old ? { ...old, recipients: res.recipients } : old,
+      )
+      toast.success(`${res.recipients.length} recipients imported successfully`)
+      apiService.getDatabases()
+    } catch (e) {
+      toast.error('Upload failed. Check file format.')
+    }
+    setIsImporting(false)
     onClose()
   }
 

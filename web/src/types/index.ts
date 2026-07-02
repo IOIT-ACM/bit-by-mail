@@ -63,6 +63,7 @@ export interface Campaign {
   send_attachments?: boolean
   sender_account_id?: string
   is_html?: boolean
+  delay?: number
 }
 
 export interface CampaignData {

@@ -1,8 +1,13 @@
 import type { Config, Recipient } from '@/types'
 
+const getApiUrl = (path: string) => {
+  return window.location.port === '3000' ? `http://localhost:8888${path}` : path
+}
+
 class ApiService {
   private socket: WebSocket | null = null
-  private resolvers: Map<string, Function[]> = new Map()
+  private resolvers: Map<string, { resolve: Function; reject: Function }[]> =
+    new Map()
   private messageQueue: string[] = []
 
   setSocket(socket: WebSocket | null) {
@@ -18,8 +23,11 @@ class ApiService {
     }
   }
 
-  sendMessage(action: string, payload?: any) {
-    const msg = JSON.stringify({ action, payload })
+  sendMessage(action: string, payload?: any, req_id?: string) {
+    const data: any = { action, payload }
+    if (req_id) data.req_id = req_id
+    const msg = JSON.stringify(data)
+
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(msg)
     } else {
@@ -32,21 +40,51 @@ class ApiService {
     payload?: any,
     expectedAction?: string,
   ): Promise<any> {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const waitAction = expectedAction || action
+      const reqId = crypto.randomUUID()
+
+      const wrappedResolve = (data: any) => {
+        this.resolvers.delete(reqId)
+        resolve(data)
+      }
+
+      const wrappedReject = (err: any) => {
+        this.resolvers.delete(reqId)
+        reject(err)
+      }
+
       if (!this.resolvers.has(waitAction)) {
         this.resolvers.set(waitAction, [])
       }
-      this.resolvers.get(waitAction)!.push(resolve)
-      this.sendMessage(action, payload)
+      if (!this.resolvers.has(reqId)) {
+        this.resolvers.set(reqId, [])
+      }
+
+      this.resolvers
+        .get(waitAction)!
+        .push({ resolve: wrappedResolve, reject: wrappedReject })
+      this.resolvers
+        .get(reqId)!
+        .push({ resolve: wrappedResolve, reject: wrappedReject })
+
+      this.sendMessage(action, payload, reqId)
     })
   }
 
-  handleResponse(action: string, payload: any) {
-    if (this.resolvers.has(action)) {
-      const callbacks = this.resolvers.get(action)!
-      callbacks.forEach((cb) => cb(payload))
-      this.resolvers.delete(action)
+  handleResponse(id: string, payload: any) {
+    if (this.resolvers.has(id)) {
+      const callbacks = this.resolvers.get(id)!
+      callbacks.forEach((cb) => cb.resolve(payload))
+      this.resolvers.delete(id)
+    }
+  }
+
+  handleError(id: string, error: string) {
+    if (this.resolvers.has(id)) {
+      const callbacks = this.resolvers.get(id)!
+      callbacks.forEach((cb) => cb.reject(new Error(error)))
+      this.resolvers.delete(id)
     }
   }
 
@@ -84,6 +122,7 @@ class ApiService {
       send_attachments?: boolean
       sender_account_id?: string
       is_html?: boolean
+      delay?: number
     },
   ) {
     this.sendMessage('update_campaign', { campaign_id: campaignId, updates })
@@ -127,6 +166,17 @@ class ApiService {
     })
   }
 
+  async uploadRecipientsHttp(campaignId: string, file: File) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(getApiUrl(`/api/upload/recipients/${campaignId}`), {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) throw new Error('Upload failed')
+    return res.json()
+  }
+
   startMailing(campaignId: string, indices?: number[]) {
     this.sendMessage('start_mailing', {
       campaign_id: campaignId,
@@ -161,6 +211,24 @@ class ApiService {
 
   createDatabase(name: string, content?: string) {
     this.sendMessage('create_database', { name, content })
+  }
+
+  async uploadDatabaseHttp(
+    databaseId: string,
+    file: File,
+    mode: 'merge' | 'replace',
+  ) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch(
+      getApiUrl(`/api/upload/database/${databaseId}?mode=${mode}`),
+      {
+        method: 'POST',
+        body: formData,
+      },
+    )
+    if (!res.ok) throw new Error('Upload failed')
+    return res.json()
   }
 
   updateDatabase(databaseId: string, updates: { name?: string }) {
