@@ -53,6 +53,16 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def on_close(self):
         self.application.settings["websocket_manager"].remove(self)
 
+    async def safe_write_message(self, message_str):
+        if self.ws_connection is None or self.ws_connection.is_closing():
+            return
+        try:
+            await self.write_message(message_str)
+        except tornado.websocket.WebSocketClosedError:
+            pass
+        except Exception:
+            pass
+
     async def on_message(self, message):
         try:
             data = json.loads(message)
@@ -66,7 +76,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 raise ValueError(f"Unknown action: {action}")
 
         except Exception as e:
-            self.write_message(
+            await self.safe_write_message(
                 json.dumps(
                     {
                         "action": "log",
@@ -83,7 +93,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         for acc in config.get("accounts", []):
             acc["has_password"] = bool(acc.get("sender_password"))
 
-        self.write_message(
+        await self.safe_write_message(
             json.dumps(
                 {
                     "action": "initial_data",
@@ -102,7 +112,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
         recipients = await self.recipient_service.get_recipients(campaign_id)
         template = await self.template_service.get_template(campaign_id)
-        self.write_message(
+        await self.safe_write_message(
             json.dumps(
                 {
                     "action": "campaign_data",
@@ -144,7 +154,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             {"action": "campaigns_list", "payload": all_campaigns}
         )
 
-        self.write_message(
+        await self.safe_write_message(
             json.dumps(
                 {
                     "action": "campaign_created",
@@ -214,7 +224,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             campaign_id, base64_content
         )
         recipients = await self.recipient_service.get_recipients(campaign_id)
-        self.write_message(
+        await self.safe_write_message(
             json.dumps({"action": "recipients_updated", "payload": recipients})
         )
 
@@ -233,7 +243,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             return
 
         if self.mailer_service.is_running():
-            self.write_message(
+            await self.safe_write_message(
                 json.dumps(
                     {
                         "action": "log",
@@ -270,7 +280,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         result = await self.preflight_service.run_checks(
             campaign_id, stored_config, subject
         )
-        self.write_message(
+        await self.safe_write_message(
             json.dumps({"action": "preflight_result", "payload": result.to_dict()})
         )
 
@@ -287,20 +297,20 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         summary = await self.preflight_service.get_campaign_summary(
             campaign_id, stored_config, subject, recipient_indices
         )
-        self.write_message(
+        await self.safe_write_message(
             json.dumps({"action": "campaign_summary", "payload": summary})
         )
 
     async def _handle_get_databases(self, _):
         dbs = await self.database_service.get_databases()
-        self.write_message(json.dumps({"action": "databases_list", "payload": dbs}))
+        await self.safe_write_message(json.dumps({"action": "databases_list", "payload": dbs}))
 
     async def _handle_get_database_data(self, payload):
         db_id = payload.get("database_id")
         if not db_id:
             return
         recipients = await self.database_service.get_database_data(db_id)
-        self.write_message(json.dumps({
+        await self.safe_write_message(json.dumps({
             "action": "database_data",
             "payload": {"database_id": db_id, "recipients": recipients}
         }))
@@ -314,7 +324,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.application.settings["websocket_manager"].broadcast(
             {"action": "databases_list", "payload": all_dbs}
         )
-        self.write_message(json.dumps({"action": "database_created", "payload": new_db}))
+        await self.safe_write_message(json.dumps({"action": "database_created", "payload": new_db}))
 
     async def _handle_update_database(self, payload):
         db_id = payload.get("database_id")
@@ -349,21 +359,21 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             return
         await self.database_service.import_csv_to_database(db_id, content, mode)
         recipients = await self.database_service.get_database_data(db_id)
-        self.write_message(json.dumps({
+        await self.safe_write_message(json.dumps({
             "action": "database_recipients_updated",
             "payload": {"database_id": db_id, "recipients": recipients}
         }))
 
     async def _handle_get_global_templates(self, _):
         templates = await self.global_template_service.get_templates()
-        self.write_message(json.dumps({"action": "global_templates_list", "payload": templates}))
+        await self.safe_write_message(json.dumps({"action": "global_templates_list", "payload": templates}))
 
     async def _handle_get_global_template_data(self, payload):
         template_id = payload.get("template_id")
         if not template_id:
             return
         data = await self.global_template_service.get_template_data(template_id)
-        self.write_message(json.dumps({"action": "global_template_data", "payload": data}))
+        await self.safe_write_message(json.dumps({"action": "global_template_data", "payload": data}))
 
     async def _handle_create_global_template(self, payload):
         name = payload.get("name")
@@ -378,7 +388,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.application.settings["websocket_manager"].broadcast(
             {"action": "global_templates_list", "payload": all_t}
         )
-        self.write_message(json.dumps({
+        await self.safe_write_message(json.dumps({
             "action": "global_template_created",
             "payload": {"template": new_t, "navigate": navigate}
         }))
@@ -414,7 +424,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
 
     async def _handle_get_assets(self, _):
         assets = await self.asset_service.get_assets()
-        self.write_message(json.dumps({"action": "assets_list", "payload": assets}))
+        await self.safe_write_message(json.dumps({"action": "assets_list", "payload": assets}))
 
     async def _handle_create_asset(self, payload):
         assets = await self.asset_service.create_asset(payload.get("name"), payload.get("url"), payload.get("is_gdrive"))
@@ -447,8 +457,14 @@ class WebSocketManager:
         self.connections.discard(connection)
 
     def broadcast(self, message):
-        for connection in self.connections:
+        msg_str = json.dumps(message)
+        for connection in list(self.connections):
+            if connection.ws_connection is None or connection.ws_connection.is_closing():
+                continue
             try:
-                connection.write_message(json.dumps(message))
-            except tornado.websocket.WebSocketClosedError:
+                fut = connection.write_message(msg_str)
+                if fut is not None:
+                    # Consume exception to avoid "Task exception was never retrieved" warning if socket drops
+                    fut.add_done_callback(lambda f: f.exception())
+            except Exception:
                 pass

@@ -8,6 +8,7 @@ import {
   Users,
 } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
 import { queryClient } from '@/services/queryClient'
@@ -42,6 +43,14 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
   const setIsRecipientsCollapsed = useAppStore(
     (state) => state.setIsRecipientsCollapsed,
   )
+
+  const { data: campaignData } = useQuery<CampaignData>({
+    queryKey: ['campaignData', campaignId],
+    enabled: !!campaignId,
+  })
+
+  const displayCount =
+    campaignData?.recipients?.length ?? campaign.recipientCount
 
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(campaign.name)
@@ -170,9 +179,9 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
           >
             <Users size={16} />
             <span className="hidden md:inline">Recipients</span>
-            {campaign.recipientCount > 0 && (
+            {displayCount > 0 && (
               <span className="ml-1 bg-background-base text-text-primary px-1.5 py-0.5 rounded-full text-xs border border-borders-primary">
-                {campaign.recipientCount}
+                {displayCount}
               </span>
             )}
           </Button>

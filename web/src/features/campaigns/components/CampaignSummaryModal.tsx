@@ -1,10 +1,12 @@
 import { useParams } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, FileStack, Send, Users } from 'lucide-react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
 import { Button } from '@/components/common/Button'
 import { Modal } from '@/components/common/Modal'
+import type { CampaignData } from '@/types'
 
 const formatBytes = (bytes: number, decimals = 2) => {
   if (!bytes || bytes === 0) return '0 Bytes'
@@ -48,6 +50,19 @@ export const CampaignSummaryModal: React.FC = () => {
     (state) => state.clearRecipientSelection,
   )
 
+  const { data: campaignData } = useQuery<CampaignData>({
+    queryKey: ['campaignData', campaignId],
+    enabled: !!campaignId,
+  })
+
+  const recipientsToSend = useMemo(() => {
+    const allRecipients = campaignData?.recipients || []
+    if (selectedRecipientIndices.size > 0) {
+      return allRecipients.filter((_, idx) => selectedRecipientIndices.has(idx))
+    }
+    return allRecipients.filter((r) => r.Status?.toUpperCase() !== 'SENT')
+  }, [campaignData, selectedRecipientIndices])
+
   if (!campaignSummary) return null
 
   const handleClose = () => setShowCampaignSummaryModal(false)
@@ -74,26 +89,57 @@ export const CampaignSummaryModal: React.FC = () => {
       maxWidth="max-w-6xl"
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[70vh]">
-        <div className="lg:col-span-1 flex flex-col gap-4">
-          <h3 className="text-lg font-medium text-text-primary px-1">
+        <div className="lg:col-span-1 flex flex-col gap-4 min-h-0">
+          <h3 className="text-lg font-medium text-text-primary px-1 flex-shrink-0">
             Summary
           </h3>
-          <SummaryItem
-            icon={<Users size={20} />}
-            label="Total Recipients"
-            value={campaignSummary.total_recipients}
-          />
-          <SummaryItem
-            icon={<Send size={20} />}
-            label="Emails to be Sent"
-            value={campaignSummary.recipients_to_send}
-          />
-          <SummaryItem
-            icon={<FileStack size={20} />}
-            label="Total Attachment Size"
-            value={formatBytes(campaignSummary.total_attachment_size_bytes)}
-          />
-          <div className="mt-auto pt-4">
+          <div className="flex-shrink-0 space-y-4">
+            <SummaryItem
+              icon={<Users size={20} />}
+              label="Total Recipients"
+              value={campaignSummary.total_recipients}
+            />
+            <SummaryItem
+              icon={<Send size={20} />}
+              label="Emails to be Sent"
+              value={campaignSummary.recipients_to_send}
+            />
+            <SummaryItem
+              icon={<FileStack size={20} />}
+              label="Total Attachment Size"
+              value={formatBytes(campaignSummary.total_attachment_size_bytes)}
+            />
+          </div>
+
+          <div className="flex flex-col min-h-0 flex-1 border border-borders-primary rounded-lg overflow-hidden mt-2 bg-surface-element">
+            <div className="bg-surface-header px-3 py-2 border-b border-borders-primary text-xs font-medium text-text-secondary sticky top-0 z-10 flex justify-between">
+              <span>Recipient Name</span>
+              <span>Email</span>
+            </div>
+            <div className="overflow-y-auto custom-scrollbar flex-1 p-1">
+              {recipientsToSend.length > 0 ? (
+                recipientsToSend.map((r, i) => (
+                  <div
+                    key={i}
+                    className="text-xs flex justify-between items-center p-2 hover:bg-surface-element-hover rounded transition-colors"
+                  >
+                    <span className="truncate font-medium text-text-primary mr-2 flex-1">
+                      {r.Name || 'Unknown'}
+                    </span>
+                    <span className="truncate text-text-tertiary flex-1 text-right">
+                      {r.Email || 'No Email'}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="p-4 text-center text-xs text-text-tertiary">
+                  No pending recipients to display.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-auto pt-4 flex-shrink-0">
             {!hasRecipientsToSend && (
               <div className="flex items-center gap-3 p-3 bg-accent-orange/10 border border-accent-orange/20 rounded-lg text-accent-orange mb-4">
                 <AlertTriangle size={24} className="flex-shrink-0" />

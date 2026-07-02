@@ -9,19 +9,16 @@ import {
   PanelRightClose,
   PanelRightOpen,
 } from 'lucide-react'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { toast } from 'sonner'
+import morphdom from 'morphdom'
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
 import { apiService } from '@/services/apiService'
 import { queryClient } from '@/services/queryClient'
-import type {
-  CampaignData,
-  Campaign,
-  EmailTemplateData,
-  EmailTemplate,
-} from '@/types'
+import type { CampaignData, Campaign, EmailTemplateData } from '@/types'
 import { MaximizableView } from '@/components/common/MaximizableView'
 import { MonacoEditorWrapper } from '@/components/common/MonacoEditorWrapper'
+import { RichTextEditorWrapper } from '@/components/common/RichTextEditorWrapper'
 import { LoadTemplateModal } from './LoadTemplateModal'
 import { SaveTemplateModal } from './SaveTemplateModal'
 import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
@@ -62,6 +59,73 @@ const PlaceholderList: React.FC<{ entityId: string }> = ({ entityId }) => {
   )
 }
 
+const preparePreviewContent = (content: string) => {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+      font-size: 14px;
+      color: #000;
+      line-height: 1.5;
+    }
+    p { margin-top: 0; margin-bottom: 1em; }
+    p:empty::before { content: "\\00a0"; }
+    ul { list-style-type: disc; padding-left: 1.5em; margin-top: 0; margin-bottom: 1em; }
+    ol { list-style-type: decimal; padding-left: 1.5em; margin-top: 0; margin-bottom: 1em; }
+    a { color: #3b82f6; text-decoration: underline; }
+    img { max-width: 100%; height: auto; border-radius: 0.375rem; margin-bottom: 1em; }
+    strong { font-weight: 700; }
+    em { font-style: italic; }
+  </style>
+</head>
+<body>
+  ${content}
+</body>
+</html>`
+}
+
+const LiveIframe: React.FC<{ content: string; shellHtml: string }> = ({
+  content,
+  shellHtml,
+}) => {
+  const iframeRef = useRef<HTMLIFrameElement>(null)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  useEffect(() => {
+    if (!isLoaded || !iframeRef.current) return
+    const doc = iframeRef.current.contentDocument
+    const win = iframeRef.current.contentWindow
+    if (!doc || !win) return
+
+    const scrollY = win.scrollY
+
+    try {
+      morphdom(doc.body, `<body>${content}</body>`)
+    } catch (e) {
+      doc.body.innerHTML = content
+    }
+
+    win.scrollTo(0, scrollY)
+  }, [content, isLoaded])
+
+  return (
+    <iframe
+      ref={iframeRef}
+      srcDoc={shellHtml}
+      onLoad={() => setIsLoaded(true)}
+      title="Email Preview"
+      className="w-full h-full bg-white border border-borders-primary rounded-lg"
+      sandbox="allow-same-origin"
+    />
+  )
+}
+
 const EditorContent: React.FC<{
   isMaximized: boolean
   onToggleMaximize: () => void
@@ -77,25 +141,14 @@ const EditorContent: React.FC<{
     queryKey: ['templateData', entityId],
     enabled: type === 'template',
   })
-  const { data: campaigns } = useQuery<Campaign[]>({ queryKey: ['campaigns'] })
-  const campaign = campaigns?.find((c) => c.id === entityId)
-
-  const { data: templates } = useQuery<EmailTemplate[]>({
-    queryKey: ['templates'],
-  })
-  const template = templates?.find((t) => t.id === entityId)
 
   const remoteBody =
     type === 'campaign' ? campaignData?.emailBody : templateData?.body
 
-  const initialIsHtml =
-    type === 'campaign'
-      ? (campaign?.is_html ?? true)
-      : (template?.is_html ?? true)
-
   const [localSubject, setLocalSubject] = useState(initialSubject)
   const [localBody, setLocalBody] = useState('')
-  const [localIsHtml, setLocalIsHtml] = useState(initialIsHtml)
+  const [previewBody, setPreviewBody] = useState('')
+  const [editorMode, setEditorMode] = useState<'text' | 'html'>('text')
   const [editorInstance, setEditorInstance] = useState<any>(null)
 
   const [showLoadModal, setShowLoadModal] = useState(false)
@@ -108,17 +161,22 @@ const EditorContent: React.FC<{
   const connectionStatus = useAppStore((state) => state.connectionStatus)
 
   useEffect(() => {
-    setLocalIsHtml(initialIsHtml)
-  }, [initialIsHtml])
-
-  useEffect(() => {
     if (remoteBody !== undefined) {
       setLocalBody((prev) => (prev !== remoteBody ? remoteBody : prev))
     }
   }, [remoteBody])
+
   useEffect(() => {
     setLocalSubject((prev) => (prev !== initialSubject ? initialSubject : prev))
   }, [initialSubject])
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPreviewBody(localBody)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [localBody])
+
   useEffect(() => {
     if (connectionStatus === 'closed') {
       setSaveStatus('error')
@@ -176,25 +234,20 @@ const EditorContent: React.FC<{
     }
   }
 
-  const handleIsHtmlChange = (newIsHtml: boolean) => {
-    setLocalIsHtml(newIsHtml)
-    setSaveStatus('saving')
-    if (type === 'campaign') {
-      apiService.updateCampaign(entityId, { is_html: newIsHtml })
-    } else {
-      apiService.updateGlobalTemplate(entityId, { is_html: newIsHtml })
-    }
-    setSaveStatus('saved')
-  }
-
   const handleInsertAsset = (url: string, name: string) => {
-    const tag = localIsHtml ? `<img src="${url}" alt="${name}" />` : url
-    if (editorInstance) {
-      const selection = editorInstance.getSelection()
-      const op = { range: selection, text: tag, forceMoveMarkers: true }
-      editorInstance.executeEdits('source', [op])
+    if (editorMode === 'text') {
+      if (editorInstance) {
+        editorInstance.chain().focus().setImage({ src: url, alt: name }).run()
+      }
     } else {
-      handleBodyChange(localBody + tag)
+      const tag = `<img src="${url}" alt="${name}" />`
+      if (editorInstance) {
+        const selection = editorInstance.getSelection()
+        const op = { range: selection, text: tag, forceMoveMarkers: true }
+        editorInstance.executeEdits('source', [op])
+      } else {
+        handleBodyChange(localBody + tag)
+      }
     }
     setShowAssetPicker(false)
   }
@@ -212,8 +265,10 @@ const EditorContent: React.FC<{
           if (bodyChanged) apiService.saveTemplate(entityId, localBody)
           if (subjectChanged)
             apiService.updateCampaign(entityId, { subject: localSubject })
+
+          apiService.updateCampaign(entityId, { is_html: true })
         } else {
-          const updates: any = {}
+          const updates: any = { is_html: true }
           if (subjectChanged) updates.subject = localSubject
           apiService.updateGlobalTemplate(
             entityId,
@@ -230,31 +285,22 @@ const EditorContent: React.FC<{
     [localBody, localSubject, entityId, type],
   )
 
-  const preparePreviewContent = (content: string, isHtml: boolean) => {
-    if (isHtml) return content
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:16px;background:#fff;"><pre style="white-space:pre-wrap;font-family:sans-serif;font-size:14px;margin:0;color:#000;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`
-  }
-
-  const previewContent = preparePreviewContent(localBody, localIsHtml)
+  const shellHtml = useMemo(() => preparePreviewContent(''), [])
 
   const handleFullscreenPreview = () => {
-    const blob = new Blob([previewContent], { type: 'text/html' })
+    const fullHtml = preparePreviewContent(localBody)
+    const blob = new Blob([fullHtml], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
     window.open(url, '_blank')
   }
 
-  const handleLoadTemplate = (
-    subject: string,
-    body: string,
-    isHtml: boolean,
-  ) => {
+  const handleLoadTemplate = (subject: string, body: string) => {
     handleSubjectChange({
       target: { value: subject },
     } as React.ChangeEvent<HTMLInputElement>)
     handleBodyChange(body)
-    handleIsHtmlChange(isHtml)
     apiService.saveTemplate(entityId, body)
-    apiService.updateCampaign(entityId, { subject, is_html: isHtml })
+    apiService.updateCampaign(entityId, { subject, is_html: true })
     toast.success('Template loaded successfully.')
   }
 
@@ -285,14 +331,12 @@ const EditorContent: React.FC<{
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {localIsHtml && (
-              <button
-                onClick={() => setShowAssetPicker(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
-              >
-                <ImageIcon size={14} /> Insert Asset
-              </button>
-            )}
+            <button
+              onClick={() => setShowAssetPicker(true)}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
+            >
+              <ImageIcon size={14} /> Insert Asset
+            </button>
             {type === 'campaign' && (
               <>
                 <button
@@ -339,25 +383,19 @@ const EditorContent: React.FC<{
           />
         </div>
 
-        <div className="flex items-center gap-3 bg-surface-element px-4 h-11 rounded-lg border border-borders-primary">
-          <span
-            className={`text-xs font-medium ${!localIsHtml ? 'text-text-primary' : 'text-text-secondary'}`}
+        <div className="flex items-center gap-1 bg-surface-element p-1 h-11 rounded-lg border border-borders-primary">
+          <button
+            onClick={() => setEditorMode('text')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'text' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
           >
             Text
-          </span>
-          <button
-            onClick={() => handleIsHtmlChange(!localIsHtml)}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${localIsHtml ? 'bg-accent-blue' : 'bg-borders-primary'}`}
-          >
-            <span
-              className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${localIsHtml ? 'translate-x-5' : 'translate-x-1'}`}
-            />
           </button>
-          <span
-            className={`text-xs font-medium ${localIsHtml ? 'text-text-primary' : 'text-text-secondary'}`}
+          <button
+            onClick={() => setEditorMode('html')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'html' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
           >
             HTML
-          </span>
+          </button>
         </div>
       </div>
 
@@ -366,18 +404,18 @@ const EditorContent: React.FC<{
           <div className="flex-grow flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-2 px-1">
               <h3 className="text-sm font-medium text-text-secondary">
-                {localIsHtml ? 'HTML' : 'Text'}
+                {editorMode === 'text' ? 'Rich Text Editor' : 'HTML Code'}
               </h3>
             </div>
             <div className="w-full flex-grow bg-surface-element border border-borders-primary rounded-lg overflow-hidden flex">
-              {!localIsHtml ? (
-                <textarea
+              {editorMode === 'text' && (
+                <RichTextEditorWrapper
                   value={localBody}
-                  onChange={(e) => handleBodyChange(e.target.value)}
-                  className="w-full h-full bg-[#1e1e2a] text-text-primary p-4 resize-none outline-none font-mono text-sm custom-scrollbar"
-                  spellCheck={false}
+                  onChange={handleBodyChange}
+                  onMount={setEditorInstance}
                 />
-              ) : (
+              )}
+              {editorMode === 'html' && (
                 <MonacoEditorWrapper
                   value={localBody}
                   onChange={handleBodyChange}
@@ -439,12 +477,7 @@ const EditorContent: React.FC<{
                   </button>
                 </div>
               </div>
-              <iframe
-                srcDoc={previewContent}
-                title="Email Preview"
-                className="w-full h-full bg-white border border-borders-primary rounded-lg"
-                sandbox="allow-same-origin"
-              />
+              <LiveIframe content={previewBody} shellHtml={shellHtml} />
             </>
           )}
         </div>
@@ -467,7 +500,7 @@ const EditorContent: React.FC<{
           onClose={() => setShowSaveModal(false)}
           currentSubject={localSubject}
           currentBody={localBody}
-          currentIsHtml={localIsHtml}
+          currentIsHtml={true}
         />
       )}
     </>

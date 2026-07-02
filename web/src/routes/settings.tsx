@@ -15,6 +15,8 @@ import {
   Globe,
   Shield,
   Key,
+  Info,
+  ExternalLink,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -128,6 +130,10 @@ function SettingsPage() {
     toast.success('Account saved.')
     setEditingAccount(null)
   }
+
+  const isGmail =
+    editingAccount?.smtp_server?.toLowerCase().includes('gmail.com') ||
+    editingAccount?.sender_email?.toLowerCase().includes('@gmail.com')
 
   return (
     <div className="p-8 h-full overflow-y-auto custom-scrollbar">
@@ -339,7 +345,7 @@ function SettingsPage() {
                   required
                 />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-text-secondary mb-2">
                   Sender Email
                 </label>
@@ -357,7 +363,7 @@ function SettingsPage() {
                   required
                 />
               </div>
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-text-secondary mb-2">
                   Sender Password / App Password
                 </label>
@@ -374,9 +380,36 @@ function SettingsPage() {
                   className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary focus:ring-2 focus:ring-accent-blue font-mono text-sm"
                   required={!editingAccount.has_password}
                 />
+
+                {isGmail && (
+                  <div className="mt-3 p-4 bg-accent-blue/10 border border-accent-blue/20 rounded-lg flex items-start gap-3">
+                    <Info
+                      className="text-accent-blue mt-0.5 flex-shrink-0"
+                      size={18}
+                    />
+                    <div className="text-sm text-text-secondary">
+                      <p className="font-semibold text-accent-blue mb-1">
+                        Using Gmail?
+                      </p>
+                      <p className="mb-2 leading-relaxed">
+                        Google blocks SMTP access with your normal account
+                        password. You must generate a 16-character{' '}
+                        <strong>App Password</strong> and paste it here instead.
+                      </p>
+                      <a
+                        href="https://myaccount.google.com/apppasswords"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-accent-blue hover:text-accent-blue/80 transition-colors bg-accent-blue/10 px-3 py-1.5 rounded-md"
+                      >
+                        Generate Google App Password <ExternalLink size={14} />
+                      </a>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="md:col-span-2 flex items-center justify-between bg-surface-element p-4 rounded-lg border border-borders-primary/50">
-                <div className="flex items-center gap-3">
+              <div className="md:col-span-2 flex flex-col sm:flex-row sm:items-center gap-4 bg-surface-element p-4 rounded-lg border border-borders-primary/50">
+                <div className="flex items-center gap-3 flex-1">
                   <input
                     type="checkbox"
                     id="use_ssl"
@@ -396,7 +429,7 @@ function SettingsPage() {
                     Use SSL/TLS (Port 465 usually)
                   </label>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1">
                   <input
                     type="checkbox"
                     id="is_default"
