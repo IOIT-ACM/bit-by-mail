@@ -23,20 +23,21 @@ class SettingsService:
         old_config = await self.get_config()
         old_accounts_map = {acc["id"]: acc for acc in old_config.get("accounts", [])}
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("DELETE FROM accounts")
-            for acc in data.get("accounts", []):
-                acc_id = acc.get("id", str(uuid.uuid4()))
-                name = acc.get("name", "")
-                smtp_server = acc.get("smtp_server", "")
-                smtp_port = acc.get("smtp_port", 587)
-                sender_email = acc.get("sender_email", "")
-                use_ssl = acc.get("use_ssl", False)
-                is_default = acc.get("is_default", False)
-                password = acc.get("sender_password")
-                if not password:
-                    old_acc = old_accounts_map.get(acc_id)
-                    password = old_acc.get("sender_password", "") if old_acc else ""
-                await db.execute("INSERT INTO accounts (id, name, smtp_server, smtp_port, sender_email, sender_password, use_ssl, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (acc_id, name, smtp_server, smtp_port, sender_email, password, use_ssl, is_default))
+            if "accounts" in data:
+                await db.execute("DELETE FROM accounts")
+                for acc in data.get("accounts", []):
+                    acc_id = acc.get("id", str(uuid.uuid4()))
+                    name = acc.get("name", "")
+                    smtp_server = acc.get("smtp_server", "")
+                    smtp_port = acc.get("smtp_port", 587)
+                    sender_email = acc.get("sender_email", "")
+                    use_ssl = acc.get("use_ssl", False)
+                    is_default = acc.get("is_default", False)
+                    password = acc.get("sender_password")
+                    if not password:
+                        old_acc = old_accounts_map.get(acc_id)
+                        password = old_acc.get("sender_password", "") if old_acc else ""
+                    await db.execute("INSERT INTO accounts (id, name, smtp_server, smtp_port, sender_email, sender_password, use_ssl, is_default) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (acc_id, name, smtp_server, smtp_port, sender_email, password, use_ssl, is_default))
             await db.commit()
 
     async def clear_config(self):

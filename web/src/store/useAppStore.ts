@@ -48,6 +48,7 @@ interface AppActions {
   selectAllRecipients: (count: number) => void
   setShowAddRecipientModal: (show: boolean) => void
   setShowCampaignSettingsModal: (show: boolean) => void
+  setShowActivityView: (show: boolean) => void
 }
 
 export const useAppStore = create<AppState & AppActions>((set) => ({
@@ -71,6 +72,7 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   isSidebarCollapsed: false,
   showAddRecipientModal: false,
   showCampaignSettingsModal: false,
+  showActivityView: false,
 
   addLog: (log) => set((state) => ({ logs: [...state.logs, log] })),
   clearLogs: () => set({ logs: [] }),
@@ -190,4 +192,5 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   setShowAddRecipientModal: (show) => set({ showAddRecipientModal: show }),
   setShowCampaignSettingsModal: (show) =>
     set({ showCampaignSettingsModal: show }),
+  setShowActivityView: (show) => set({ showActivityView: show }),
 }))

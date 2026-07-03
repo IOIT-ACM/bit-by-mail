@@ -287,6 +287,18 @@ export const useWebSocket = () => {
         case 'assets_list':
           queryClient.setQueryData(['assets'], payload)
           break
+        case 'campaign_analytics':
+          queryClient.setQueryData(
+            ['campaignAnalytics', payload.campaign_id],
+            payload.analytics,
+          )
+          break
+        case 'campaign_events':
+          queryClient.setQueryData(
+            ['campaignEvents', payload.campaign_id],
+            payload.events,
+          )
+          break
       }
     }
   }, [

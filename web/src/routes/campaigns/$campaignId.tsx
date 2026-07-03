@@ -9,6 +9,7 @@ import { CampaignSummaryModal } from '@/features/campaigns/components/CampaignSu
 import { EmailPreviewModal } from '@/features/campaigns/components/EmailPreviewModal'
 import { AddRecipientModal } from '@/features/campaigns/components/AddRecipientModal'
 import { CampaignSettingsModal } from '@/features/campaigns/components/CampaignSettingsModal'
+import { ActivityDashboard } from '@/features/campaigns/components/ActivityDashboard'
 import { useAppStore } from '@/store/useAppStore'
 import { useEffect } from 'react'
 import { apiService } from '@/services/apiService'
@@ -61,6 +62,7 @@ function CampaignDetail() {
   const isRecipientsCollapsed = useAppStore(
     (state) => state.isRecipientsCollapsed,
   )
+  const showActivityView = useAppStore((state) => state.showActivityView)
   const setPreviewRecipient = useAppStore((state) => state.setPreviewRecipient)
 
   if (!campaign)
@@ -78,19 +80,27 @@ function CampaignDetail() {
       </div>
 
       <div className="flex-1 flex flex-col lg:flex-row gap-4 px-4 pb-4 min-h-0 relative">
-        <div
-          className={`flex flex-col min-h-0 transition-all duration-300 ease-in-out ${isRecipientsCollapsed ? 'w-full' : 'w-full lg:w-1/2 xl:w-2/3'}`}
-        >
-          <Editor
-            entityId={campaignId}
-            subject={campaign.subject}
-            type="campaign"
-          />
-        </div>
-        {!isRecipientsCollapsed && (
-          <div className="w-full lg:w-1/2 xl:w-1/3 flex flex-col min-h-0 transition-all duration-300 ease-in-out">
-            <RecipientTable contextId={campaignId} contextType="campaign" />
+        {showActivityView ? (
+          <div className="w-full flex flex-col min-h-0 transition-all duration-300 ease-in-out">
+            <ActivityDashboard campaignId={campaignId} />
           </div>
+        ) : (
+          <>
+            <div
+              className={`flex flex-col min-h-0 transition-all duration-300 ease-in-out ${isRecipientsCollapsed ? 'w-full' : 'w-full lg:w-1/2 xl:w-2/3'}`}
+            >
+              <Editor
+                entityId={campaignId}
+                subject={campaign.subject}
+                type="campaign"
+              />
+            </div>
+            {!isRecipientsCollapsed && (
+              <div className="w-full lg:w-1/2 xl:w-1/3 flex flex-col min-h-0 transition-all duration-300 ease-in-out">
+                <RecipientTable contextId={campaignId} contextType="campaign" />
+              </div>
+            )}
+          </>
         )}
       </div>
 

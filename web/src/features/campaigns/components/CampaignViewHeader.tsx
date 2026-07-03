@@ -6,6 +6,7 @@ import {
   Check,
   MoreHorizontal,
   Users,
+  Activity,
 } from 'lucide-react'
 import React, { useState, useRef, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -43,6 +44,8 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
   const setIsRecipientsCollapsed = useAppStore(
     (state) => state.setIsRecipientsCollapsed,
   )
+  const showActivityView = useAppStore((state) => state.showActivityView)
+  const setShowActivityView = useAppStore((state) => state.setShowActivityView)
 
   const { data: campaignData } = useQuery<CampaignData>({
     queryKey: ['campaignData', campaignId],
@@ -173,6 +176,14 @@ export const CampaignViewHeader: React.FC<CampaignViewHeaderProps> = ({
         </div>
 
         <div className="flex items-center gap-2 overflow-x-visible pb-1 md:pb-0">
+          <Button
+            onClick={() => setShowActivityView(!showActivityView)}
+            variant={showActivityView ? 'primary' : 'secondary'}
+          >
+            <Activity size={16} />
+            <span className="hidden md:inline">Activity</span>
+          </Button>
+
           <Button
             onClick={() => setIsRecipientsCollapsed(!isRecipientsCollapsed)}
             variant={isRecipientsCollapsed ? 'secondary' : 'primary'}

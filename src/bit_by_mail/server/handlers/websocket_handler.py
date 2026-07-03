@@ -19,6 +19,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.database_service = self.application.settings["database_service"]
         self.global_template_service = self.application.settings["global_template_service"]
         self.asset_service = self.application.settings["asset_service"]
+        self.analytics_service = self.application.settings["analytics_service"]
         self.action_handlers = {
             "get_campaigns": self._handle_get_campaigns,
             "get_campaign_data": self._handle_get_campaign_data,
@@ -52,6 +53,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "create_asset": self._handle_create_asset,
             "delete_assets": self._handle_delete_assets,
             "update_asset": self._handle_update_asset,
+            "get_campaign_analytics": self._handle_get_campaign_analytics,
+            "get_campaign_events": self._handle_get_campaign_events,
         }
         self.current_req_id = None
 
@@ -550,6 +553,24 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         logger.info(f"Updated asset: {name}")
         assets = await self.asset_service.update_asset(asset_id, payload.get("updates"))
         self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
+
+    async def _handle_get_campaign_analytics(self, payload):
+        campaign_id = payload.get("campaign_id")
+        if not campaign_id: return
+        analytics = await self.analytics_service.get_campaign_analytics(campaign_id)
+        await self.safe_write_message(json.dumps({
+            "action": "campaign_analytics",
+            "payload": {"campaign_id": campaign_id, "analytics": analytics}
+        }))
+
+    async def _handle_get_campaign_events(self, payload):
+        campaign_id = payload.get("campaign_id")
+        if not campaign_id: return
+        events = await self.analytics_service.get_campaign_events(campaign_id)
+        await self.safe_write_message(json.dumps({
+            "action": "campaign_events",
+            "payload": {"campaign_id": campaign_id, "events": events}
+        }))
 
     def check_origin(self, origin):
         parsed_origin = urlparse(origin)

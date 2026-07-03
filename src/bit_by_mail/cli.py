@@ -13,10 +13,14 @@ def main():
     logging.getLogger("tornado.access").setLevel(logging.WARNING)
 
     app = make_app()
-    static_path = app.settings.get("static_path")
-    if not static_path or not os.path.exists(os.path.join(static_path, "index.html")):
-        logging.error("Static web assets not found. Build the frontend first.")
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    static_path = os.path.join(base_dir, "frontend", "dist")
+
+    if not os.path.exists(os.path.join(static_path, "index.html")):
+        logging.error(f"Static web assets not found at {static_path}. Build the frontend first.")
         sys.exit(1)
+
     port = 8888
     app.listen(port)
     logging.info(f"Server started in production mode on port {port}")

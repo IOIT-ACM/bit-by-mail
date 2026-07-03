@@ -104,6 +104,19 @@ export interface Asset {
   createdAt: string
 }
 
+export interface CampaignEvent {
+  id: number
+  campaign_id: string
+  recipient_email: string
+  event_type: string
+  event_data: string
+  created_at: string
+}
+
+export interface CampaignAnalytics {
+  [key: string]: number
+}
+
 export interface AppState {
   logs: LogEntry[]
   isSending: boolean
@@ -128,4 +141,5 @@ export interface AppState {
   isSidebarCollapsed: boolean
   showAddRecipientModal: boolean
   showCampaignSettingsModal: boolean
+  showActivityView: boolean
 }

@@ -1,11 +1,6 @@
-import {
-  HeadContent,
-  Scripts,
-  createRootRouteWithContext,
-} from '@tanstack/react-router'
+import { createRootRouteWithContext, Outlet } from '@tanstack/react-router'
 import MainLayout from '@/layouts/MainLayout'
 import { Toaster } from 'sonner'
-import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
 
 interface MyRouterContext {
@@ -13,42 +8,16 @@ interface MyRouterContext {
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
-  head: () => ({
-    meta: [
-      {
-        charSet: 'utf-8',
-      },
-      {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
-      },
-      {
-        title: 'Bit By Mail | AISSMS IOIT ACM Student Chapter',
-      },
-    ],
-    links: [
-      {
-        rel: 'stylesheet',
-        href: appCss,
-      },
-    ],
-  }),
-  shellComponent: RootDocument,
+  component: RootDocument,
 })
 
-function RootDocument({ children }: { children: React.ReactNode }) {
+function RootDocument() {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <MainLayout>{children}</MainLayout>
-
-        <Toaster position="bottom-right" theme="dark" richColors closeButton />
-
-        <Scripts />
-      </body>
-    </html>
+    <>
+      <MainLayout>
+        <Outlet />
+      </MainLayout>
+      <Toaster position="bottom-right" theme="dark" richColors closeButton />
+    </>
   )
 }

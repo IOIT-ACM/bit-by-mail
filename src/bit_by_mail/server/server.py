@@ -16,6 +16,7 @@ from .services.campaign_service import CampaignService
 from .services.database_service import DatabaseService
 from .services.global_template_service import GlobalTemplateService
 from .services.asset_service import AssetService
+from .services.analytics_service import AnalyticsService
 
 def make_app():
     try:
@@ -37,10 +38,11 @@ def make_app():
     asset_service = AssetService(db_path)
     recipient_service = RecipientService(db_path)
     template_service = TemplateService(db_path)
+    analytics_service = AnalyticsService(db_path)
     preflight_service = PreflightService(campaign_service, recipient_service, template_service)
     websocket_manager = WebSocketManager()
     ioloop = tornado.ioloop.IOLoop.current()
-    mailer_service = MailerService(template_service, recipient_service, campaign_service, websocket_manager, ioloop, db_path)
+    mailer_service = MailerService(template_service, recipient_service, campaign_service, analytics_service, websocket_manager, ioloop, db_path)
 
     settings = {
         "static_path": static_path,
@@ -55,6 +57,7 @@ def make_app():
         "database_service": database_service,
         "global_template_service": global_template_service,
         "asset_service": asset_service,
+        "analytics_service": analytics_service,
         "websocket_manager": websocket_manager,
     }
 

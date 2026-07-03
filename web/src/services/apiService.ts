@@ -315,6 +315,14 @@ class ApiService {
   updateAsset(assetId: string, updates: any) {
     this.sendMessage('update_asset', { asset_id: assetId, updates })
   }
+
+  getCampaignAnalytics(campaignId: string) {
+    this.sendMessage('get_campaign_analytics', { campaign_id: campaignId })
+  }
+
+  getCampaignEvents(campaignId: string) {
+    this.sendMessage('get_campaign_events', { campaign_id: campaignId })
+  }
 }
 
 export const apiService = new ApiService()
