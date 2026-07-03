@@ -1,164 +1,55 @@
-import os
-import json
 import uuid
-import shutil
 from datetime import datetime, timezone
-from tornado.ioloop import IOLoop
-from filelock import FileLock
+import aiosqlite
 
 class GlobalTemplateService:
-    def __init__(self, base_dir):
-        self.base_dir = base_dir
-        self.data_dir = os.path.join(self.base_dir, "data")
-        self.templates_dir = os.path.join(self.data_dir, "templates")
-        self.manifest_path = os.path.join(self.templates_dir, "manifest.json")
-        self._initialize_storage()
-
-    def _initialize_storage(self):
-        os.makedirs(self.templates_dir, exist_ok=True)
-        if not os.path.exists(self.manifest_path):
-            with FileLock(self.manifest_path + ".lock"):
-                if not os.path.exists(self.manifest_path):
-                    with open(self.manifest_path, "w") as f:
-                        json.dump([], f)
-
-    def _read_manifest(self):
-        with FileLock(self.manifest_path + ".lock"):
-            try:
-                with open(self.manifest_path, "r") as f:
-                    return json.load(f)
-            except (IOError, json.JSONDecodeError):
-                return []
-
-    def _write_manifest(self, templates):
-        with FileLock(self.manifest_path + ".lock"):
-            with open(self.manifest_path, "w") as f:
-                json.dump(templates, f, indent=2)
-
-    def get_template_path(self, template_id):
-        return os.path.join(self.templates_dir, f"{template_id}.html")
-
-    def _get_templates(self):
-        templates = self._read_manifest()
-        for t in templates:
-            if "is_html" not in t:
-                t["is_html"] = True
-        templates.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
-        return templates
+    def __init__(self, db_path):
+        self.db_path = db_path
 
     async def get_templates(self):
-        return await IOLoop.current().run_in_executor(None, self._get_templates)
-
-    def _get_template_data(self, template_id):
-        templates = self._read_manifest()
-        template = next((t for t in templates if t["id"] == template_id), None)
-        if not template:
-            return None
-
-        body = ""
-        path = self.get_template_path(template_id)
-        if os.path.exists(path):
-            with FileLock(path + ".lock"):
-                with open(path, "r", encoding="utf-8") as f:
-                    body = f.read()
-
-        return {
-            "id": template["id"],
-            "name": template["name"],
-            "subject": template.get("subject", ""),
-            "category": template.get("category", ""),
-            "is_html": template.get("is_html", True),
-            "createdAt": template["createdAt"],
-            "body": body
-        }
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT id, name, category, subject, is_html, created_at FROM global_templates ORDER BY created_at DESC") as cursor:
+                rows = await cursor.fetchall()
+                return [{"id": r["id"], "name": r["name"], "category": r["category"], "subject": r["subject"], "is_html": bool(r["is_html"]), "createdAt": r["created_at"]} for r in rows]
 
     async def get_template_data(self, template_id):
-        return await IOLoop.current().run_in_executor(None, self._get_template_data, template_id)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM global_templates WHERE id = ?", (template_id,)) as cursor:
+                r = await cursor.fetchone()
+                if r:
+                    return {"id": r["id"], "name": r["name"], "category": r["category"], "subject": r["subject"], "is_html": bool(r["is_html"]), "createdAt": r["created_at"], "body": r["body"]}
+        return None
 
     async def create_template(self, name, category="", subject="", body="", is_html=True):
-        templates = self._read_manifest()
         new_id = str(uuid.uuid4())
-        new_template = {
-            "id": new_id,
-            "name": name,
-            "category": category,
-            "subject": subject,
-            "is_html": is_html,
-            "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        }
-        templates.append(new_template)
-
-        path = self.get_template_path(new_id)
-        with FileLock(path + ".lock"):
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(body)
-
-        await IOLoop.current().run_in_executor(None, self._write_manifest, templates)
-        return new_template, await self.get_templates()
+        created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("INSERT INTO global_templates (id, name, category, subject, body, is_html, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (new_id, name, category, subject, body, is_html, created_at))
+            await db.commit()
+        t = await self.get_template_data(new_id)
+        return t, await self.get_templates()
 
     async def update_template(self, template_id, updates, body=None):
-        templates = self._read_manifest()
-        for t in templates:
-            if t["id"] == template_id:
-                if "name" in updates:
-                    t["name"] = updates["name"]
-                if "subject" in updates:
-                    t["subject"] = updates["subject"]
-                if "category" in updates:
-                    t["category"] = updates["category"]
-                if "is_html" in updates:
-                    t["is_html"] = updates["is_html"]
-                break
-
-        if body is not None:
-            path = self.get_template_path(template_id)
-            with FileLock(path + ".lock"):
-                with open(path, "w", encoding="utf-8") as f:
-                    f.write(body)
-
-        await IOLoop.current().run_in_executor(None, self._write_manifest, templates)
+        async with aiosqlite.connect(self.db_path) as db:
+            for k, v in updates.items():
+                if k in ["name", "subject", "category", "is_html"]:
+                    await db.execute(f"UPDATE global_templates SET {k} = ? WHERE id = ?", (v, template_id))
+            if body is not None:
+                await db.execute("UPDATE global_templates SET body = ? WHERE id = ?", (body, template_id))
+            await db.commit()
         return await self.get_templates()
 
     async def delete_templates(self, template_ids):
-        templates = self._read_manifest()
-        id_set = set(template_ids)
-        kept = [t for t in templates if t["id"] not in id_set]
-
-        if len(kept) < len(templates):
-            for t_id in id_set:
-                path = self.get_template_path(t_id)
-                if os.path.exists(path):
-                    os.remove(path)
-            await IOLoop.current().run_in_executor(None, self._write_manifest, kept)
+        async with aiosqlite.connect(self.db_path) as db:
+            q = f"DELETE FROM global_templates WHERE id IN ({','.join('?' * len(template_ids))})"
+            await db.execute(q, template_ids)
+            await db.commit()
         return await self.get_templates()
 
     async def duplicate_template(self, template_id):
-        templates = self._read_manifest()
-        source = next((t for t in templates if t["id"] == template_id), None)
-        if not source:
-            return await self.get_templates()
-
-        new_id = str(uuid.uuid4())
-        new_template = {
-            "id": new_id,
-            "name": source["name"] + " (Copy)",
-            "category": source.get("category", ""),
-            "subject": source.get("subject", ""),
-            "is_html": source.get("is_html", True),
-            "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        }
-        templates.append(new_template)
-
-        src_path = self.get_template_path(template_id)
-        dst_path = self.get_template_path(new_id)
-
-        with FileLock(dst_path + ".lock"):
-            if os.path.exists(src_path):
-                shutil.copy(src_path, dst_path)
-            else:
-                with open(dst_path, "w", encoding="utf-8") as f:
-                    f.write("")
-
-        await IOLoop.current().run_in_executor(None, self._write_manifest, templates)
+        src = await self.get_template_data(template_id)
+        if src:
+            await self.create_template(src["name"] + " (Copy)", src["category"], src["subject"], src["body"], src["is_html"])
         return await self.get_templates()
-

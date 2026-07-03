@@ -24,18 +24,16 @@ import { SaveTemplateModal } from './SaveTemplateModal'
 import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
 import { useAppStore } from '@/store/useAppStore'
 
-const PlaceholderList: React.FC<{ entityId: string }> = ({ entityId }) => {
+const PlaceholderList: React.FC<{
+  entityId: string
+  onInsert: (placeholderTag: string) => void
+}> = ({ entityId, onInsert }) => {
   const { data } = useQuery<CampaignData>({
     queryKey: ['campaignData', entityId],
   })
   const recipients = data?.recipients ?? []
   const availablePlaceholders =
     recipients.length > 0 ? Object.keys(recipients[0]) : []
-
-  const handleCopy = (placeholderName: string) => {
-    navigator.clipboard.writeText(`{{${placeholderName}}}`)
-    toast.success(`Placeholder "${placeholderName}" copied to clipboard`)
-  }
 
   if (availablePlaceholders.length === 0)
     return (
@@ -49,8 +47,8 @@ const PlaceholderList: React.FC<{ entityId: string }> = ({ entityId }) => {
         <code
           key={placeholder}
           className="text-xs bg-black/30 px-2 py-1 rounded cursor-pointer hover:bg-accent-blue/50 transition-colors"
-          title={`Click to copy {{${placeholder}}}`}
-          onClick={() => handleCopy(placeholder)}
+          title={`Click to insert {{${placeholder}}}`}
+          onClick={() => onInsert(`{{${placeholder}}}`)}
         >
           {`{{${placeholder}}}`}
         </code>
@@ -160,6 +158,10 @@ const EditorContent: React.FC<{
   const saveStatus = useAppStore((state) => state.saveStatus)
   const connectionStatus = useAppStore((state) => state.connectionStatus)
 
+  const subjectInputRef = useRef<HTMLInputElement>(null)
+  const lastFocus = useRef<'subject' | 'body'>('body')
+  const subjectSelection = useRef({ start: 0, end: 0 })
+
   useEffect(() => {
     if (remoteBody !== undefined) {
       setLocalBody((prev) => (prev !== remoteBody ? remoteBody : prev))
@@ -250,6 +252,43 @@ const EditorContent: React.FC<{
       }
     }
     setShowAssetPicker(false)
+  }
+
+  const handleInsertPlaceholder = (tag: string) => {
+    if (lastFocus.current === 'subject' && subjectInputRef.current) {
+      const start = subjectSelection.current.start || 0
+      const end = subjectSelection.current.end || 0
+      const newSubject =
+        localSubject.substring(0, start) + tag + localSubject.substring(end)
+
+      handleSubjectChange({
+        target: { value: newSubject },
+      } as React.ChangeEvent<HTMLInputElement>)
+
+      setTimeout(() => {
+        if (subjectInputRef.current) {
+          subjectInputRef.current.focus()
+          const newPos = start + tag.length
+          subjectInputRef.current.setSelectionRange(newPos, newPos)
+          subjectSelection.current = { start: newPos, end: newPos }
+        }
+      }, 0)
+    } else {
+      if (editorMode === 'text') {
+        if (editorInstance) {
+          editorInstance.chain().focus().insertContent(tag).run()
+        }
+      } else {
+        if (editorInstance) {
+          const selection = editorInstance.getSelection()
+          const op = { range: selection, text: tag, forceMoveMarkers: true }
+          editorInstance.executeEdits('source', [op])
+          editorInstance.focus()
+        } else {
+          handleBodyChange(localBody + tag)
+        }
+      }
+    }
   }
 
   const lastSavedBody = useRef(remoteBody || '')
@@ -374,9 +413,19 @@ const EditorContent: React.FC<{
           </label>
           <input
             id="subject-input"
+            ref={subjectInputRef}
             type="text"
             value={localSubject}
             onChange={handleSubjectChange}
+            onFocus={() => {
+              lastFocus.current = 'subject'
+            }}
+            onBlur={(e) => {
+              subjectSelection.current = {
+                start: e.target.selectionStart || 0,
+                end: e.target.selectionEnd || 0,
+              }
+            }}
             placeholder="Email Subject Template"
             className="w-full h-11 px-4 bg-surface-element border border-borders-primary rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:ring-2 focus:ring-accent-blue/50 focus:border-accent-blue transition-colors"
             maxLength={150}
@@ -407,7 +456,12 @@ const EditorContent: React.FC<{
                 {editorMode === 'text' ? 'Rich Text Editor' : 'HTML Code'}
               </h3>
             </div>
-            <div className="w-full flex-grow bg-surface-element border border-borders-primary rounded-lg overflow-hidden flex">
+            <div
+              className="w-full flex-grow bg-surface-element border border-borders-primary rounded-lg overflow-hidden flex"
+              onFocusCapture={() => {
+                lastFocus.current = 'body'
+              }}
+            >
               {editorMode === 'text' && (
                 <RichTextEditorWrapper
                   value={localBody}
@@ -430,7 +484,10 @@ const EditorContent: React.FC<{
               <h4 className="text-sm font-medium text-text-secondary mb-2">
                 Available Placeholders
               </h4>
-              <PlaceholderList entityId={entityId} />
+              <PlaceholderList
+                entityId={entityId}
+                onInsert={handleInsertPlaceholder}
+              />
             </div>
           )}
         </div>

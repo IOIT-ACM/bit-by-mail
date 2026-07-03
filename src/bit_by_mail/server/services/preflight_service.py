@@ -1,351 +1,134 @@
 import os
 import re
 import html
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, cast, Optional
 import pandas as pd
+from dataclasses import dataclass, field
 
 @dataclass
 class PreflightResult:
-    errors: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    successes: List[str] = field(default_factory=list)
-    recipient_issues: List[Dict[str, Any]] = field(default_factory=list)
+    errors: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)
+    successes: list = field(default_factory=list)
+    recipient_issues: list = field(default_factory=list)
 
     @property
-    def ok(self) -> bool:
+    def ok(self):
         return not self.errors
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self):
         return {
             "ok": self.ok,
             "errors": self.errors,
             "warnings": self.warnings,
             "successes": self.successes,
-            "recipient_issues": self.recipient_issues,
+            "recipient_issues": self.recipient_issues
         }
 
 class PreflightService:
-    def __init__(self, base_dir: str, campaign_service, recipient_service, template_service):
-        self.base_dir = base_dir
+    def __init__(self, campaign_service, recipient_service, template_service):
         self.campaign_service = campaign_service
         self.recipient_service = recipient_service
         self.template_service = template_service
 
-    def _replace_placeholders(
-        self, template_string: str, recipient_dict: Dict[str, Any]
-    ) -> str:
-        for key, value in recipient_dict.items():
-            placeholder = f"{{{{{key}}}}}"
-            template_string = template_string.replace(placeholder, str(value))
-        return template_string
+    def _replace_placeholders(self, txt, d):
+        for k, v in d.items():
+            txt = txt.replace(f"{{{{{k}}}}}", str(v))
+        return txt
 
-    async def get_campaign_summary(
-        self,
-        campaign_id: str,
-        config: Dict[str, Any],
-        subject_template: str,
-        recipient_indices: Optional[List[int]] = None,
-    ) -> Dict[str, Any]:
-        try:
-            recipients_df = pd.DataFrame(
-                await self.recipient_service.get_recipients(campaign_id)
-            ).fillna("")
-        except FileNotFoundError:
-            recipients_df = pd.DataFrame({"Status": [], "AttachmentFile": []})
-
+    async def get_campaign_summary(self, campaign_id, _config, subject_template, recipient_indices=None):
+        df = pd.DataFrame(await self.recipient_service.get_recipients(campaign_id)).fillna("")
+        if df.empty:
+            df = pd.DataFrame({"Status": [], "AttachmentFile": []})
         if recipient_indices is not None:
-            recipients_df = recipients_df.iloc[recipient_indices]
+            df = df.iloc[recipient_indices]
+        if "Status" not in df.columns:
+            df["Status"] = "PENDING"
 
-        if "Status" not in recipients_df.columns:
-            recipients_df["Status"] = "PENDING"
-
-        total_recipients = len(recipients_df)
-
-        recipients_to_send_df = recipients_df[
-            recipients_df["Status"].astype(str).str.upper() != "SENT"
-        ]
-        recipients_to_send_count = len(recipients_to_send_df)
-
+        to_send = df[df["Status"].astype(str).str.upper() != "SENT"]
         campaigns = await self.campaign_service.get_campaigns()
         campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
 
-        total_attachment_size = 0
-        attachment_folder = campaign.get("attachment_folder", "")
-        if (
-            campaign.get("send_attachments", False)
-            and attachment_folder
-            and os.path.isdir(attachment_folder)
-        ):
-            for _, row in recipients_to_send_df.iterrows():
-                attachment_files_str = str(row.get("AttachmentFile", "")).strip()
-                if attachment_files_str:
-                    files = [
-                        f.strip() for f in attachment_files_str.split(";") if f.strip()
-                    ]
-                    for filename in files:
-                        file_path = os.path.join(attachment_folder, filename)
-                        if os.path.exists(file_path) and os.path.isfile(file_path):
-                            total_attachment_size += os.path.getsize(file_path)
+        total_size = 0
+        folder = campaign.get("attachment_folder", "")
+        if campaign.get("send_attachments", False) and folder and os.path.isdir(folder):
+            for _, row in to_send.iterrows():
+                for f in [x.strip() for x in str(row.get("AttachmentFile", "")).split(";") if x.strip()]:
+                    p = os.path.join(folder, f)
+                    if os.path.exists(p) and os.path.isfile(p):
+                        total_size += os.path.getsize(p)
 
-        preview_subject = "No pending recipients to preview."
-        preview_body = "<p>No pending recipients to preview.</p>"
-        if not recipients_to_send_df.empty:
-            first_recipient = recipients_to_send_df.iloc[0].to_dict()
+        p_sub = "No pending recipients to preview."
+        p_body = "<p>No pending recipients to preview.</p>"
+        if not to_send.empty:
+            first = to_send.iloc[0].to_dict()
             html_template = await self.template_service.get_template(campaign_id)
-            preview_subject = self._replace_placeholders(
-                subject_template, first_recipient
-            )
-            preview_body = self._replace_placeholders(html_template, first_recipient)
-            is_html = campaign.get("is_html", True)
-            if not is_html:
-                safe_body = html.escape(preview_body)
-                preview_body = f'<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body style="margin:0;padding:16px;background:#fff;"><pre style="white-space:pre-wrap;font-family:sans-serif;font-size:14px;margin:0;color:#000;">{safe_body}</pre></body></html>'
+            p_sub = self._replace_placeholders(subject_template, first)
+            p_body = self._replace_placeholders(html_template, first)
+            if not campaign.get("is_html", True):
+                p_body = f'<!DOCTYPE html><html><body><pre>{html.escape(p_body)}</pre></body></html>'
 
         return {
-            "total_recipients": total_recipients,
-            "recipients_to_send": recipients_to_send_count,
-            "total_attachment_size_bytes": total_attachment_size,
-            "preview_subject": preview_subject,
-            "preview_body": preview_body,
+            "total_recipients": len(df),
+            "recipients_to_send": len(to_send),
+            "total_attachment_size_bytes": total_size,
+            "preview_subject": p_sub,
+            "preview_body": p_body
         }
 
-    def _extract_placeholders(self, text: str) -> set:
+    def _extract_ph(self, text):
         return set(re.findall(r"\{\{([^}]+)\}\}", text))
 
-    def _extract_body_placeholders_with_lines(
-        self, html_content: str
-    ) -> Dict[str, List[int]]:
-        placeholders = {}
-        lines = html_content.splitlines()
-        for i, line in enumerate(lines):
-            found = re.findall(r"\{\{([^}]+)\}\}", line)
-            for placeholder in found:
-                if placeholder not in placeholders:
-                    placeholders[placeholder] = []
-                placeholders[placeholder].append(i + 1)
-        return placeholders
-
-    def _check_config_variables(self, config: Dict[str, Any], campaign: Dict[str, Any], result: PreflightResult):
-        errors = []
-        warnings = []
+    async def run_checks(self, campaign_id, config, subject_template):
+        r = PreflightResult()
+        campaigns = await self.campaign_service.get_campaigns()
+        c = next((cam for cam in campaigns if cam["id"] == campaign_id), {})
 
         accounts = config.get("accounts", [])
-        if not accounts:
-            result.errors.append("No sender accounts configured in Settings.")
-            return
+        acc = next((a for a in accounts if a.get("id") == c.get("sender_account_id")), None) or next((a for a in accounts if a.get("is_default")), None) or (accounts[0] if accounts else None)
 
-        account = next((a for a in accounts if a.get("id") == campaign.get("sender_account_id")), None)
-        if not account:
-            account = next((a for a in accounts if a.get("is_default")), None)
-        if not account:
-            account = accounts[0]
-
-        required_vars = ["smtp_server", "sender_email", "sender_password", "smtp_port"]
-        for var in required_vars:
-            if not account.get(var):
-                errors.append(f"Account '{account.get('name')}' is missing '{var}'.")
-
-        if not errors and not warnings:
-            result.successes.append(f"Using account '{account.get('name')}' - all variables present.")
-
-        result.errors.extend(errors)
-        result.warnings.extend(warnings)
-
-    async def _check_paths(
-        self, campaign_id: str, campaign: Dict[str, Any], result: PreflightResult
-    ) -> bool:
-        errors = []
-        attachment_folder = campaign.get("attachment_folder", "")
-
-        recipients_path = self.recipient_service.get_recipients_path(campaign_id)
-        template_path = self.template_service.get_template_path(campaign_id)
-
-        if not os.path.exists(recipients_path):
-            result.warnings.append(
-                f"Recipients CSV file not found for this campaign at '{recipients_path}'. A new one can be uploaded."
-            )
-
-        if not os.path.exists(template_path):
-            errors.append(
-                f"HTML Template file not found for this campaign at '{template_path}'."
-            )
-
-        if campaign.get("send_attachments", False):
-            if not attachment_folder or not os.path.isdir(attachment_folder):
-                errors.append(
-                    f"Attachment Folder not found or is not a directory at '{attachment_folder}'."
-                )
-
-        if not errors:
-            result.successes.append("HTML template and attachment folder all exist.")
-            return True
+        if not acc:
+            r.errors.append("No sender account configured or selected.")
         else:
-            result.errors.extend(errors)
-            return False
-
-    async def _check_recipients_and_attachments(
-        self,
-        campaign_id: str,
-        campaign: Dict[str, Any],
-        subject_template: str,
-        result: PreflightResult,
-    ):
-        errors, warnings = [], []
-        attachment_folder = campaign.get("attachment_folder", "")
-        send_attachments = campaign.get("send_attachments", False)
+            for v in ["smtp_server", "sender_email", "sender_password", "smtp_port"]:
+                if not acc.get(v):
+                    r.errors.append(f"Sender account is missing required field: {v}")
 
         html_template = await self.template_service.get_template(campaign_id)
-        if not html_template or not html_template.strip():
-            errors.append("Email body is empty.")
+        if not html_template:
+            r.errors.append("Email template is empty.")
+        if not subject_template:
+            r.errors.append("Email subject is empty.")
 
-        if not subject_template or not subject_template.strip():
-            errors.append("Email subject is empty.")
+        if c.get("send_attachments", False) and not os.path.isdir(c.get("attachment_folder", "")):
+            r.errors.append(f"Attachment folder is invalid or does not exist: {c.get('attachment_folder', '')}")
 
-        if errors:
-            result.errors.extend(errors)
-            return
-
-        try:
-            recipients_df = pd.DataFrame(
-                await self.recipient_service.get_recipients(campaign_id)
-            ).fillna("")
-            if recipients_df.empty:
-                warnings.append("Recipient list is empty for this campaign.")
-                result.warnings.extend(warnings)
-                return
-            csv_columns = set(recipients_df.columns)
-        except FileNotFoundError:
-            return
-        except (pd.errors.ParserError, Exception) as e:
-            errors.append(f"Error processing recipients file for campaign: {e}")
-            result.errors.extend(errors)
-            return
-
-        missing_column_errors = []
-        subject_placeholders = self._extract_placeholders(subject_template)
-        missing_in_subject = subject_placeholders - csv_columns
-        for col in sorted(list(missing_in_subject)):
-            missing_column_errors.append(
-                f"Missing column '{{{{{col}}}}}' required by the email subject."
-            )
-
-        body_placeholders_with_lines = self._extract_body_placeholders_with_lines(
-            html_template
-        )
-        missing_in_body = set(body_placeholders_with_lines.keys()) - csv_columns
-        for col in sorted(list(missing_in_body)):
-            lines = body_placeholders_with_lines[col]
-            line_str = ", ".join(map(str, lines))
-            missing_column_errors.append(
-                f"Missing column '{{{{{col}}}}}' required by the email body on line(s): {line_str}."
-            )
-
-        if not missing_column_errors:
-            result.successes.append(
-                "Recipients CSV is readable and all columns required by templates are present."
-            )
+        df = pd.DataFrame(await self.recipient_service.get_recipients(campaign_id)).fillna("")
+        if df.empty:
+            r.warnings.append("No recipients found for this campaign.")
         else:
-            errors.extend(missing_column_errors)
+            req_cols = self._extract_ph(subject_template) | self._extract_ph(html_template)
+            for col in req_cols - set(df.columns):
+                r.errors.append(f"Missing required column for placeholder: {{{{{col}}}}}")
 
-        if not recipients_df.empty:
-            any_pending_attachments_missing = False
-            all_attachments_found = True
-
-            for index, row in recipients_df.iterrows():
-                row_num = cast(int, index) + 2
+            for idx, (_, row) in enumerate(df.iterrows()):
                 name = str(row.get("Name", "")).strip()
                 email = str(row.get("Email", "")).strip()
-                status = str(row.get("Status", "")).strip().upper()
+
+                if name:
+                    identifier = f"'{name}'"
+                elif email:
+                    identifier = f"Email: '{email}'"
+                else:
+                    identifier = "Unknown"
 
                 if not name:
-                    msg = "Recipient has an empty 'Name' field."
-                    errors.append(f"Row {row_num}: {msg}")
-                    result.recipient_issues.append(
-                        {"index": cast(int, index), "type": "error", "message": msg}
-                    )
-
+                    r.errors.append(f"Row {idx+2} ({identifier}): Missing Name")
                 if not email:
-                    msg = f"Recipient '{name or f'Row {row_num}'}' has an empty 'Email' field."
-                    errors.append(f"Row {row_num}: {msg}")
-                    result.recipient_issues.append(
-                        {"index": cast(int, index), "type": "error", "message": msg}
-                    )
+                    r.errors.append(f"Row {idx+2} ({identifier}): Missing Email")
 
-                if send_attachments:
-                    attachment_files_str = str(row.get("AttachmentFile", "")).strip()
-                    name_for_msg = name or f"Row {row_num}"
-
-                    if not attachment_files_str:
-                        msg = f"Recipient '{name_for_msg}' has an empty 'AttachmentFile' field."
-                        warnings.append(f"Row {row_num}: {msg}")
-                        result.recipient_issues.append(
-                            {
-                                "index": cast(int, index),
-                                "type": "warning",
-                                "message": msg,
-                            }
-                        )
-                    else:
-                        files = [
-                            f.strip()
-                            for f in attachment_files_str.split(";")
-                            if f.strip()
-                        ]
-                        for filename in files:
-                            full_path = os.path.join(attachment_folder, filename)
-                            if not os.path.exists(full_path):
-                                all_attachments_found = False
-                                if status == "SENT":
-                                    msg = f"Attachment '{filename}' for '{name_for_msg}' is missing, but email was already marked as SENT."
-                                    warnings.append(f"Row {row_num}: {msg}")
-                                    result.recipient_issues.append(
-                                        {
-                                            "index": cast(int, index),
-                                            "type": "warning",
-                                            "message": msg,
-                                        }
-                                    )
-                                else:
-                                    msg = f"Attachment '{filename}' for '{name_for_msg}' not found."
-                                    errors.append(f"Row {row_num}: {msg}")
-                                    result.recipient_issues.append(
-                                        {
-                                            "index": cast(int, index),
-                                            "type": "error",
-                                            "message": msg,
-                                        }
-                                    )
-                                    any_pending_attachments_missing = True
-
-            if send_attachments:
-                if all_attachments_found:
-                    result.successes.append(
-                        "All attachment files listed in the CSV were found."
-                    )
-                elif not any_pending_attachments_missing:
-                    result.successes.append(
-                        "All required attachment files for pending recipients were found."
-                    )
-
-        result.errors.extend(errors)
-        result.warnings.extend(warnings)
-
-    async def run_checks(
-        self, campaign_id: str, config: Dict[str, Any], subject_template: str
-    ) -> PreflightResult:
-        result = PreflightResult()
-
-        campaigns = await self.campaign_service.get_campaigns()
-        campaign = next((c for c in campaigns if c["id"] == campaign_id), {})
-
-        self._check_config_variables(config, campaign, result)
-        paths_ok = await self._check_paths(campaign_id, campaign, result)
-
-        if paths_ok:
-            await self._check_recipients_and_attachments(
-                campaign_id, campaign, subject_template, result
-            )
-
-        return result
-
+                if c.get("send_attachments", False):
+                    files = [x.strip() for x in str(row.get("AttachmentFile", "")).split(";") if x.strip()]
+                    for f in files:
+                        if not os.path.exists(os.path.join(c.get("attachment_folder", ""), f)):
+                            r.errors.append(f"Row {idx+2} ({identifier}): Attachment file '{f}' not found")
+        return r

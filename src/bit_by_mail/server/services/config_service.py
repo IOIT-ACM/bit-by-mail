@@ -5,7 +5,6 @@ import base64
 import io
 from tornado.ioloop import IOLoop
 from filelock import FileLock
-from . import crypto_service
 
 class ConfigService:
     def __init__(self, base_dir):
@@ -30,14 +29,6 @@ class ConfigService:
             try:
                 with open(self.settings_path, "r") as f:
                     stored_settings = json.load(f)
-
-                if "sender_password_encrypted" in stored_settings:
-                    decrypted_password = crypto_service.decrypt(
-                        stored_settings["sender_password_encrypted"]
-                    )
-                    stored_settings["sender_password"] = decrypted_password
-                    del stored_settings["sender_password_encrypted"]
-
                 defaults.update(stored_settings)
                 return defaults
             except (IOError, json.JSONDecodeError):
@@ -56,17 +47,10 @@ class ConfigService:
             "attachment_folder": data.get(
                 "attachment_folder", current_config["attachment_folder"]
             ),
+            "sender_password": data.get(
+                "sender_password", current_config["sender_password"]
+            ),
         }
-
-        password_to_save = data.get("sender_password")
-        if password_to_save:
-            encrypted_password = crypto_service.encrypt(password_to_save)
-            config_to_update["sender_password_encrypted"] = encrypted_password
-        elif current_config.get("sender_password"):
-            encrypted_password = crypto_service.encrypt(
-                current_config["sender_password"]
-            )
-            config_to_update["sender_password_encrypted"] = encrypted_password
 
         with FileLock(self.settings_path + ".lock"):
             with open(self.settings_path, "w") as f:
@@ -133,4 +117,3 @@ class ConfigService:
         await IOLoop.current().run_in_executor(
             None, self._write_file, self.template_path, content
         )
-

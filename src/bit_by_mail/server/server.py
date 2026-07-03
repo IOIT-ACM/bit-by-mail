@@ -2,7 +2,7 @@ import os
 import tornado.web
 import tornado.ioloop
 import importlib.resources
-
+from .db import init_db
 from .handlers.websocket_handler import WebSocketHandler, WebSocketManager
 from .handlers.attachment_handler import AttachmentHandler
 from .handlers.report_handler import ReportHandler
@@ -19,30 +19,28 @@ from .services.asset_service import AssetService
 
 def make_app():
     try:
-        static_path_ref = importlib.resources.files("bit_by_mail").joinpath(
-            "frontend/dist"
-        )
-        static_path = str(static_path_ref)
+        static_path = str(importlib.resources.files("bit_by_mail").joinpath("frontend/dist"))
     except AttributeError:
         with importlib.resources.path("bit_by_mail", "") as p:
             static_path = os.path.join(p, "frontend/dist")
 
     base_dir = os.getcwd()
+    data_dir = os.path.join(base_dir, "data")
+    os.makedirs(data_dir, exist_ok=True)
+    db_path = os.path.join(data_dir, "app.db")
+    init_db(db_path)
 
-    settings_service = SettingsService(base_dir)
-    campaign_service = CampaignService(base_dir)
-    database_service = DatabaseService(base_dir)
-    global_template_service = GlobalTemplateService(base_dir)
-    asset_service = AssetService(base_dir)
-    recipient_service = RecipientService(campaign_service)
-    template_service = TemplateService(campaign_service)
-    preflight_service = PreflightService(base_dir, campaign_service, recipient_service, template_service)
+    settings_service = SettingsService(db_path)
+    campaign_service = CampaignService(db_path, base_dir)
+    database_service = DatabaseService(db_path)
+    global_template_service = GlobalTemplateService(db_path)
+    asset_service = AssetService(db_path)
+    recipient_service = RecipientService(db_path)
+    template_service = TemplateService(db_path)
+    preflight_service = PreflightService(campaign_service, recipient_service, template_service)
     websocket_manager = WebSocketManager()
-
     ioloop = tornado.ioloop.IOLoop.current()
-    mailer_service = MailerService(
-        template_service, recipient_service, campaign_service, websocket_manager, ioloop
-    )
+    mailer_service = MailerService(template_service, recipient_service, campaign_service, websocket_manager, ioloop, db_path)
 
     settings = {
         "static_path": static_path,
@@ -60,39 +58,11 @@ def make_app():
         "websocket_manager": websocket_manager,
     }
 
-    return tornado.web.Application(
-        [
-            (r"/ws", WebSocketHandler),
-            (
-                r"/api/upload/recipients/(.*)",
-                RecipientUploadHandler,
-                {"recipient_service": recipient_service},
-            ),
-            (
-                r"/api/upload/database/(.*)",
-                DatabaseUploadHandler,
-                {"database_service": database_service},
-            ),
-            (
-                r"/attachments/(.*)/(.*)",
-                AttachmentHandler,
-                {
-                    "campaign_service": campaign_service,
-                    "recipient_service": recipient_service,
-                    "base_dir": base_dir,
-                },
-            ),
-            (
-                r"/reports/(.*)/(.*)",
-                ReportHandler,
-                {"campaign_service": campaign_service},
-            ),
-            (
-                r"/(.*)",
-                tornado.web.StaticFileHandler,
-                {"path": static_path, "default_filename": "index.html"},
-            ),
-        ],
-        **settings,
-    )
-
+    return tornado.web.Application([
+        (r"/ws", WebSocketHandler),
+        (r"/api/upload/recipients/(.*)", RecipientUploadHandler, {"recipient_service": recipient_service}),
+        (r"/api/upload/database/(.*)", DatabaseUploadHandler, {"database_service": database_service}),
+        (r"/attachments/(.*)/(.*)", AttachmentHandler, {"campaign_service": campaign_service, "recipient_service": recipient_service}),
+        (r"/reports/(.*)/(.*)", ReportHandler, {"db_path": db_path}),
+        (r"/(.*)", tornado.web.StaticFileHandler, {"path": static_path, "default_filename": "index.html"}),
+    ], **settings)

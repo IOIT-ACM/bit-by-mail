@@ -2,51 +2,31 @@ import asyncio
 import signal
 import os
 import sys
-from cryptography.fernet import Fernet
+import logging
 from .server.server import make_app
 
-
 def main():
-    data_dir = os.path.join(os.getcwd(), "data")
-    key_path = os.path.join(data_dir, "fernet.key")
-    secret_key = None
-
-    try:
-        os.makedirs(data_dir, exist_ok=True)
-
-        if os.path.exists(key_path):
-            with open(key_path, "r") as f:
-                secret_key = f.read().strip()
-
-        if not secret_key:
-            secret_key = Fernet.generate_key().decode()
-            with open(key_path, "w") as f:
-                f.write(secret_key)
-
-    except IOError as e:
-        sys.exit(1)
-
-    os.environ["SECRET_KEY"] = secret_key
-
-    if not os.environ.get("SECRET_KEY"):
-        sys.exit(1)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s"
+    )
+    logging.getLogger("tornado.access").setLevel(logging.WARNING)
 
     app = make_app()
-
     static_path = app.settings.get("static_path")
     if not static_path or not os.path.exists(os.path.join(static_path, "index.html")):
+        logging.error("Static web assets not found. Build the frontend first.")
         sys.exit(1)
-
     port = 8888
     app.listen(port)
-
+    logging.info(f"Server started in production mode on port {port}")
     loop = asyncio.get_event_loop()
 
     def shutdown_handler():
+        logging.info("Shutdown signal received")
         mailer_service = app.settings.get("mailer_service")
         if mailer_service:
             mailer_service.stop()
-
         if loop.is_running():
             loop.stop()
 
@@ -69,7 +49,7 @@ def main():
             loop.run_until_complete(gather_cancelled())
 
         loop.close()
-
+        logging.info("Server shutdown complete")
 
 if __name__ == "__main__":
     main()

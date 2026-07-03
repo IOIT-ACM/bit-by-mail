@@ -1,37 +1,16 @@
-import os
-from tornado.ioloop import IOLoop
-from filelock import FileLock
+import aiosqlite
 
 class TemplateService:
-    def __init__(self, campaign_service):
-        self.campaign_service = campaign_service
-
-    def get_template_path(self, campaign_id):
-        return os.path.join(
-            self.campaign_service.get_campaign_path(campaign_id), "template.html"
-        )
-
-    def _read_file(self, path):
-        if not os.path.exists(path):
-            return ""
-        with FileLock(path + ".lock"):
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-
-    def _write_file(self, path, content):
-        with FileLock(path + ".lock"):
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
+    def __init__(self, db_path):
+        self.db_path = db_path
 
     async def get_template(self, campaign_id):
-        template_path = self.get_template_path(campaign_id)
-        return await IOLoop.current().run_in_executor(
-            None, self._read_file, template_path
-        )
+        async with aiosqlite.connect(self.db_path) as db:
+            async with db.execute("SELECT body FROM campaigns WHERE id = ?", (campaign_id,)) as cursor:
+                row = await cursor.fetchone()
+                return row[0] if row and row[0] else ""
 
     async def save_template(self, campaign_id, content):
-        template_path = self.get_template_path(campaign_id)
-        await IOLoop.current().run_in_executor(
-            None, self._write_file, template_path, content
-        )
-
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("UPDATE campaigns SET body = ? WHERE id = ?", (content, campaign_id))
+            await db.commit()

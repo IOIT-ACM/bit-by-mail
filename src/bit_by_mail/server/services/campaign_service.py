@@ -1,189 +1,61 @@
-import os
-import json
-import shutil
 import uuid
-from tornado.ioloop import IOLoop
 from datetime import datetime, timezone
-import pandas as pd
-from filelock import FileLock
+import aiosqlite
 
 class CampaignService:
-    def __init__(self, base_dir):
+    def __init__(self, db_path, base_dir):
+        self.db_path = db_path
         self.base_dir = base_dir
-        self.data_dir = os.path.join(self.base_dir, "data")
-        self.campaigns_dir = os.path.join(self.data_dir, "campaigns")
-        self.manifest_path = os.path.join(self.data_dir, "campaigns.json")
-        self._initialize_storage()
-
-    def _initialize_storage(self):
-        os.makedirs(self.campaigns_dir, exist_ok=True)
-        if not os.path.exists(self.manifest_path):
-            with FileLock(self.manifest_path + ".lock"):
-                if not os.path.exists(self.manifest_path):
-                    root_template_path = os.path.join(self.base_dir, "email.html")
-                    root_recipients_path = os.path.join(self.base_dir, "recipients.csv")
-                    default_campaign_id = str(uuid.uuid4())
-                    default_campaign = {
-                        "id": default_campaign_id,
-                        "name": "My First Campaign",
-                        "subject": "Hello {{Name}}!",
-                        "attachment_folder": os.getcwd(),
-                        "send_attachments": False,
-                        "sender_account_id": "",
-                        "is_html": True,
-                        "delay": 0,
-                        "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-                    }
-                    campaign_path = os.path.join(self.campaigns_dir, default_campaign_id)
-                    os.makedirs(campaign_path, exist_ok=True)
-                    if os.path.exists(root_template_path):
-                        shutil.copy(root_template_path, os.path.join(campaign_path, "template.html"))
-                    else:
-                        with open(os.path.join(campaign_path, "template.html"), "w") as f:
-                            f.write("<h1>Hello {{Name}}</h1>")
-                    if os.path.exists(root_recipients_path):
-                        shutil.copy(root_recipients_path, os.path.join(campaign_path, "recipients.csv"))
-                    else:
-                        with open(os.path.join(campaign_path, "recipients.csv"), "w", encoding="utf-8") as f:
-                            f.write("Name,Email,AttachmentFile,Status\n")
-                    with open(self.manifest_path, "w") as f:
-                        json.dump([default_campaign], f, indent=2)
-
-    def _read_manifest(self):
-        with FileLock(self.manifest_path + ".lock"):
-            try:
-                with open(self.manifest_path, "r") as f:
-                    return json.load(f)
-            except (IOError, json.JSONDecodeError):
-                return []
-
-    def _write_manifest(self, campaigns):
-        with FileLock(self.manifest_path + ".lock"):
-            with open(self.manifest_path, "w") as f:
-                json.dump(campaigns, f, indent=2)
-
-    def get_campaign_path(self, campaign_id):
-        return os.path.join(self.campaigns_dir, str(campaign_id))
-
-    def _get_campaigns_with_details(self):
-        campaigns = self._read_manifest()
-        for campaign in campaigns:
-            campaign_path = self.get_campaign_path(campaign["id"])
-            recipients_path = os.path.join(campaign_path, "recipients.csv")
-            count = 0
-            if os.path.exists(recipients_path):
-                with FileLock(recipients_path + ".lock"):
-                    try:
-                        df = pd.read_csv(recipients_path)
-                        if "Email" in df.columns:
-                            count = df["Email"].notna().sum()
-                    except Exception:
-                        count = 0
-            campaign["recipientCount"] = int(count)
-            if "attachment_folder" not in campaign:
-                campaign["attachment_folder"] = os.getcwd()
-            if "send_attachments" not in campaign:
-                campaign["send_attachments"] = False
-            if "sender_account_id" not in campaign:
-                campaign["sender_account_id"] = ""
-            if "is_html" not in campaign:
-                campaign["is_html"] = True
-            if "delay" not in campaign:
-                campaign["delay"] = 0
-
-            try:
-                reports = [
-                    f
-                    for f in os.listdir(campaign_path)
-                    if f.startswith("report_") and f.endswith(".csv")
-                ]
-                if reports:
-                    latest_report = sorted(reports, reverse=True)[0]
-                    campaign["latestReportUrl"] = f"/reports/{campaign['id']}/{latest_report}"
-                else:
-                    campaign["latestReportUrl"] = None
-            except FileNotFoundError:
-                campaign["latestReportUrl"] = None
-
-        campaigns.sort(key=lambda x: x.get("createdAt", ""), reverse=True)
-        return campaigns
 
     async def get_campaigns(self):
-        return await IOLoop.current().run_in_executor(None, self._get_campaigns_with_details)
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT * FROM campaigns ORDER BY created_at DESC") as cursor:
+                rows = await cursor.fetchall()
+            campaigns = []
+            for r in rows:
+                c = dict(r)
+                c["createdAt"] = c.pop("created_at")
+                c["sourceDbId"] = c.pop("source_db_id")
+                c["send_attachments"] = bool(c["send_attachments"])
+                c["is_html"] = bool(c["is_html"])
+                async with db.execute("SELECT COUNT(*) FROM campaign_recipients WHERE campaign_id = ? AND email != ''", (c["id"],)) as rc:
+                    row = await rc.fetchone()
+                    c["recipientCount"] = row[0] if row else 0
+                c["latestReportUrl"] = f"/reports/{c['id']}/report.csv" if c["recipientCount"] > 0 else None
+                campaigns.append(c)
+            return campaigns
 
     async def create_campaign(self, name, subject=None, body=None, recipients=None, source_db_id=None, sender_account_id="", is_html=True):
-        campaigns = self._read_manifest()
         new_id = str(uuid.uuid4())
-        new_campaign = {
-            "id": new_id,
-            "name": name,
-            "subject": subject if subject is not None else f"Subject for {name}",
-            "attachment_folder": os.getcwd(),
-            "send_attachments": False,
-            "sender_account_id": sender_account_id,
-            "is_html": is_html,
-            "delay": 0,
-            "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        }
-        if source_db_id:
-            new_campaign["sourceDbId"] = source_db_id
-
-        campaigns.append(new_campaign)
-        campaign_path = self.get_campaign_path(new_id)
-        os.makedirs(campaign_path, exist_ok=True)
-
+        subject = subject if subject is not None else f"Subject for {name}"
+        created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         template_content = body if body is not None else (f"<h1>Email for {name}</h1>\n<p>Hello {{{{Name}}}}</p>" if is_html else f"Email for {name}\nHello {{{{Name}}}}")
-        if body is None and is_html:
-            root_template_path = os.path.join(self.base_dir, "email.html")
-            if os.path.exists(root_template_path):
-                with open(root_template_path, "r", encoding="utf-8") as f:
-                    template_content = f.read()
-
-        with open(os.path.join(campaign_path, "template.html"), "w", encoding="utf-8") as f:
-            f.write(template_content)
-
-        recipients_csv_path = os.path.join(campaign_path, "recipients.csv")
-        with FileLock(recipients_csv_path + ".lock"):
-            if recipients is not None:
-                df = pd.DataFrame(recipients)
-                if "Status" not in df.columns:
-                    df["Status"] = "PENDING"
-                df.to_csv(recipients_csv_path, index=False)
-            else:
-                with open(recipients_csv_path, "w", encoding="utf-8") as f:
-                    f.write("Name,Email,AttachmentFile,Status\n")
-
-        await IOLoop.current().run_in_executor(None, self._write_manifest, campaigns)
-
-        all_campaigns_with_details = await self.get_campaigns()
-        new_campaign_with_details = next((c for c in all_campaigns_with_details if c["id"] == new_id), None)
-        return new_campaign_with_details, all_campaigns_with_details
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("INSERT INTO campaigns (id, name, subject, attachment_folder, send_attachments, sender_account_id, is_html, delay, created_at, source_db_id, body) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (new_id, name, subject, self.base_dir, False, sender_account_id, is_html, 0, created_at, source_db_id, template_content))
+            if recipients:
+                for r in recipients:
+                    await db.execute("INSERT INTO campaign_recipients (campaign_id, name, email, attachment_file, status, sent_timestamp) VALUES (?, ?, ?, ?, ?, ?)", (new_id, r.get("Name", ""), r.get("Email", ""), r.get("AttachmentFile", ""), r.get("Status", "PENDING"), r.get("SentTimestamp", "")))
+            await db.commit()
+        campaigns = await self.get_campaigns()
+        return next((c for c in campaigns if c["id"] == new_id), None), campaigns
 
     async def update_campaign(self, campaign_id, updates):
-        campaigns = self._read_manifest()
-        campaign_found = False
-        for campaign in campaigns:
-            if campaign["id"] == campaign_id:
-                campaign.update(updates)
-                campaign_found = True
-                break
-        if campaign_found:
-            await IOLoop.current().run_in_executor(None, self._write_manifest, campaigns)
+        async with aiosqlite.connect(self.db_path) as db:
+            for k, v in updates.items():
+                if k in ["name", "subject", "attachment_folder", "send_attachments", "sender_account_id", "is_html", "delay"]:
+                    await db.execute(f"UPDATE campaigns SET {k} = ? WHERE id = ?", (v, campaign_id))
+            await db.commit()
         return await self.get_campaigns()
 
     async def delete_campaign(self, campaign_id):
         return await self.delete_campaigns([campaign_id])
 
     async def delete_campaigns(self, campaign_ids):
-        campaigns = self._read_manifest()
-        campaign_ids_set = set(campaign_ids)
-        campaigns_to_keep = [c for c in campaigns if c["id"] not in campaign_ids_set]
-        if len(campaigns_to_keep) < len(campaigns):
-            deleted_ids = campaign_ids_set.intersection(c["id"] for c in campaigns)
-            for campaign_id in deleted_ids:
-                campaign_path = self.get_campaign_path(campaign_id)
-                if os.path.isdir(campaign_path):
-                    shutil.rmtree(campaign_path)
-            await IOLoop.current().run_in_executor(None, self._write_manifest, campaigns_to_keep)
+        async with aiosqlite.connect(self.db_path) as db:
+            query = f"DELETE FROM campaigns WHERE id IN ({','.join('?' * len(campaign_ids))})"
+            await db.execute(query, campaign_ids)
+            query_rec = f"DELETE FROM campaign_recipients WHERE campaign_id IN ({','.join('?' * len(campaign_ids))})"
+            await db.execute(query_rec, campaign_ids)
+            await db.commit()
         return await self.get_campaigns()
-

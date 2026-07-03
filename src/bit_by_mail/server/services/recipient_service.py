@@ -1,58 +1,34 @@
-import os
+import aiosqlite
 import pandas as pd
 import base64
 import io
-from tornado.ioloop import IOLoop
-from filelock import FileLock
 
 class RecipientService:
-    def __init__(self, campaign_service):
-        self.campaign_service = campaign_service
-
-    def get_recipients_path(self, campaign_id):
-        return os.path.join(
-            self.campaign_service.get_campaign_path(campaign_id), "recipients.csv"
-        )
-
-    def _read_recipients(self, campaign_id):
-        recipients_path = self.get_recipients_path(campaign_id)
-        if not os.path.exists(recipients_path):
-            return []
-        with FileLock(recipients_path + ".lock"):
-            try:
-                df = pd.read_csv(recipients_path).fillna("")
-                return df.to_dict(orient="records")
-            except (pd.errors.EmptyDataError, pd.errors.ParserError):
-                return []
-
-    def _write_recipients_from_base64(self, campaign_id, base64_content):
-        recipients_path = self.get_recipients_path(campaign_id)
-        file_content = base64.b64decode(base64_content).decode("utf-8")
-        string_io = io.StringIO(file_content)
-        with FileLock(recipients_path + ".lock"):
-            df = pd.read_csv(string_io)
-            if "Status" not in df.columns:
-                df["Status"] = "PENDING"
-            df.to_csv(recipients_path, index=False)
-
-    def write_recipients_from_json(self, campaign_id, recipients_data):
-        recipients_path = self.get_recipients_path(campaign_id)
-        with FileLock(recipients_path + ".lock"):
-            df = pd.DataFrame(recipients_data)
-            df.to_csv(recipients_path, index=False)
+    def __init__(self, db_path):
+        self.db_path = db_path
 
     async def get_recipients(self, campaign_id):
-        return await IOLoop.current().run_in_executor(
-            None, self._read_recipients, campaign_id
-        )
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute("SELECT name as Name, email as Email, attachment_file as AttachmentFile, status as Status, sent_timestamp as SentTimestamp FROM campaign_recipients WHERE campaign_id = ?", (campaign_id,)) as cursor:
+                rows = await cursor.fetchall()
+                return [dict(r) for r in rows]
 
     async def save_recipients_from_base64(self, campaign_id, base64_content):
-        await IOLoop.current().run_in_executor(
-            None, self._write_recipients_from_base64, campaign_id, base64_content
-        )
+        file_content = base64.b64decode(base64_content).decode("utf-8")
+        df = pd.read_csv(io.StringIO(file_content)).fillna("")
+        if "Status" not in df.columns:
+            df["Status"] = "PENDING"
+        if "SentTimestamp" not in df.columns:
+            df["SentTimestamp"] = ""
+        if "AttachmentFile" not in df.columns:
+            df["AttachmentFile"] = ""
+        records = df.to_dict(orient="records")
+        await self.save_recipients_from_json(campaign_id, records)
 
     async def save_recipients_from_json(self, campaign_id, data):
-        await IOLoop.current().run_in_executor(
-            None, self.write_recipients_from_json, campaign_id, data
-        )
-
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("DELETE FROM campaign_recipients WHERE campaign_id = ?", (campaign_id,))
+            for r in data:
+                await db.execute("INSERT INTO campaign_recipients (campaign_id, name, email, attachment_file, status, sent_timestamp) VALUES (?, ?, ?, ?, ?, ?)", (campaign_id, r.get("Name", ""), r.get("Email", ""), r.get("AttachmentFile", ""), r.get("Status", "PENDING"), r.get("SentTimestamp", "")))
+            await db.commit()

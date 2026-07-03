@@ -1,10 +1,14 @@
 import json
 import os
+import logging
 import tornado.websocket
 from urllib.parse import urlparse
 
+logger = logging.getLogger(__name__)
+
 class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
+        logger.info("New WebSocket connection opened.")
         self.application.settings["websocket_manager"].add(self)
         self.settings_service = self.application.settings["settings_service"]
         self.recipient_service = self.application.settings["recipient_service"]
@@ -52,7 +56,24 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.current_req_id = None
 
     def on_close(self):
+        logger.info("WebSocket connection closed.")
         self.application.settings["websocket_manager"].remove(self)
+
+    async def _get_campaign_name(self, campaign_id):
+        campaigns = await self.campaign_service.get_campaigns()
+        return next((c["name"] for c in campaigns if c["id"] == campaign_id), str(campaign_id))
+
+    async def _get_db_name(self, db_id):
+        dbs = await self.database_service.get_databases()
+        return next((d["name"] for d in dbs if d["id"] == db_id), str(db_id))
+
+    async def _get_template_name(self, template_id):
+        t = await self.global_template_service.get_template_data(template_id)
+        return t["name"] if t else str(template_id)
+
+    async def _get_asset_name(self, asset_id):
+        assets = await self.asset_service.get_assets()
+        return next((a["name"] for a in assets if a["id"] == asset_id), str(asset_id))
 
     async def safe_write_message(self, message_str):
         if self.ws_connection is None or self.ws_connection.is_closing():
@@ -65,8 +86,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             await self.write_message(message_str)
         except tornado.websocket.WebSocketClosedError:
             pass
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Error writing WebSocket message: {str(e)}", exc_info=True)
 
     async def on_message(self, message):
         try:
@@ -88,6 +109,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             except:
                 action = "unknown"
 
+            logger.error(f"Error handling WebSocket action '{action}': {str(e)}", exc_info=True)
+
             error_msg = {
                 "action": "action_error",
                 "payload": {"original_action": action, "message": str(e)}
@@ -104,6 +127,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             self.current_req_id = None
 
     async def _handle_get_campaigns(self, _):
+        logger.info("Fetched all campaigns.")
         campaigns = await self.campaign_service.get_campaigns()
         config = await self.settings_service.get_config()
         config["server_pwd"] = os.getcwd()
@@ -128,6 +152,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not campaign_id:
             return
 
+        name = await self._get_campaign_name(campaign_id)
+        logger.info(f"Opened campaign data for: {name}")
         recipients = await self.recipient_service.get_recipients(campaign_id)
         template = await self.template_service.get_template(campaign_id)
         await self.safe_write_message(
@@ -152,6 +178,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not name:
             return
 
+        logger.info(f"Created new campaign: {name}")
         subject = None
         body = None
         recipients = None
@@ -186,6 +213,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         updates = payload.get("updates")
         if not campaign_id or not updates:
             return
+
         campaigns = await self.campaign_service.update_campaign(campaign_id, updates)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "campaigns_list", "payload": campaigns}
@@ -195,6 +223,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         campaign_id = payload.get("campaign_id")
         if not campaign_id:
             return
+
+        name = await self._get_campaign_name(campaign_id)
+        logger.info(f"Deleted campaign: {name}")
         campaigns = await self.campaign_service.delete_campaign(campaign_id)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "campaigns_list", "payload": campaigns}
@@ -204,12 +235,17 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         campaign_ids = payload.get("campaign_ids")
         if not isinstance(campaign_ids, list):
             return
-        campaigns = await self.campaign_service.delete_campaigns(campaign_ids)
+
+        campaigns = await self.campaign_service.get_campaigns()
+        names = [c["name"] for c in campaigns if c["id"] in campaign_ids]
+        logger.info(f"Deleted multiple campaigns: {', '.join(names)}")
+        updated_campaigns = await self.campaign_service.delete_campaigns(campaign_ids)
         self.application.settings["websocket_manager"].broadcast(
-            {"action": "campaigns_list", "payload": campaigns}
+            {"action": "campaigns_list", "payload": updated_campaigns}
         )
 
     async def _handle_save_config(self, payload):
+        logger.info("Saved configuration and sender accounts")
         await self.settings_service.save_config(payload)
         config = await self.settings_service.get_config()
         config["server_pwd"] = os.getcwd()
@@ -220,6 +256,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         )
 
     async def _handle_clear_config(self, _):
+        logger.info("Cleared configuration")
         await self.settings_service.clear_config()
         config = await self.settings_service.get_config()
         config["server_pwd"] = os.getcwd()
@@ -238,6 +275,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         base64_content = payload.get("content")
         if not campaign_id or not base64_content:
             return
+
+        name = await self._get_campaign_name(campaign_id)
+        logger.info(f"Uploaded recipients via base64 for campaign: {name}")
         await self.recipient_service.save_recipients_from_base64(
             campaign_id, base64_content
         )
@@ -250,6 +290,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         campaign_id = payload.get("campaign_id")
         recipients = payload.get("recipients")
         if campaign_id is not None and recipients is not None:
+            name = await self._get_campaign_name(campaign_id)
+            logger.info(f"Saved recipients via JSON for campaign: {name}")
             await self.recipient_service.save_recipients_from_json(
                 campaign_id, recipients
             )
@@ -261,6 +303,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             return
 
         if self.mailer_service.is_running():
+            logger.warning("Attempted to start mailing but a mailing process is already running")
             await self.safe_write_message(
                 json.dumps(
                     {
@@ -273,6 +316,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
                 )
             )
         else:
+            name = await self._get_campaign_name(campaign_id)
+            logger.info(f"Started mailing for campaign: {name}")
             stored_config = await self.settings_service.get_config()
             campaigns = await self.campaign_service.get_campaigns()
             subject = next(
@@ -284,6 +329,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             )
 
     async def _handle_stop_mailing(self, _):
+        logger.info("Requested to stop the mailing process")
         self.mailer_service.stop()
 
     async def _handle_preflight_check(self, payload):
@@ -291,6 +337,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not campaign_id:
             return
 
+        name = await self._get_campaign_name(campaign_id)
+        logger.info(f"Ran preflight check for campaign: {name}")
         stored_config = await self.settings_service.get_config()
         campaigns = await self.campaign_service.get_campaigns()
         subject = next((c["subject"] for c in campaigns if c["id"] == campaign_id), "")
@@ -308,6 +356,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not campaign_id:
             return
 
+        name = await self._get_campaign_name(campaign_id)
+        logger.info(f"Fetched summary for campaign: {name}")
         stored_config = await self.settings_service.get_config()
         campaigns = await self.campaign_service.get_campaigns()
         subject = next((c["subject"] for c in campaigns if c["id"] == campaign_id), "")
@@ -320,6 +370,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         )
 
     async def _handle_get_databases(self, _):
+        logger.info("Fetched all databases")
         dbs = await self.database_service.get_databases()
         await self.safe_write_message(json.dumps({"action": "databases_list", "payload": dbs}))
 
@@ -327,6 +378,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         db_id = payload.get("database_id")
         if not db_id:
             return
+
+        name = await self._get_db_name(db_id)
+        logger.info(f"Opened database data for: {name}")
         recipients = await self.database_service.get_database_data(db_id)
         await self.safe_write_message(json.dumps({
             "action": "database_data",
@@ -339,6 +393,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         navigate = payload.get("navigate", True)
         if not name:
             return
+
+        logger.info(f"Created database: {name}")
         new_db, all_dbs = await self.database_service.create_database(name, content)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "databases_list", "payload": all_dbs}
@@ -350,6 +406,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         updates = payload.get("updates")
         if not db_id or not updates:
             return
+
+        name = await self._get_db_name(db_id)
+        logger.info(f"Updated database: {name}")
         dbs = await self.database_service.update_database(db_id, updates)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "databases_list", "payload": dbs}
@@ -359,15 +418,21 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         db_ids = payload.get("database_ids")
         if not isinstance(db_ids, list):
             return
-        dbs = await self.database_service.delete_databases(db_ids)
+
+        dbs = await self.database_service.get_databases()
+        names = [d["name"] for d in dbs if d["id"] in db_ids]
+        logger.info(f"Deleted multiple databases: {', '.join(names)}")
+        updated_dbs = await self.database_service.delete_databases(db_ids)
         self.application.settings["websocket_manager"].broadcast(
-            {"action": "databases_list", "payload": dbs}
+            {"action": "databases_list", "payload": updated_dbs}
         )
 
     async def _handle_save_database_data(self, payload):
         db_id = payload.get("database_id")
         recipients = payload.get("recipients")
         if db_id is not None and recipients is not None:
+            name = await self._get_db_name(db_id)
+            logger.info(f"Saved recipients for database: {name}")
             await self.database_service.save_database_data(db_id, recipients)
 
     async def _handle_import_csv_to_database(self, payload):
@@ -376,6 +441,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         mode = payload.get("mode")
         if not db_id or not content or not mode:
             return
+
+        name = await self._get_db_name(db_id)
+        logger.info(f"Imported CSV to database: {name} in '{mode}' mode")
         await self.database_service.import_csv_to_database(db_id, content, mode)
         recipients = await self.database_service.get_database_data(db_id)
         await self.safe_write_message(json.dumps({
@@ -384,6 +452,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         }))
 
     async def _handle_get_global_templates(self, _):
+        logger.info("Fetched all global templates")
         templates = await self.global_template_service.get_templates()
         await self.safe_write_message(json.dumps({"action": "global_templates_list", "payload": templates}))
 
@@ -391,6 +460,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         template_id = payload.get("template_id")
         if not template_id:
             return
+
+        name = await self._get_template_name(template_id)
+        logger.info(f"Opened global template data for: {name}")
         data = await self.global_template_service.get_template_data(template_id)
         await self.safe_write_message(json.dumps({"action": "global_template_data", "payload": data}))
 
@@ -403,6 +475,8 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         navigate = payload.get("navigate", True)
         if not name:
             return
+
+        logger.info(f"Created global template: {name}")
         new_t, all_t = await self.global_template_service.create_template(name, category, subject, body, is_html)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "global_templates_list", "payload": all_t}
@@ -418,6 +492,9 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         body = payload.get("body")
         if not template_id:
             return
+
+        name = await self._get_template_name(template_id)
+        logger.info(f"Updated global template: {name}")
         all_t = await self.global_template_service.update_template(template_id, updates, body)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "global_templates_list", "payload": all_t}
@@ -427,6 +504,10 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         template_ids = payload.get("template_ids")
         if not isinstance(template_ids, list):
             return
+
+        templates = await self.global_template_service.get_templates()
+        names = [t["name"] for t in templates if t["id"] in template_ids]
+        logger.info(f"Deleted multiple global templates: {', '.join(names)}")
         all_t = await self.global_template_service.delete_templates(template_ids)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "global_templates_list", "payload": all_t}
@@ -436,25 +517,38 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         template_id = payload.get("template_id")
         if not template_id:
             return
+
+        name = await self._get_template_name(template_id)
+        logger.info(f"Duplicated global template: {name}")
         all_t = await self.global_template_service.duplicate_template(template_id)
         self.application.settings["websocket_manager"].broadcast(
             {"action": "global_templates_list", "payload": all_t}
         )
 
     async def _handle_get_assets(self, _):
+        logger.info("Fetched all assets")
         assets = await self.asset_service.get_assets()
         await self.safe_write_message(json.dumps({"action": "assets_list", "payload": assets}))
 
     async def _handle_create_asset(self, payload):
+        logger.info(f"Created asset: {payload.get('name')}")
         assets = await self.asset_service.create_asset(payload.get("name"), payload.get("url"), payload.get("is_gdrive"))
         self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
 
     async def _handle_delete_assets(self, payload):
-        assets = await self.asset_service.delete_assets(payload.get("asset_ids"))
-        self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
+        asset_ids = payload.get("asset_ids")
+        if isinstance(asset_ids, list):
+            assets = await self.asset_service.get_assets()
+            names = [a["name"] for a in assets if a["id"] in asset_ids]
+            logger.info(f"Deleted multiple assets: {', '.join(names)}")
+        updated_assets = await self.asset_service.delete_assets(asset_ids)
+        self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": updated_assets})
 
     async def _handle_update_asset(self, payload):
-        assets = await self.asset_service.update_asset(payload.get("asset_id"), payload.get("updates"))
+        asset_id = payload.get("asset_id")
+        name = await self._get_asset_name(asset_id)
+        logger.info(f"Updated asset: {name}")
+        assets = await self.asset_service.update_asset(asset_id, payload.get("updates"))
         self.application.settings["websocket_manager"].broadcast({"action": "assets_list", "payload": assets})
 
     def check_origin(self, origin):
@@ -485,4 +579,3 @@ class WebSocketManager:
                     fut.add_done_callback(lambda f: f.exception())
             except Exception:
                 pass
-

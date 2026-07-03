@@ -1,48 +1,26 @@
 import asyncio
-import os
-import sys
-from cryptography.fernet import Fernet
+import logging
 from src.bit_by_mail.server.server import make_app
 
 
-def setup_environment():
-    data_dir = os.path.join(os.getcwd(), "data")
-    key_path = os.path.join(data_dir, "fernet.key")
-    secret_key = None
-
-    try:
-        os.makedirs(data_dir, exist_ok=True)
-
-        if os.path.exists(key_path):
-            with open(key_path, "r") as f:
-                secret_key = f.read().strip()
-
-        if not secret_key:
-            secret_key = Fernet.generate_key().decode()
-            with open(key_path, "w") as f:
-                f.write(secret_key)
-
-    except IOError as e:
-        sys.exit(1)
-
-    os.environ["SECRET_KEY"] = secret_key
-
-
 def main():
-    setup_environment()
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s"
+    )
+    logging.getLogger("tornado.access").setLevel(logging.WARNING)
 
     app = make_app()
-
     app.settings["debug"] = True
 
     port = 8888
     app.listen(port)
 
+    logging.info(f"Server started in development mode on port {port}")
     try:
         asyncio.get_event_loop().run_forever()
     except KeyboardInterrupt:
-        pass
-
+        logging.info("Server shutting down")
 
 if __name__ == "__main__":
     main()

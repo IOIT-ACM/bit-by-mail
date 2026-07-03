@@ -213,6 +213,17 @@ const RecipientTableContent: React.FC<{
 
     const cols: any[] = [
       {
+        id: 'index',
+        header: () => <div className="text-center text-text-tertiary">#</div>,
+        cell: ({ row }: any) => (
+          <div className="text-center text-text-tertiary font-mono text-xs">
+            {row.index + 1}
+          </div>
+        ),
+        enableSorting: false,
+        size: 40,
+      },
+      {
         id: 'select',
         header: () => (
           <input
@@ -455,6 +466,7 @@ const RecipientTableContent: React.FC<{
                       <div className="max-h-40 overflow-y-auto custom-scrollbar">
                         {table.getAllLeafColumns().map((col) => {
                           if (
+                            col.id === 'index' ||
                             col.id === 'select' ||
                             col.id === 'preview' ||
                             col.id === 'Status'
