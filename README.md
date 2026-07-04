@@ -1,99 +1,113 @@
-# bit-by-mail
+<p align="center">
+  <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/main/docs/assets/banner.png" alt="Bit by Mail Banner" width="100%" onerror="this.src='https://via.placeholder.com/1200x400/1e1e2a/3b82f6?text=Bit+By+Mail'">
+</p>
 
-A simple, self-hosted bulk mailing application with a modern web UI.
+<h1 align="center">bit-by-mail</h1>
 
-## Features
+<p align="center">
+  <strong>A simple, self-hosted, privacy-first bulk mailing app with a modern web UI.</strong>
+</p>
 
-- **Web-Based UI:** Manage campaigns, recipients, and email templates from your browser.
-- **Live Preview:** Instantly see how your emails will look with placeholder substitution for each recipient.
-- **Preflight Checks:** Validate your configuration, recipient data, and attachments before sending to catch errors early.
-- **Live Logging:** Monitor the mailing process in real-time directly in the UI.
-- **Self-Hosted:** Your data, your server. Keep your mailing lists and configurations private.
-
-## Installation & Usage
-
-1.  **Install the package from PyPI:**
-
-    ```bash
-    pip install bit-by-mail
-    ```
-
-2.  **Run the application:**
-
-    ```bash
-    bit-by-mail
-    ```
-
-3.  **Open your browser:**
-    Navigate to `http://localhost:8888` to access the web UI and configure your first campaign.
-
-## Application Screenshots
-
-### Dashboard
-
-![Dashboard](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/dashboard.png)
-
-### Editor
-
-![Editor](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/editor.png)
-
-### Email Editor
-
-![Email Editor](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/email_editor.png)
-
-### Email Preview
-
-![Email Preview](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/email_preview.png)
-
-### Settings
-
-![Settings](https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/webclient/docs/settings.png)
+<p align="center">
+  Send personalized bulk emails from your own machine, using your own SMTP account. No subscriptions, no third-party servers, no data leaving your computer.
+</p>
 
 ---
 
-## For Developers
+## Why bit-by-mail
 
-### Development Setup
+Most bulk email tools are SaaS platforms — you upload your recipient list to someone else's server and pay a monthly fee for the privilege. bit-by-mail flips that: it's a lightweight local app that runs on your machine and sends through your own email provider. Your data stays yours, and there's nothing to pay for.
 
-If you want to contribute to the project, you'll need to set up the development environment.
+## Features
 
-**Prerequisites:**
+- **Local and private** — runs entirely on your machine; nothing is uploaded anywhere
+- **Bring your own SMTP** — works with Gmail, Outlook, Yahoo, or a custom domain; supports multiple accounts with a default sender fallback
+- **Dynamic personalization** — one template, personalized per recipient using variables from your CSV (`{{FirstName}}`, `{{InvoiceAmount}}`, etc.)
+- **Personalized attachments** — send different files to different recipients in the same campaign (certificates, invoices, reports)
+- **Rich text or raw HTML** — use the WYSIWYG editor, or drop into a Monaco-based HTML editor for full control
+- **Preflight checks** — simulates the send beforehand to catch missing variables, missing attachments, or invalid addresses
+- **Reusable libraries** — save recipient databases and templates so you're not rebuilding them every time
+- **Live analytics** — real-time dispatch logs, success/failure tracking, and exportable CSV delivery reports
 
-- Python 3.9+
-- Node.js 20+ and npm
+## Getting Started
 
-1.  **Clone the repository and install dependencies:**
-    This command sets up the Python virtual environment and installs both backend and frontend dependencies.
-
-    ```bash
-    git clone https://github.com/IOIT-ACM/bit-by-mail.git
-    cd bit-by-mail
-    make install
-    ```
-
-2.  **Run the development servers:**
-    For local development with live reloading, run the frontend and backend servers in separate terminals.
-
-    - **Backend Server:**
-
-      ```bash
-      make dev-backend
-      ```
-
-      The backend will be available at `http://localhost:8888`.
-
-    - **Frontend Server:**
-      ```bash
-      make dev-frontend
-      ```
-      This will open the application in your browser at `http://localhost:3000`, which proxies requests to the backend.
-
-### Building for Production
-
-To build the frontend, create a Python package, and run it like a final user would:
+### Install
 
 ```bash
-make run-prod
+pip install bit-by-mail
 ```
 
-This command is useful for testing the final packaged application locally before publishing.
+Requires Python 3.9 or later.
+
+### Launch
+
+```bash
+bit-by-mail
+# or, for short:
+bbm
+```
+
+The app opens automatically in your browser at `http://localhost:8888`.
+
+### Connect your email account
+
+1. Go to **Settings** in the sidebar.
+2. Click **Add Account** and enter your SMTP details (e.g. `smtp.gmail.com`, port `587`).
+3. Enter your email and password.
+
+> **Using Gmail?** Google blocks sign-ins with your regular password. Generate an [App Password](https://support.google.com/accounts/answer/185833) instead and use that.
+
+### Prepare your recipient list
+
+Recipients are loaded from a CSV file with a header row.
+
+| Column | Required | Notes |
+|---|---|---|
+| `Name` | Yes | Used for personalization |
+| `Email` | Yes | Recipient address |
+| `AttachmentFile` | No | Separate multiple files with `;` |
+| *anything else* | No | Any extra column becomes a placeholder automatically |
+
+**Example:**
+
+| Name | Email | AttachmentFile | TicketType |
+|---|---|---|---|
+| John Doe | john@example.com | john_pass.pdf | VIP |
+| Jane Smith | jane@example.com | jane_pass.pdf; map.png | Standard |
+
+### Run a campaign
+
+1. **Campaigns → New Campaign**
+2. Upload your CSV, or import a saved database
+3. Write your subject and body, using placeholders like `{{Name}}` or `{{TicketType}}`
+4. Check the **Preview** panel to confirm placeholders render correctly
+5. Run **Preflight** to catch problems before sending
+6. Click **Start Sending**
+
+## Advanced
+
+**Asset Library** — store image URLs (including Google Drive links) and drop them into your templates without re-uploading each time.
+
+**Throttling** — add a delay (in seconds) between sends in Campaign Settings to stay under provider rate limits and avoid spam filters.
+
+**Resume on failure** — if a campaign is interrupted, bit-by-mail remembers who's already been sent to. Hit send again and it only processes the recipients still marked `PENDING`.
+
+## Troubleshooting
+
+- **Emails aren't sending** — double-check your SMTP host and port, and confirm you're using an app password rather than your account password if your provider requires one.
+- **Placeholder shows up literally in the email** (e.g. `{{FirstName}}`) — the column name in your CSV doesn't match the placeholder exactly; names are case-sensitive.
+- **Attachment not found errors during Preflight** — check that file paths in `AttachmentFile` are correct relative to where you're running the app, and that multiple files are separated by `;` with no typos.
+
+<p align="center">
+  <br>
+  <em>Rich Text/HTML Editor with Live Preview & Placeholders</em><br>
+  <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/main/docs/assets/editor.png" alt="Email Editor" width="800" onerror="this.src='https://via.placeholder.com/800x450/1e1e2a/3b82f6?text=Editor+Screenshot'">
+</p>
+
+## Contributing
+
+Issues and pull requests are welcome. If you run into a bug or have an idea for a feature, open an issue on GitHub.
+
+## License
+
+See the [LICENSE](LICENSE) file for details.

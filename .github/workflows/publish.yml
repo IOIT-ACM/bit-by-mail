@@ -2,6 +2,8 @@ name: Publish Python Package to PyPI
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
 
@@ -17,15 +19,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: 'frontend/package.json'
+          bun-version: latest
 
       - name: Install frontend dependencies
-        run: cd frontend && npm install
+        run: cd web && bun install
 
       - name: Build frontend and package application
         run: make package

@@ -455,6 +455,29 @@ function DocsPage() {
           </DocSection>
         </div>
       </div>
+      {/* Footer */}
+      <div className="mt-16 pt-8 border-t border-borders-primary text-center">
+        <p className="text-sm text-text-secondary">
+          Made by{' '}
+          <a
+            href="https://adimail.github.io/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-blue hover:underline"
+          >
+            Aditya Godse
+          </a>{' '}
+          for,{' '}
+          <a
+            href="https://ioit.acm.org/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-blue hover:underline"
+          >
+            AISSMS IOIT ACM Student Chapter
+          </a>
+        </p>
+      </div>
     </div>
   )
 }

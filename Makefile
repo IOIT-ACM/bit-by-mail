@@ -34,12 +34,15 @@ build-web:
 
 package: build-web
 	@echo "Preparing assets for packaging..."
-	@rm -rf src/bit_by_mail/web/dist
-	@mkdir -p src/bit_by_mail/web
-	@cp -r web/dist src/bit_by_mail/web/
+	@rm -rf src/bit_by_mail/frontend/dist
+	@mkdir -p src/bit_by_mail/frontend
+	@cp -r web/dist src/bit_by_mail/frontend/
 	@echo "Building Python package..."
-	@pip install --upgrade build
-	@python -m build
+	@if [ -d "venv" ]; then \
+		. venv/bin/activate && pip install --upgrade build && python -m build; \
+	else \
+		pip install --upgrade build && python -m build; \
+	fi
 
 run-prod: package
 	@echo "Installing the newly built package..."

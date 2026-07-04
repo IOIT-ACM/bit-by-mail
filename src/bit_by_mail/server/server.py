@@ -18,6 +18,15 @@ from .services.global_template_service import GlobalTemplateService
 from .services.asset_service import AssetService
 from .services.analytics_service import AnalyticsService
 
+class SPAStaticFileHandler(tornado.web.StaticFileHandler):
+    def validate_absolute_path(self, root, absolute_path):
+        try:
+            return super().validate_absolute_path(root, absolute_path)
+        except tornado.web.HTTPError as e:
+            if e.status_code == 404 and self.default_filename:
+                return super().validate_absolute_path(root, os.path.join(root, self.default_filename))
+            raise
+
 def make_app():
     try:
         static_path = str(importlib.resources.files("bit_by_mail").joinpath("frontend/dist"))
@@ -25,7 +34,7 @@ def make_app():
         with importlib.resources.path("bit_by_mail", "") as p:
             static_path = os.path.join(p, "frontend/dist")
 
-    base_dir = os.getcwd()
+    base_dir = os.path.join(os.path.expanduser("~"), ".bit_by_mail")
     data_dir = os.path.join(base_dir, "data")
     os.makedirs(data_dir, exist_ok=True)
     db_path = os.path.join(data_dir, "app.db")
@@ -67,5 +76,5 @@ def make_app():
         (r"/api/upload/database/(.*)", DatabaseUploadHandler, {"database_service": database_service}),
         (r"/attachments/(.*)/(.*)", AttachmentHandler, {"campaign_service": campaign_service, "recipient_service": recipient_service}),
         (r"/reports/(.*)/(.*)", ReportHandler, {"db_path": db_path}),
-        (r"/(.*)", tornado.web.StaticFileHandler, {"path": static_path, "default_filename": "index.html"}),
+        (r"/(.*)", SPAStaticFileHandler, {"path": static_path, "default_filename": "index.html"}),
     ], **settings)
