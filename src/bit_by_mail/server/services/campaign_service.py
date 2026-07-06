@@ -30,7 +30,7 @@ class CampaignService:
         new_id = str(uuid.uuid4())
         subject = subject if subject is not None else f"Subject for {name}"
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        template_content = body if body is not None else (f"<h1>Email for {name}</h1>\n<p>Hello {{{{Name}}}}</p>" if is_html else f"Email for {name}\nHello {{{{Name}}}}")
+        template_content = body if body is not None else (f"<strong>Email for {name}</strong>\n<p>Hello {{{{Name}}}}</p>" if is_html else f"Email for {name}\nHello {{{{Name}}}}")
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("INSERT INTO campaigns (id, name, subject, attachment_folder, send_attachments, sender_account_id, is_html, delay, created_at, source_db_id, body) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (new_id, name, subject, self.base_dir, False, sender_account_id, is_html, 0, created_at, source_db_id, template_content))
             if recipients:

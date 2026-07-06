@@ -18,6 +18,7 @@ export const RichTextEditorWrapper: React.FC<{
   onMount?: (editor: any) => void
 }> = ({ value, onChange, onMount }) => {
   const isUpdatingRef = useRef(false)
+  const initialMount = useRef(true)
 
   const editor = useEditor({
     extensions: [
@@ -33,6 +34,7 @@ export const RichTextEditorWrapper: React.FC<{
     ],
     content: value,
     onUpdate: ({ editor }) => {
+      if (initialMount.current) return
       isUpdatingRef.current = true
       let html = editor.getHTML()
       html = html.replace(/<p><\/p>/g, '<p><br></p>')
@@ -42,6 +44,10 @@ export const RichTextEditorWrapper: React.FC<{
       }, 10)
     },
   })
+
+  useEffect(() => {
+    initialMount.current = false
+  }, [])
 
   useEffect(() => {
     if (editor && onMount) {

@@ -23,6 +23,8 @@ import { LoadTemplateModal } from './LoadTemplateModal'
 import { SaveTemplateModal } from './SaveTemplateModal'
 import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
 import { useAppStore } from '@/store/useAppStore'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
+import js_beautify from 'js-beautify'
 
 const PlaceholderList: React.FC<{
   entityId: string
@@ -58,6 +60,7 @@ const PlaceholderList: React.FC<{
 }
 
 const preparePreviewContent = (content: string) => {
+  if (/<html/i.test(content)) return content
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -103,10 +106,16 @@ const LiveIframe: React.FC<{ content: string; shellHtml: string }> = ({
 
     const scrollY = win.scrollY
 
-    try {
-      morphdom(doc.body, `<body>${content}</body>`)
-    } catch (e) {
-      doc.body.innerHTML = content
+    if (/<html/i.test(content)) {
+      doc.open()
+      doc.write(content)
+      doc.close()
+    } else {
+      try {
+        morphdom(doc.body, `<body>${content}</body>`)
+      } catch (e) {
+        doc.body.innerHTML = content
+      }
     }
 
     win.scrollTo(0, scrollY)
@@ -115,7 +124,7 @@ const LiveIframe: React.FC<{ content: string; shellHtml: string }> = ({
   return (
     <iframe
       ref={iframeRef}
-      srcDoc={shellHtml}
+      srcDoc={/<html/i.test(content) ? content : shellHtml}
       onLoad={() => setIsLoaded(true)}
       title="Email Preview"
       className="w-full h-full bg-white border border-borders-primary rounded-lg"
@@ -153,6 +162,7 @@ const EditorContent: React.FC<{
   const [showSaveModal, setShowSaveModal] = useState(false)
   const [showAssetPicker, setShowAssetPicker] = useState(false)
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false)
+  const [showHtmlToTextWarning, setShowHtmlToTextWarning] = useState(false)
 
   const setSaveStatus = useAppStore((state) => state.setSaveStatus)
   const saveStatus = useAppStore((state) => state.saveStatus)
@@ -434,13 +444,25 @@ const EditorContent: React.FC<{
 
         <div className="flex items-center gap-1 bg-surface-element p-1 h-11 rounded-lg border border-borders-primary">
           <button
-            onClick={() => setEditorMode('text')}
+            onClick={() => {
+              if (editorMode === 'text') return
+              setShowHtmlToTextWarning(true)
+            }}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'text' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
           >
             Text
           </button>
           <button
-            onClick={() => setEditorMode('html')}
+            onClick={() => {
+              if (editorMode === 'html') return
+              const formattedHtml = js_beautify.html(localBody, {
+                indent_size: 2,
+                wrap_line_length: 0,
+                preserve_newlines: true,
+              })
+              handleBodyChange(formattedHtml)
+              setEditorMode('html')
+            }}
             className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'html' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
           >
             HTML
@@ -539,6 +561,20 @@ const EditorContent: React.FC<{
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showHtmlToTextWarning}
+        title="Switch to Rich Text Mode?"
+        message="Switching to the Rich Text editor will remove any unsupported custom HTML, CSS classes, or <style> tags. Do you want to continue?"
+        confirmText="Switch Mode"
+        cancelText="Cancel"
+        onConfirm={() => {
+          setEditorMode('text')
+          setShowHtmlToTextWarning(false)
+        }}
+        onCancel={() => setShowHtmlToTextWarning(false)}
+        isDestructive={true}
+      />
 
       {showAssetPicker && (
         <AssetPickerModal
