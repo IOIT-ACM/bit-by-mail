@@ -17,6 +17,7 @@ class CampaignService:
                 c = dict(r)
                 c["createdAt"] = c.pop("created_at")
                 c["sourceDbId"] = c.pop("source_db_id")
+                c["sourceTemplateId"] = c.pop("source_template_id", None)
                 c["send_attachments"] = bool(c["send_attachments"])
                 c["is_html"] = bool(c["is_html"])
                 async with db.execute("SELECT COUNT(*) FROM campaign_recipients WHERE campaign_id = ? AND email != ''", (c["id"],)) as rc:
@@ -26,13 +27,13 @@ class CampaignService:
                 campaigns.append(c)
             return campaigns
 
-    async def create_campaign(self, name, subject=None, body=None, recipients=None, source_db_id=None, sender_account_id="", is_html=True):
+    async def create_campaign(self, name, subject=None, body=None, recipients=None, source_db_id=None, sender_account_id="", is_html=True, source_template_id=None):
         new_id = str(uuid.uuid4())
         subject = subject if subject is not None else f"Subject for {name}"
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-        template_content = body if body is not None else (f"<strong>Email for {name}</strong>\n<p>Hello {{{{Name}}}}</p>" if is_html else f"Email for {name}\nHello {{{{Name}}}}")
+        template_content = body if body is not None else (f"<h1>Email for {name}</h1>\n<p>Hello {{{{Name}}}}</p>" if is_html else f"Email for {name}\nHello {{{{Name}}}}")
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("INSERT INTO campaigns (id, name, subject, attachment_folder, send_attachments, sender_account_id, is_html, delay, created_at, source_db_id, body) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (new_id, name, subject, self.base_dir, False, sender_account_id, is_html, 0, created_at, source_db_id, template_content))
+            await db.execute("INSERT INTO campaigns (id, name, subject, attachment_folder, send_attachments, sender_account_id, is_html, delay, created_at, source_db_id, body, source_template_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (new_id, name, subject, self.base_dir, False, sender_account_id, is_html, 0, created_at, source_db_id, template_content, source_template_id))
             if recipients:
                 for r in recipients:
                     await db.execute("INSERT INTO campaign_recipients (campaign_id, name, email, attachment_file, status, sent_timestamp) VALUES (?, ?, ?, ?, ?, ?)", (new_id, r.get("Name", ""), r.get("Email", ""), r.get("AttachmentFile", ""), r.get("Status", "PENDING"), r.get("SentTimestamp", "")))
@@ -43,8 +44,13 @@ class CampaignService:
     async def update_campaign(self, campaign_id, updates):
         async with aiosqlite.connect(self.db_path) as db:
             for k, v in updates.items():
-                if k in ["name", "subject", "attachment_folder", "send_attachments", "sender_account_id", "is_html", "delay"]:
-                    await db.execute(f"UPDATE campaigns SET {k} = ? WHERE id = ?", (v, campaign_id))
+                col = k
+                if k == "sourceDbId":
+                    col = "source_db_id"
+                if k == "sourceTemplateId":
+                    col = "source_template_id"
+                if col in ["name", "subject", "attachment_folder", "send_attachments", "sender_account_id", "is_html", "delay", "source_db_id", "source_template_id"]:
+                    await db.execute(f"UPDATE campaigns SET {col} = ? WHERE id = ?", (v, campaign_id))
             await db.commit()
         return await self.get_campaigns()
 
@@ -59,3 +65,4 @@ class CampaignService:
             await db.execute(query_rec, campaign_ids)
             await db.commit()
         return await self.get_campaigns()
+

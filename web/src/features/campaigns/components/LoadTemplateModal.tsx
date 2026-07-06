@@ -8,7 +8,12 @@ import { Download, FileText, Code } from 'lucide-react'
 
 export const LoadTemplateModal: React.FC<{
   onClose: () => void
-  onLoad: (subject: string, body: string, isHtml: boolean) => void
+  onLoad: (
+    subject: string,
+    body: string,
+    isHtml: boolean,
+    templateId: string,
+  ) => void
 }> = ({ onClose, onLoad }) => {
   const { data: templates = [] } = useQuery<EmailTemplate[]>({
     queryKey: ['templates'],
@@ -34,7 +39,12 @@ export const LoadTemplateModal: React.FC<{
         { template_id: selectedTemplate },
         'global_template_data',
       )
-      onLoad(res.subject || '', res.body || '', res.is_html ?? true)
+      onLoad(
+        res.subject || '',
+        res.body || '',
+        res.is_html ?? true,
+        selectedTemplate,
+      )
       onClose()
     } finally {
       setIsLoading(false)

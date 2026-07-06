@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/main/docs/assets/banner.png" alt="Bit by Mail Banner" width="100%" onerror="this.src='https://via.placeholder.com/1200x400/1e1e2a/3b82f6?text=Bit+By+Mail'">
+  <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/main/docs/banner.png" alt="Bit by Mail Banner" width="100%" onerror="this.src='https://via.placeholder.com/1200x400/1e1e2a/3b82f6?text=Bit+By+Mail'">
 </p>
 
 <h1 align="center">bit-by-mail</h1>
@@ -101,7 +101,7 @@ Recipients are loaded from a CSV file with a header row.
 <p align="center">
   <br>
   <em>Rich Text/HTML Editor with Live Preview & Placeholders</em><br>
-  <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/main/docs/assets/editor.png" alt="Email Editor" width="800" onerror="this.src='https://via.placeholder.com/800x450/1e1e2a/3b82f6?text=Editor+Screenshot'">
+  <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/main/docs/dashboard.jpeg" alt="Email Editor" width="800" onerror="this.src='https://via.placeholder.com/800x450/1e1e2a/3b82f6?text=Editor+Screenshot'">
 </p>
 
 ## Contributing

@@ -59,6 +59,7 @@ export interface Campaign {
   recipientCount: number
   latestReportUrl?: string | null
   sourceDbId?: string
+  sourceTemplateId?: string
   attachment_folder?: string
   send_attachments?: boolean
   sender_account_id?: string
@@ -143,3 +144,4 @@ export interface AppState {
   showCampaignSettingsModal: boolean
   showActivityView: boolean
 }
+

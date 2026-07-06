@@ -118,6 +118,7 @@ class ApiService {
       name?: string
       subject?: string
       sourceDbId?: string
+      sourceTemplateId?: string
       attachment_folder?: string
       send_attachments?: boolean
       sender_account_id?: string

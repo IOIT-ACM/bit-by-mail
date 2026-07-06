@@ -16,9 +16,9 @@ import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
 import { apiService } from '@/services/apiService'
 import { queryClient } from '@/services/queryClient'
 import type { CampaignData, Campaign, EmailTemplateData } from '@/types'
-import { MaximizableView } from '@/components/common/MaximizableView'
 import { MonacoEditorWrapper } from '@/components/common/MonacoEditorWrapper'
 import { RichTextEditorWrapper } from '@/components/common/RichTextEditorWrapper'
+import { MaximizableView } from '@/components/common/MaximizableView'
 import { LoadTemplateModal } from './LoadTemplateModal'
 import { SaveTemplateModal } from './SaveTemplateModal'
 import { AssetPickerModal } from '@/features/assets/components/AssetPickerModal'
@@ -343,13 +343,23 @@ const EditorContent: React.FC<{
     window.open(url, '_blank')
   }
 
-  const handleLoadTemplate = (subject: string, body: string) => {
+  const handleLoadTemplate = (
+    subject: string,
+    body: string,
+    isHtml: boolean,
+    templateId: string,
+  ) => {
     handleSubjectChange({
       target: { value: subject },
     } as React.ChangeEvent<HTMLInputElement>)
     handleBodyChange(body)
+    setEditorMode(isHtml ? 'html' : 'text')
     apiService.saveTemplate(entityId, body)
-    apiService.updateCampaign(entityId, { subject, is_html: true })
+    apiService.updateCampaign(entityId, {
+      subject,
+      is_html: isHtml,
+      sourceTemplateId: templateId,
+    })
     toast.success('Template loaded successfully.')
   }
 
@@ -610,10 +620,7 @@ export default function Editor({
   type: 'campaign' | 'template'
 }) {
   return (
-    <MaximizableView
-      layoutId="editor-container"
-      className="bg-[#1a1a24] backdrop-blur-xl border border-borders-primary/80 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.12)] ring-1 ring-accent-blue/20 p-5 flex flex-col h-full"
-    >
+    <MaximizableView layoutId="editor-container">
       {({ isMaximized, onToggle }) => (
         <EditorContent
           isMaximized={isMaximized}
