@@ -92,6 +92,7 @@ function CampaignDetail() {
               <Editor
                 entityId={campaignId}
                 subject={campaign.subject}
+                initialIsHtml={campaign.is_html ?? true}
                 type="campaign"
               />
             </div>

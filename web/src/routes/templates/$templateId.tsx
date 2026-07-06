@@ -185,6 +185,7 @@ function TemplateDetail() {
         <Editor
           entityId={templateId}
           subject={template.subject}
+          initialIsHtml={template.is_html ?? true}
           type="template"
         />
       </div>

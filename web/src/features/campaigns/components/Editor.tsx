@@ -138,8 +138,16 @@ const EditorContent: React.FC<{
   onToggleMaximize: () => void
   entityId: string
   initialSubject: string
+  initialIsHtml?: boolean
   type: 'campaign' | 'template'
-}> = ({ isMaximized, onToggleMaximize, entityId, initialSubject, type }) => {
+}> = ({
+  isMaximized,
+  onToggleMaximize,
+  entityId,
+  initialSubject,
+  initialIsHtml = true,
+  type,
+}) => {
   const { data: campaignData } = useQuery<CampaignData>({
     queryKey: ['campaignData', entityId],
     enabled: type === 'campaign',
@@ -155,7 +163,9 @@ const EditorContent: React.FC<{
   const [localSubject, setLocalSubject] = useState(initialSubject)
   const [localBody, setLocalBody] = useState('')
   const [previewBody, setPreviewBody] = useState('')
-  const [editorMode, setEditorMode] = useState<'text' | 'html'>('text')
+  const [editorMode, setEditorMode] = useState<'text' | 'html'>(
+    initialIsHtml ? 'html' : 'text',
+  )
   const [editorInstance, setEditorInstance] = useState<any>(null)
 
   const [showLoadModal, setShowLoadModal] = useState(false)
@@ -181,6 +191,13 @@ const EditorContent: React.FC<{
   useEffect(() => {
     setLocalSubject((prev) => (prev !== initialSubject ? initialSubject : prev))
   }, [initialSubject])
+
+  useEffect(() => {
+    setEditorMode((prev) => {
+      const newMode = initialIsHtml ? 'html' : 'text'
+      return prev !== newMode ? newMode : prev
+    })
+  }, [initialIsHtml])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -315,9 +332,11 @@ const EditorContent: React.FC<{
           if (subjectChanged)
             apiService.updateCampaign(entityId, { subject: localSubject })
 
-          apiService.updateCampaign(entityId, { is_html: true })
+          apiService.updateCampaign(entityId, {
+            is_html: editorMode === 'html',
+          })
         } else {
-          const updates: any = { is_html: true }
+          const updates: any = { is_html: editorMode === 'html' }
           if (subjectChanged) updates.subject = localSubject
           apiService.updateGlobalTemplate(
             entityId,
@@ -331,7 +350,7 @@ const EditorContent: React.FC<{
       }
     },
     1500,
-    [localBody, localSubject, entityId, type],
+    [localBody, localSubject, entityId, type, editorMode],
   )
 
   const shellHtml = useMemo(() => preparePreviewContent(''), [])
@@ -603,7 +622,7 @@ const EditorContent: React.FC<{
           onClose={() => setShowSaveModal(false)}
           currentSubject={localSubject}
           currentBody={localBody}
-          currentIsHtml={true}
+          currentIsHtml={editorMode === 'html'}
         />
       )}
     </>
@@ -613,10 +632,12 @@ const EditorContent: React.FC<{
 export default function Editor({
   entityId,
   subject,
+  initialIsHtml = true,
   type,
 }: {
   entityId: string
   subject: string
+  initialIsHtml?: boolean
   type: 'campaign' | 'template'
 }) {
   return (
@@ -627,6 +648,7 @@ export default function Editor({
           onToggleMaximize={onToggle}
           entityId={entityId}
           initialSubject={subject}
+          initialIsHtml={initialIsHtml}
           type={type}
         />
       )}
