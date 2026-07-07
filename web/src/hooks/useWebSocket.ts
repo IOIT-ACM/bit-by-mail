@@ -299,6 +299,12 @@ export const useWebSocket = () => {
             payload.events,
           )
           break
+        case 'factory_reset_complete':
+          toast.success('Factory reset complete.')
+          setTimeout(() => {
+            window.location.href = '/'
+          }, 1000)
+          break
       }
     }
   }, [

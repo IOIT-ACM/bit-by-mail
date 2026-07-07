@@ -55,6 +55,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "update_asset": self._handle_update_asset,
             "get_campaign_analytics": self._handle_get_campaign_analytics,
             "get_campaign_events": self._handle_get_campaign_events,
+            "factory_reset": self._handle_factory_reset,
         }
         self.current_req_id = None
 
@@ -572,6 +573,17 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "payload": {"campaign_id": campaign_id, "events": events}
         }))
 
+    async def _handle_factory_reset(self, payload):
+        erase_accounts = payload.get("erase_accounts", False)
+        logger.info(f"Performing factory reset. Erase accounts: {erase_accounts}")
+
+        await self.settings_service.factory_reset(erase_accounts)
+        seeder_service = self.application.settings.get("seeder_service")
+        if seeder_service:
+            await seeder_service.seed()
+
+        await self.safe_write_message(json.dumps({"action": "factory_reset_complete", "payload": {}}))
+
     def check_origin(self, origin):
         parsed_origin = urlparse(origin)
         origin_host = parsed_origin.netloc.lower()
@@ -600,3 +612,4 @@ class WebSocketManager:
                     fut.add_done_callback(lambda f: f.exception())
             except Exception:
                 pass
+

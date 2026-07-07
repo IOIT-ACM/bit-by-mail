@@ -44,3 +44,19 @@ class SettingsService:
         async with aiosqlite.connect(self.db_path) as db:
             await db.execute("DELETE FROM accounts")
             await db.commit()
+
+    async def factory_reset(self, erase_accounts: bool):
+        async with aiosqlite.connect(self.db_path) as db:
+            tables = [
+                "campaigns", "campaign_recipients", "databases",
+                "database_recipients", "global_templates", "assets",
+                "campaign_events"
+            ]
+            for table in tables:
+                await db.execute(f"DELETE FROM {table}")
+
+            if erase_accounts:
+                await db.execute("DELETE FROM accounts")
+
+            await db.commit()
+

@@ -156,6 +156,10 @@ class ApiService {
     this.sendMessage('clear_config')
   }
 
+  factoryReset(eraseAccounts: boolean) {
+    this.sendMessage('factory_reset', { erase_accounts: eraseAccounts })
+  }
+
   saveRecipients(campaignId: string, recipients: Recipient[]) {
     this.sendMessage('save_recipients', { campaign_id: campaignId, recipients })
   }

@@ -17,6 +17,8 @@ import {
   Key,
   Info,
   ExternalLink,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -60,6 +62,8 @@ function SettingsPage() {
   const accounts = config?.accounts || []
 
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [showFactoryResetConfirm, setShowFactoryResetConfirm] = useState(false)
+  const [eraseAccounts, setEraseAccounts] = useState(false)
   const [editingAccount, setEditingAccount] = useState<Partial<Account> | null>(
     null,
   )
@@ -68,6 +72,11 @@ function SettingsPage() {
     apiService.clearConfig()
     toast.success('Settings cleared successfully.')
     setShowClearConfirm(false)
+  }
+
+  const handleFactoryReset = () => {
+    apiService.factoryReset(eraseAccounts)
+    setShowFactoryResetConfirm(false)
   }
 
   const handleEditAccount = (acc: Account) => {
@@ -147,10 +156,12 @@ function SettingsPage() {
               Manage your email sender accounts and SMTP server configurations.
             </p>
           </div>
-          <Button variant="danger" onClick={() => setShowClearConfirm(true)}>
-            <Trash2 size={16} />
-            Clear All Settings
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="danger" onClick={() => setShowClearConfirm(true)}>
+              <Trash2 size={16} />
+              Clear SMTP Accounts
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -270,17 +281,83 @@ function SettingsPage() {
             )}
           </div>
         </div>
+
+        <div className="mt-12 space-y-6">
+          <div className="flex items-center gap-2 text-status-danger-text border-b border-status-danger-text/30 pb-2">
+            <AlertTriangle size={20} />
+            <h2 className="text-xl font-semibold">Danger Zone</h2>
+          </div>
+          <div className="bg-status-danger-bg/10 border border-status-danger-text/20 rounded-2xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+              <h3 className="text-lg font-medium text-text-primary mb-1">
+                Factory Reset
+              </h3>
+              <p className="text-sm text-text-secondary">
+                Permanently delete all campaigns, databases, templates, and
+                history. Default assets will be re-seeded.
+              </p>
+            </div>
+            <Button
+              variant="danger"
+              onClick={() => setShowFactoryResetConfirm(true)}
+            >
+              <RotateCcw size={16} />
+              Factory Reset
+            </Button>
+          </div>
+        </div>
       </div>
 
       <ConfirmDialog
         isOpen={showClearConfirm}
-        title="Clear Settings"
-        message="Are you sure you want to completely clear all SMTP configurations? This action cannot be undone."
-        confirmText="Clear Settings"
+        title="Clear SMTP Settings"
+        message="Are you sure you want to completely clear all SMTP sender configurations? This action cannot be undone."
+        confirmText="Clear Accounts"
         isDestructive={true}
         onConfirm={handleClear}
         onCancel={() => setShowClearConfirm(false)}
       />
+
+      <Modal
+        isOpen={showFactoryResetConfirm}
+        onClose={() => setShowFactoryResetConfirm(false)}
+        title="Factory Reset"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-text-secondary">
+            Are you absolutely sure you want to perform a factory reset? This
+            will erase all your campaigns, reusable databases, user-created
+            templates, user-created assets, and mailing history. This action{' '}
+            <strong>cannot</strong> be undone.
+          </p>
+          <div className="flex items-center gap-3 bg-surface-element p-3 rounded-lg border border-borders-primary mt-2">
+            <input
+              type="checkbox"
+              id="erase_accounts"
+              checked={eraseAccounts}
+              onChange={(e) => setEraseAccounts(e.target.checked)}
+              className="custom-checkbox"
+            />
+            <label
+              htmlFor="erase_accounts"
+              className="text-sm font-medium text-text-primary cursor-pointer select-none"
+            >
+              Also delete all SMTP sender accounts
+            </label>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-borders-primary">
+            <Button
+              variant="secondary"
+              onClick={() => setShowFactoryResetConfirm(false)}
+            >
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleFactoryReset}>
+              Yes, Factory Reset
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {editingAccount && (
         <Modal
@@ -470,3 +547,4 @@ function SettingsPage() {
     </div>
   )
 }
+

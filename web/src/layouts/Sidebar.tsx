@@ -24,6 +24,8 @@ import type {
 } from '@/types'
 import { apiService } from '@/services/apiService'
 
+declare const __APP_VERSION__: string
+
 export const Sidebar: React.FC = () => {
   const isCollapsed = useAppStore((state) => state.isSidebarCollapsed)
   const setIsCollapsed = useAppStore((state) => state.setIsSidebarCollapsed)
@@ -310,7 +312,9 @@ export const Sidebar: React.FC = () => {
             )}
           </div>
           {isVisuallyExpanded && (
-            <span className="text-xs text-text-tertiary font-mono">v2.2.0</span>
+            <span className="text-xs text-text-tertiary font-mono">
+              v{__APP_VERSION__}
+            </span>
           )}
         </div>
       </div>

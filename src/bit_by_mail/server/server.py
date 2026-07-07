@@ -72,6 +72,7 @@ def make_app():
         "asset_service": asset_service,
         "analytics_service": analytics_service,
         "websocket_manager": websocket_manager,
+        "seeder_service": seeder_service,
     }
 
     return tornado.web.Application([
