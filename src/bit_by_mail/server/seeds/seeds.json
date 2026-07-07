@@ -1,6 +1,18 @@
 {
   "templates": [
     {
+      "name": "Meeting Minutes 1",
+      "subject": "IOIT ACM | Meeting Minutes",
+      "category": "Meeting Minutes",
+      "file": "mm1.html"
+    },
+    {
+      "name": "Meeting Minutes 2",
+      "subject": "IOIT ACM | Meeting Minutes",
+      "category": "Meeting Minutes",
+      "file": "mm2.html"
+    },
+    {
       "name": "TENET Hack 2025 Certificate",
       "subject": "Your TENET Hack 2025 Certificate {{Name}}",
       "category": "Events",
