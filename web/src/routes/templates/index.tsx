@@ -182,7 +182,7 @@ function TemplatesList() {
                   </div>
 
                   <div
-                    className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-200 z-20 flex items-center justify-center gap-3 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                    className={`absolute inset-0 bg-black/60 backdrop-blur-[2px] transition-opacity duration-200 z-20 flex flex-col items-center justify-center gap-3 ${isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
                   >
                     <div className="absolute top-3 right-3">
                       <input
@@ -192,18 +192,32 @@ function TemplatesList() {
                         onChange={() => toggleTemplateSelection(t.id)}
                       />
                     </div>
-                    <Button
-                      variant="primary"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate({
-                          to: '/templates/$templateId',
-                          params: { templateId: t.id },
-                        })
-                      }}
-                    >
-                      Edit Template
-                    </Button>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate({
+                            to: '/campaigns/new',
+                            search: { templateId: t.id },
+                          })
+                        }}
+                      >
+                        Use this
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          navigate({
+                            to: '/templates/$templateId',
+                            params: { templateId: t.id },
+                          })
+                        }}
+                      >
+                        Edit Template
+                      </Button>
+                    </div>
                   </div>
                 </div>
 

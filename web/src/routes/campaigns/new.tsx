@@ -22,14 +22,21 @@ import type {
 } from '@/types'
 
 export const Route = createFileRoute('/campaigns/new')({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      templateId: search.templateId as string | undefined,
+    }
+  },
   component: CreateCampaign,
 })
 
 function CreateCampaign() {
   const navigate = useNavigate()
+  const searchParams = Route.useSearch()
+
   const [name, setName] = useState('')
   const [databaseId, setDatabaseId] = useState('')
-  const [templateId, setTemplateId] = useState('')
+  const [templateId, setTemplateId] = useState(searchParams.templateId || '')
   const [senderAccountId, setSenderAccountId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
