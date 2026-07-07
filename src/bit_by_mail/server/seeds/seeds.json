@@ -1,10 +1,64 @@
 {
   "templates": [
     {
-      "name": "TENET Hack 2025",
-      "subject": "Your TENET Hack 2025 Certificate",
+      "name": "TENET Hack 2025 Certificate",
+      "subject": "Your TENET Hack 2025 Certificate {{Name}}",
       "category": "Events",
-      "file": "default_email.html"
+      "file": "tenet-hack.html"
+    },
+    {
+      "name": "Youth Parliament - Portfolio Allocation",
+      "subject": "IOIT Youth Parliament 2026 | Portfolio Allocation for {{Name}}",
+      "category": "Events",
+      "file": "yp-allotement.html"
+    },
+    {
+      "name": "Bit By Series Announcement",
+      "subject": "Bit By Series | AISSMS IOIT ACM",
+      "category": "Events",
+      "file": "bitbyseriesjan.html"
+    },
+    {
+      "name": "Bit By Query Registration",
+      "subject": "Register for Bit By Query | AISSMS IOIT ACM",
+      "category": "Events",
+      "file": "bbq.html"
+    },
+    {
+      "name": "Recruitment - Interview Shortlisted",
+      "subject": "Interview Schedule | AISSMS IOIT ACM Student Chapter",
+      "category": "Recruitment",
+      "file": "interview26-27-accept.html"
+    },
+    {
+      "name": "Recruitment - Interview Rejected",
+      "subject": "Application Update | AISSMS IOIT ACM Student Chapter",
+      "category": "Recruitment",
+      "file": "interview26-27-reject.html"
+    },
+    {
+      "name": "Recruitment - Selected (Head)",
+      "subject": "Congratulations! Core Committee Recruitment | AISSMS IOIT ACM",
+      "category": "Recruitment",
+      "file": "selected_head.html"
+    },
+    {
+      "name": "Recruitment - Selected (Team Member)",
+      "subject": "Application Update | AISSMS IOIT ACM Student Chapter",
+      "category": "Recruitment",
+      "file": "selected_team_member.html"
+    },
+    {
+      "name": "Recruitment - Not Selected",
+      "subject": "Application Update | AISSMS IOIT ACM Student Chapter",
+      "category": "Recruitment",
+      "file": "not_selected.html"
+    },
+    {
+      "name": "Collaboration - ManwithIndies",
+      "subject": "ManwithIndies × ACM IOIT – Wildlife Rescue Platform",
+      "category": "Newsletter",
+      "file": "manwithindies.html"
     }
   ],
   "assets": [
@@ -16,6 +70,61 @@
     {
       "name": "TENET Icon Blue",
       "url": "https://ioit.acm.org/static/mediakit/tenet-icon-blue.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "Youth Parliament Banner",
+      "url": "https://raw.githubusercontent.com/IOIT-ACM/static-assets/main/mun-email-banner.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "Youth Parliament Logo (White)",
+      "url": "https://ioit.acm.org/static/mediakit/mun-logo-white.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "ACM Logo (Light)",
+      "url": "https://ioit.acm.org/static/mediakit/acm-logo-light.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "ACM Logo (Colour)",
+      "url": "https://ioit.acm.org/static/mediakit/acm-logo-colour.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "AISSMS IOIT ACM Header Banner",
+      "url": "https://orion-static-cdn.pages.dev/assets/21330cb2-a156-4612-a1c4-ef582731abdc.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "ACM team 2025-26",
+      "url": "https://raw.githubusercontent.com/IOIT-ACM/static-assets/refs/heads/main/TEAM2526.jpeg",
+      "is_gdrive": false
+    },
+    {
+      "name": "Bit By Series Hero Background",
+      "url": "https://orion-static-cdn.pages.dev/assets/cc25069d-4f7e-463e-a885-cba59ce822ed.jpeg",
+      "is_gdrive": false
+    },
+    {
+      "name": "ACM Resources Logo",
+      "url": "https://orion-static-cdn.pages.dev/assets/3ea1e451-ea2d-47c6-a9ed-bcbc3ccd17ab.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "BBQ Glimpse 1",
+      "url": "https://orion-static-cdn.pages.dev/assets/54fb44d5-1b34-452b-a02d-235b13bc2da5.jpeg",
+      "is_gdrive": false
+    },
+    {
+      "name": "BBQ Glimpse 2",
+      "url": "https://orion-static-cdn.pages.dev/assets/f951abf4-871a-46c9-a0f6-941a51dc60eb.jpeg",
+      "is_gdrive": false
+    },
+    {
+      "name": "IOIT ACM Email Header",
+      "url": "https://ioit.acm.org/cdn/email/email-header-1.png",
       "is_gdrive": false
     },
     {
