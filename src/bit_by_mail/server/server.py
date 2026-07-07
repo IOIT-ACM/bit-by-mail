@@ -54,7 +54,7 @@ def make_app():
     ioloop = tornado.ioloop.IOLoop.current()
     mailer_service = MailerService(template_service, recipient_service, campaign_service, analytics_service, websocket_manager, ioloop, db_path)
 
-    seeder_service = SeederService(db_path, global_template_service, asset_service)
+    seeder_service = SeederService(db_path, global_template_service, asset_service, database_service)
     ioloop.add_callback(seeder_service.seed)
 
     settings = {

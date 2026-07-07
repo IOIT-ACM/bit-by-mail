@@ -148,5 +148,32 @@
       "url": "https://raw.githubusercontent.com/IOIT-ACM/static-assets/refs/heads/main/TENET25/github_logo.png",
       "is_gdrive": false
     }
+  ],
+  "databases": [
+    {
+      "name": "AISSMS IOIT ACM Student Chapter Contacts",
+      "recipients": [
+        {
+          "Name": "ACM Chair",
+          "Email": "chair@ioit.acm.org",
+          "AttachmentFile": ""
+        },
+        {
+          "Name": "IOIT MUN",
+          "Email": "ioit.mun@aissmsioit.org",
+          "AttachmentFile": ""
+        },
+        {
+          "Name": "IOIT TENET",
+          "Email": "ioit.tenet@aissmsioit.org",
+          "AttachmentFile": ""
+        },
+        {
+          "Name": "ACM Student Branch",
+          "Email": "acm.studentbranch@aissmsioit.org",
+          "AttachmentFile": ""
+        }
+      ]
+    }
   ]
 }

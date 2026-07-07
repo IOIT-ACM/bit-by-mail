@@ -4,10 +4,11 @@ import importlib.resources
 import aiosqlite
 
 class SeederService:
-    def __init__(self, db_path, global_template_service, asset_service):
+    def __init__(self, db_path, global_template_service, asset_service, database_service):
         self.db_path = db_path
         self.global_template_service = global_template_service
         self.asset_service = asset_service
+        self.database_service = database_service
 
     async def seed(self):
         try:
@@ -28,6 +29,9 @@ class SeederService:
 
             cursor = await db.execute("SELECT COUNT(*) FROM assets")
             asset_count = (await cursor.fetchone())[0]
+
+            cursor = await db.execute("SELECT COUNT(*) FROM databases")
+            database_count = (await cursor.fetchone())[0]
 
         if template_count == 0:
             for t in manifest.get("templates", []):
@@ -55,4 +59,10 @@ class SeederService:
                     url=a["url"],
                     is_gdrive=a.get("is_gdrive", False)
                 )
+
+        if database_count == 0:
+            for d in manifest.get("databases", []):
+                new_db, _ = await self.database_service.create_database(name=d["name"])
+                if new_db:
+                    await self.database_service.save_database_data(new_db["id"], d.get("recipients", []))
 
