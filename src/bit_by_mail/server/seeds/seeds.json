@@ -7,6 +7,12 @@
       "file": "tenet-hack.html"
     },
     {
+      "name": "Bit by Keystroke Certificate",
+      "subject": "Your Bit By Keystroke Certificate {{Name}}",
+      "category": "Events",
+      "file": "bbk-certificate.html"
+    },
+    {
       "name": "Youth Parliament - Portfolio Allocation",
       "subject": "IOIT Youth Parliament 2026 | Portfolio Allocation for {{Name}}",
       "category": "Events",

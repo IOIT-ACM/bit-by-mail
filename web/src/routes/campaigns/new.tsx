@@ -87,8 +87,38 @@ function CreateCampaign() {
     : accounts.find((a) => a.is_default)
 
   const preparePreviewContent = (content: string, isHtml: boolean) => {
-    if (isHtml) return content
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:16px;background:#fff;"><pre style="white-space:pre-wrap;font-family:sans-serif;font-size:14px;margin:0;color:#000;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`
+    if (!isHtml) {
+      return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body style="margin:0;padding:16px;background:#fff;"><pre style="white-space:pre-wrap;font-family:sans-serif;font-size:14px;margin:0;color:#000;">${content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre></body></html>`
+    }
+    if (/<html/i.test(content)) return content
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+      font-size: 14px;
+      color: #000;
+      line-height: 1.5;
+    }
+    p { margin-top: 0; margin-bottom: 1em; }
+    p:empty::before { content: "\\00a0"; }
+    ul { list-style-type: disc; padding-left: 1.5em; margin-top: 0; margin-bottom: 1em; }
+    ol { list-style-type: decimal; padding-left: 1.5em; margin-top: 0; margin-bottom: 1em; }
+    a { color: #3b82f6; text-decoration: underline; }
+    img { max-width: 100%; height: auto; border-radius: 0.375rem; margin-bottom: 1em; }
+    strong { font-weight: 700; }
+    em { font-style: italic; }
+  </style>
+</head>
+<body>
+  ${content}
+</body>
+</html>`
   }
 
   const previewContent = selectedTemplateData?.body
@@ -123,7 +153,7 @@ function CreateCampaign() {
 
   return (
     <div className="p-8 h-full overflow-y-auto custom-scrollbar flex flex-col items-center">
-      <div className="w-full max-w-5xl">
+      <div className="w-full max-w-7xl">
         <div className="p-6">
           <h1 className="text-2xl font-bold text-text-primary mb-2">
             Create New Campaign
@@ -248,7 +278,7 @@ function CreateCampaign() {
                 </div>
               ) : (
                 <div className="flex flex-col lg:flex-row gap-6 mt-3">
-                  <div className="flex-1 flex flex-col gap-3 max-h-[400px] overflow-y-auto p-1 custom-scrollbar">
+                  <div className="w-full lg:w-1/3 flex flex-col gap-3 max-h-[500px] overflow-y-auto p-1 custom-scrollbar">
                     <div
                       onClick={() => !isSubmitting && setDatabaseId('')}
                       className={`cursor-pointer border rounded-lg p-4 flex items-center justify-between transition-colors ${databaseId === '' ? 'border-accent-blue bg-accent-blue/10' : 'border-borders-primary bg-surface-element hover:border-accent-blue/50'}`}
@@ -284,7 +314,7 @@ function CreateCampaign() {
                     ))}
                   </div>
 
-                  <div className="flex-1 border border-borders-primary rounded-lg bg-surface-element overflow-hidden flex flex-col max-h-[400px] min-h-[300px]">
+                  <div className="w-full lg:w-2/3 border border-borders-primary rounded-lg bg-surface-element overflow-hidden flex flex-col max-h-[500px] min-h-[400px]">
                     {databaseId === '' ? (
                       <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">
                         No database selected
@@ -384,7 +414,7 @@ function CreateCampaign() {
                 </div>
               ) : (
                 <div className="flex flex-col lg:flex-row gap-6 mt-3">
-                  <div className="flex-1 flex flex-col gap-3 max-h-[400px] overflow-y-auto p-1 custom-scrollbar">
+                  <div className="w-full lg:w-1/3 flex flex-col gap-3 max-h-[500px] overflow-y-auto p-1 custom-scrollbar">
                     <div
                       onClick={() => !isSubmitting && setTemplateId('')}
                       className={`cursor-pointer border rounded-lg p-4 flex items-center justify-between transition-colors ${templateId === '' ? 'border-accent-blue bg-accent-blue/10' : 'border-borders-primary bg-surface-element hover:border-accent-blue/50'}`}
@@ -431,7 +461,7 @@ function CreateCampaign() {
                     ))}
                   </div>
 
-                  <div className="flex-1 border border-borders-primary rounded-lg bg-surface-element overflow-hidden flex flex-col max-h-[400px] min-h-[300px]">
+                  <div className="w-full lg:w-2/3 border border-borders-primary rounded-lg bg-surface-element overflow-hidden flex flex-col max-h-[500px] min-h-[400px]">
                     {templateId === '' ? (
                       <div className="flex-1 flex items-center justify-center text-text-tertiary text-sm">
                         No template selected
