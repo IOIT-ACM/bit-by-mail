@@ -98,6 +98,17 @@ Recipients are loaded from a CSV file with a header row.
   <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/main/docs/dashboard.jpeg" alt="Email Editor" width="800" onerror="this.src='https://via.placeholder.com/800x450/1e1e2a/3b82f6?text=Editor+Screenshot'">
 </p>
 
+<p align="center">
+  <br>
+  <em>Template Library with Search, Categories & Visual Email Previews</em><br>
+  <img
+    src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/main/docs/templates.jpeg"
+    alt="Bit-by-Mail Template Library showing reusable email templates, categories, search, and preview thumbnails"
+    width="800"
+    onerror="this.src='https://via.placeholder.com/800x450/1e1e2a/3b82f6?text=Template+Library'"
+  >
+</p>
+
 ## Contributing
 
 Issues and pull requests are welcome. If you run into a bug or have an idea for a feature, open an issue on GitHub.
