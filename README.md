@@ -2,12 +2,6 @@
   <img src="https://raw.githubusercontent.com/IOIT-ACM/bit-by-mail/refs/heads/main/docs/banner.png" alt="Bit by Mail Banner" width="100%" onerror="this.src='https://via.placeholder.com/1200x400/1e1e2a/3b82f6?text=Bit+By+Mail'">
 </p>
 
-<h1 align="center">bit-by-mail</h1>
-
-<p align="center">
-  <strong>A simple, self-hosted, privacy-first bulk mailing app with a modern web UI.</strong>
-</p>
-
 <p align="center">
   Send personalized bulk emails from your own machine, using your own SMTP account. No subscriptions, no third-party servers, no data leaving your computer.
 </p>
@@ -16,7 +10,7 @@
 
 ## Why bit-by-mail
 
-Most bulk email tools are SaaS platforms — you upload your recipient list to someone else's server and pay a monthly fee for the privilege. bit-by-mail flips that: it's a lightweight local app that runs on your machine and sends through your own email provider. Your data stays yours, and there's nothing to pay for.
+Most bulk email tools are SaaS platforms, where you upload your recipient list to someone else's server and pay a monthly fee for the privilege. bit-by-mail flips that: it's a lightweight local app that runs on your machine and sends through your own email provider. Your data stays yours, and there's nothing to pay for.
 
 ## Features
 
