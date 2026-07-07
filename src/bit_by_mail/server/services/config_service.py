@@ -11,7 +11,6 @@ class ConfigService:
         self.base_dir = base_dir
         self.settings_path = os.path.join(base_dir, "settings.json")
         self.recipients_path = os.path.join(base_dir, "recipients.csv")
-        self.template_path = os.path.join(base_dir, "email.html")
 
     def _read_config(self):
         defaults = {
@@ -77,18 +76,6 @@ class ConfigService:
             df = pd.DataFrame(recipients_data)
             df.to_csv(self.recipients_path, index=False)
 
-    def _read_file(self, path):
-        if not os.path.exists(path):
-            return ""
-        with FileLock(path + ".lock"):
-            with open(path, "r", encoding="utf-8") as f:
-                return f.read()
-
-    def _write_file(self, path, content):
-        with FileLock(path + ".lock"):
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
-
     async def get_full_config(self):
         return await IOLoop.current().run_in_executor(None, self._read_config)
 
@@ -108,12 +95,3 @@ class ConfigService:
             None, self.write_recipients_from_json, data
         )
 
-    async def get_template(self):
-        return await IOLoop.current().run_in_executor(
-            None, self._read_file, self.template_path
-        )
-
-    async def save_template(self, content):
-        await IOLoop.current().run_in_executor(
-            None, self._write_file, self.template_path, content
-        )

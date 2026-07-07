@@ -310,7 +310,7 @@ export const Sidebar: React.FC = () => {
             )}
           </div>
           {isVisuallyExpanded && (
-            <span className="text-xs text-text-tertiary font-mono">v2.1.1</span>
+            <span className="text-xs text-text-tertiary font-mono">v2.2.0</span>
           )}
         </div>
       </div>

@@ -1,0 +1,37 @@
+{
+  "templates": [
+    {
+      "name": "TENET Hack 2025",
+      "subject": "Your TENET Hack 2025 Certificate",
+      "category": "Events",
+      "file": "default_email.html"
+    }
+  ],
+  "assets": [
+    {
+      "name": "TENET Hack Email Banner",
+      "url": "https://raw.githubusercontent.com/IOIT-ACM/static-assets/refs/heads/main/TENET%20Hack%20email%20banner.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "TENET Icon Blue",
+      "url": "https://ioit.acm.org/static/mediakit/tenet-icon-blue.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "Instagram Icon",
+      "url": "https://raw.githubusercontent.com/IOIT-ACM/static-assets/refs/heads/main/TENET25/Instagram_icon.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "LinkedIn Logo",
+      "url": "https://raw.githubusercontent.com/IOIT-ACM/static-assets/refs/heads/main/TENET25/LinkedIn_logo.png",
+      "is_gdrive": false
+    },
+    {
+      "name": "GitHub Logo",
+      "url": "https://raw.githubusercontent.com/IOIT-ACM/static-assets/refs/heads/main/TENET25/github_logo.png",
+      "is_gdrive": false
+    }
+  ]
+}
