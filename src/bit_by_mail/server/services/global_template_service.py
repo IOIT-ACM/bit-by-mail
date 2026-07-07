@@ -9,9 +9,9 @@ class GlobalTemplateService:
     async def get_templates(self):
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            async with db.execute("SELECT id, name, category, subject, is_html, created_at FROM global_templates ORDER BY created_at DESC") as cursor:
+            async with db.execute("SELECT id, name, category, subject, body, is_html, created_at FROM global_templates ORDER BY created_at DESC") as cursor:
                 rows = await cursor.fetchall()
-                return [{"id": r["id"], "name": r["name"], "category": r["category"], "subject": r["subject"], "is_html": bool(r["is_html"]), "createdAt": r["created_at"]} for r in rows]
+                return [{"id": r["id"], "name": r["name"], "category": r["category"], "subject": r["subject"], "body": r["body"], "is_html": bool(r["is_html"]), "createdAt": r["created_at"]} for r in rows]
 
     async def get_template_data(self, template_id):
         async with aiosqlite.connect(self.db_path) as db:

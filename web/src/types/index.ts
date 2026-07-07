@@ -92,6 +92,7 @@ export interface EmailTemplate {
   category: string
   createdAt: string
   is_html?: boolean
+  body?: string
 }
 
 export interface EmailTemplateData extends EmailTemplate {
@@ -144,4 +145,3 @@ export interface AppState {
   showCampaignSettingsModal: boolean
   showActivityView: boolean
 }
-
