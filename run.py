@@ -1,9 +1,12 @@
+import sys
 import asyncio
 import logging
 from src.bit_by_mail.server.server import make_app
 
-
 def main():
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s"
