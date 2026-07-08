@@ -168,8 +168,17 @@ function SettingsPage() {
 
   const handleTestConnection = () => {
     if (!editingAccount) return
-    toast.info('Testing connection...')
-    apiService.testSmtpConnection(editingAccount)
+    toast.promise(
+      apiService.testSmtpConnection(editingAccount).then((res: any) => {
+        if (!res.success) throw new Error(res.message)
+        return res
+      }),
+      {
+        loading: 'Testing connection...',
+        success: (data) => data.message,
+        error: (err) => `Connection failed: ${err.message}`,
+      },
+    )
   }
 
   const togglePasswordVisibility = (id: string) => {

@@ -12,6 +12,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { apiService } from '@/services/apiService'
 import { useQuery } from '@tanstack/react-query'
 import type { Config, Campaign } from '@/types'
+import { toast } from 'sonner'
 
 export const PreflightResultsModal: React.FC<{ campaignId: string }> = ({
   campaignId,
@@ -47,7 +48,17 @@ export const PreflightResultsModal: React.FC<{ campaignId: string }> = ({
 
   const handleTestSmtp = () => {
     if (senderAccount) {
-      apiService.testSmtpConnection(senderAccount)
+      toast.promise(
+        apiService.testSmtpConnection(senderAccount).then((res: any) => {
+          if (!res.success) throw new Error(res.message)
+          return res
+        }),
+        {
+          loading: 'Testing connection...',
+          success: (data) => data.message,
+          error: (err) => `Connection failed: ${err.message}`,
+        },
+      )
     }
   }
 

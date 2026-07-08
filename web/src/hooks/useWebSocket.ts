@@ -91,13 +91,6 @@ export const useWebSocket = () => {
         case 'config_updated':
           queryClient.setQueryData(['config'], payload)
           break
-        case 'test_smtp_connection_result':
-          if (payload.success) {
-            toast.success(payload.message)
-          } else {
-            toast.error(`Connection failed: ${payload.message}`)
-          }
-          break
         case 'campaigns_list':
           queryClient.setQueryData(['campaigns'], payload)
           apiService.handleResponse('campaigns_list', payload)
@@ -116,7 +109,6 @@ export const useWebSocket = () => {
           )
           apiService.handleResponse('campaign_data', payload)
           clearLogs()
-          apiService.runPreflightCheck(payload.campaign_id)
           break
         case 'recipients_updated':
           {
@@ -133,7 +125,6 @@ export const useWebSocket = () => {
                 (old) => (old ? { ...old, recipients: payload } : old),
               )
               toast.success(`${payload.length} recipients loaded successfully`)
-              apiService.runPreflightCheck(campaignId)
             }
           }
           break
@@ -190,6 +181,36 @@ export const useWebSocket = () => {
           clearRecipientIssues()
           setPreflightResult(payload)
           setShowPreflightModal(true)
+
+          addLog({ level: 'info', message: '--- PREFLIGHT CHECK RESULTS ---' })
+          if (payload.successes && payload.successes.length > 0) {
+            payload.successes.forEach((msg: string) =>
+              addLog({ level: 'success', message: `+ ${msg}` }),
+            )
+          }
+          if (payload.errors && payload.errors.length > 0) {
+            payload.errors.forEach((err: string) =>
+              addLog({ level: 'error', message: `- ${err}` }),
+            )
+          }
+          if (payload.warnings && payload.warnings.length > 0) {
+            payload.warnings.forEach((warn: string) =>
+              addLog({ level: 'warn', message: `! ${warn}` }),
+            )
+          }
+          if (payload.ok) {
+            addLog({
+              level: 'success',
+              message: 'Preflight complete. System is ready.',
+            })
+          } else {
+            addLog({
+              level: 'error',
+              message: 'Preflight failed. Please resolve the errors above.',
+            })
+          }
+          addLog({ level: 'info', message: '-----------------------------' })
+
           const issues: Record<number, RecipientIssue> = {}
           if (
             payload.recipient_issues &&

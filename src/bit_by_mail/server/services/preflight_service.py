@@ -89,26 +89,52 @@ class PreflightService:
         if not acc:
             r.errors.append("No sender account configured or selected.")
         else:
+            acc_valid = True
             for v in ["smtp_server", "sender_email", "sender_password", "smtp_port"]:
                 if not acc.get(v):
                     r.errors.append(f"Sender account is missing required field: {v}")
+                    acc_valid = False
+            if acc_valid:
+                r.successes.append(f"Sender account '{acc.get('name') or acc.get('sender_email')}' is properly configured.")
 
         html_template = await self.template_service.get_template(campaign_id)
         if not html_template:
             r.errors.append("Email template is empty.")
         if not subject_template:
             r.errors.append("Email subject is empty.")
+        if html_template and subject_template:
+            r.successes.append("Email subject and template content are present.")
 
-        if c.get("send_attachments", False) and not os.path.isdir(c.get("attachment_folder", "")):
-            r.errors.append(f"Attachment folder is invalid or does not exist: {c.get('attachment_folder', '')}")
+        if c.get("send_attachments", False):
+            if not os.path.isdir(c.get("attachment_folder", "")):
+                r.errors.append(f"Attachment folder is invalid or does not exist: {c.get('attachment_folder', '')}")
+            else:
+                r.successes.append(f"Attachment folder verified: {c.get('attachment_folder', '')}")
 
         df = pd.DataFrame(await self.recipient_service.get_recipients(campaign_id)).fillna("")
+
+        ph_subject = self._extract_ph(subject_template) if subject_template else set()
+        ph_body = self._extract_ph(html_template) if html_template else set()
+        req_cols = ph_subject | ph_body
+
+        if req_cols:
+            r.successes.append(f"Found {len(req_cols)} placeholders in email: {', '.join(['{{'+x+'}}' for x in req_cols])}")
+        else:
+            r.warnings.append("No placeholders found in the email subject or body.")
+
         if df.empty:
             r.warnings.append("No recipients found for this campaign.")
         else:
-            req_cols = self._extract_ph(subject_template) | self._extract_ph(html_template)
-            for col in req_cols - set(df.columns):
-                r.errors.append(f"Missing required column for placeholder: {{{{{col}}}}}")
+            csv_cols = list(df.columns)
+            r.successes.append(f"Found {len(csv_cols)} columns in recipient data: {', '.join(csv_cols)}")
+            r.successes.append(f"Loaded {len(df)} total recipients.")
+
+            missing = req_cols - set(df.columns)
+            if missing:
+                for col in missing:
+                    r.errors.append(f"Missing required column for placeholder: {{{{{col}}}}}")
+            elif req_cols:
+                r.successes.append("All placeholders match CSV columns perfectly.")
 
             for idx, (_, row) in enumerate(df.iterrows()):
                 name = str(row.get("Name", "")).strip()
@@ -128,7 +154,10 @@ class PreflightService:
 
                 if c.get("send_attachments", False):
                     files = [x.strip() for x in str(row.get("AttachmentFile", "")).split(";") if x.strip()]
+                    if not files:
+                        r.warnings.append(f"Row {idx+2} ({identifier}): No attachment file specified but attachments are enabled.")
                     for f in files:
                         if not os.path.exists(os.path.join(c.get("attachment_folder", ""), f)):
                             r.errors.append(f"Row {idx+2} ({identifier}): Attachment file '{f}' not found")
         return r
+

@@ -157,7 +157,11 @@ class ApiService {
   }
 
   testSmtpConnection(account: any) {
-    this.sendMessage('test_smtp_connection', account)
+    return this.request(
+      'test_smtp_connection',
+      account,
+      'test_smtp_connection_result',
+    )
   }
 
   factoryReset(eraseAccounts: boolean) {
