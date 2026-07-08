@@ -8,6 +8,7 @@ import {
   Image as ImageIcon,
   PanelRightClose,
   PanelRightOpen,
+  ChevronDown,
 } from 'lucide-react'
 import React, { useEffect, useState, useRef, useMemo } from 'react'
 import { toast } from 'sonner'
@@ -26,7 +27,7 @@ import { useAppStore } from '@/store/useAppStore'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import js_beautify from 'js-beautify'
 
-const PlaceholderList: React.FC<{
+const PlaceholderDropdown: React.FC<{
   entityId: string
   onInsert: (placeholderTag: string) => void
 }> = ({ entityId, onInsert }) => {
@@ -36,6 +37,12 @@ const PlaceholderList: React.FC<{
   const recipients = data?.recipients ?? []
   const availablePlaceholders =
     recipients.length > 0 ? Object.keys(recipients[0]) : []
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+
+  const filtered = availablePlaceholders.filter((p) =>
+    p.toLowerCase().includes(search.toLowerCase()),
+  )
 
   if (availablePlaceholders.length === 0)
     return (
@@ -43,18 +50,44 @@ const PlaceholderList: React.FC<{
         No recipients uploaded yet.
       </p>
     )
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {availablePlaceholders.map((placeholder) => (
-        <code
-          key={placeholder}
-          className="text-xs bg-black/30 px-2 py-1 rounded cursor-pointer hover:bg-accent-blue/50 transition-colors"
-          title={`Click to insert {{${placeholder}}}`}
-          onClick={() => onInsert(`{{${placeholder}}}`)}
-        >
-          {`{{${placeholder}}}`}
-        </code>
-      ))}
+    <div className="relative">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-3 py-3 bg-surface-element text-text-secondary hover:text-text-primary text-xs font-medium rounded-md border border-borders-primary flex items-center gap-2 truncate h-full"
+      >
+        Insert Variable {} <ChevronDown size={12} />
+      </button>
+      {isOpen && (
+        <div className="absolute top-full left-0 mt-1 w-48 bg-surface-card border border-borders-primary rounded-lg shadow-lg z-50 flex flex-col max-h-64">
+          <div className="p-2 border-b border-borders-primary sticky top-0 bg-surface-card z-10">
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search variables..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-surface-element border border-borders-primary rounded px-2 py-1 text-xs outline-none focus:border-accent-blue"
+            />
+          </div>
+          <div className="overflow-y-auto custom-scrollbar p-1">
+            {filtered.map((p) => (
+              <button
+                key={p}
+                onClick={() => {
+                  onInsert(`{{${p}}}`)
+                  setIsOpen(false)
+                  setSearch('')
+                }}
+                className="w-full text-left px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-surface-element rounded font-mono"
+              >
+                {`{{${p}}}`}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -413,7 +446,7 @@ const EditorContent: React.FC<{
               onClick={() => setShowAssetPicker(true)}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium bg-surface-element hover:bg-surface-element-hover text-text-secondary hover:text-text-primary transition-colors border border-borders-primary"
             >
-              <ImageIcon size={14} /> Insert Asset
+              <ImageIcon size={14} /> Insert Image
             </button>
             {type === 'campaign' && (
               <>
@@ -442,8 +475,8 @@ const EditorContent: React.FC<{
         </button>
       </div>
 
-      <div className="flex-shrink-0 mb-4 flex items-end gap-4">
-        <div className="flex-grow">
+      <div className="flex-shrink-0 mb-4 flex flex-col md:flex-row items-end gap-4">
+        <div className="flex-grow w-full">
           <label
             htmlFor="subject-input"
             className="block text-sm font-medium text-text-secondary mb-1 px-1"
@@ -471,31 +504,39 @@ const EditorContent: React.FC<{
           />
         </div>
 
-        <div className="flex items-center gap-1 bg-surface-element p-1 h-11 rounded-lg border border-borders-primary">
-          <button
-            onClick={() => {
-              if (editorMode === 'text') return
-              setShowHtmlToTextWarning(true)
-            }}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'text' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
-          >
-            Text
-          </button>
-          <button
-            onClick={() => {
-              if (editorMode === 'html') return
-              const formattedHtml = js_beautify.html(localBody, {
-                indent_size: 2,
-                wrap_line_length: 0,
-                preserve_newlines: true,
-              })
-              handleBodyChange(formattedHtml)
-              setEditorMode('html')
-            }}
-            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'html' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
-          >
-            HTML
-          </button>
+        <div className="flex w-full md:w-auto items-center gap-2">
+          {type === 'campaign' && (
+            <PlaceholderDropdown
+              entityId={entityId}
+              onInsert={handleInsertPlaceholder}
+            />
+          )}
+          <div className="flex items-center gap-1 bg-surface-element p-1 h-11 rounded-lg border border-borders-primary ml-auto">
+            <button
+              onClick={() => {
+                if (editorMode === 'text') return
+                setShowHtmlToTextWarning(true)
+              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'text' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
+            >
+              Text
+            </button>
+            <button
+              onClick={() => {
+                if (editorMode === 'html') return
+                const formattedHtml = js_beautify.html(localBody, {
+                  indent_size: 2,
+                  wrap_line_length: 0,
+                  preserve_newlines: true,
+                })
+                handleBodyChange(formattedHtml)
+                setEditorMode('html')
+              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${editorMode === 'html' ? 'bg-surface-card text-text-primary shadow border border-borders-primary/50' : 'text-text-secondary hover:text-text-primary'}`}
+            >
+              HTML
+            </button>
+          </div>
         </div>
       </div>
 
@@ -530,17 +571,6 @@ const EditorContent: React.FC<{
               )}
             </div>
           </div>
-          {type === 'campaign' && (
-            <div className="flex-shrink-0 p-3 bg-surface-element border border-borders-primary rounded-lg max-h-40 overflow-auto custom-scrollbar">
-              <h4 className="text-sm font-medium text-text-secondary mb-2">
-                Available Placeholders
-              </h4>
-              <PlaceholderList
-                entityId={entityId}
-                onInsert={handleInsertPlaceholder}
-              />
-            </div>
-          )}
         </div>
 
         <div

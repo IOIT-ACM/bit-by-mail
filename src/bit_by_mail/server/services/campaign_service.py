@@ -10,7 +10,7 @@ class CampaignService:
     async def get_campaigns(self):
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            async with db.execute("SELECT * FROM campaigns ORDER BY created_at DESC") as cursor:
+            async with db.execute("SELECT * FROM campaigns ORDER BY COALESCE(last_accessed_at, created_at) DESC") as cursor:
                 rows = await cursor.fetchall()
             campaigns = []
             for r in rows:
@@ -27,13 +27,19 @@ class CampaignService:
                 campaigns.append(c)
             return campaigns
 
+    async def touch(self, campaign_id):
+        updated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("UPDATE campaigns SET last_accessed_at = ? WHERE id = ?", (updated_at, campaign_id))
+            await db.commit()
+
     async def create_campaign(self, name, subject=None, body=None, recipients=None, source_db_id=None, sender_account_id="", is_html=True, source_template_id=None):
         new_id = str(uuid.uuid4())
         subject = subject if subject is not None else f"Subject for {name}"
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         template_content = body if body is not None else (f"<h1>Email for {name}</h1>\n<p>Hello {{{{Name}}}}</p>" if is_html else f"Email for {name}\nHello {{{{Name}}}}")
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("INSERT INTO campaigns (id, name, subject, attachment_folder, send_attachments, sender_account_id, is_html, delay, created_at, source_db_id, body, source_template_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (new_id, name, subject, self.base_dir, False, sender_account_id, is_html, 0, created_at, source_db_id, template_content, source_template_id))
+            await db.execute("INSERT INTO campaigns (id, name, subject, attachment_folder, send_attachments, sender_account_id, is_html, delay, created_at, last_accessed_at, source_db_id, body, source_template_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (new_id, name, subject, self.base_dir, False, sender_account_id, is_html, 0, created_at, created_at, source_db_id, template_content, source_template_id))
             if recipients:
                 for r in recipients:
                     await db.execute("INSERT INTO campaign_recipients (campaign_id, name, email, attachment_file, status, sent_timestamp) VALUES (?, ?, ?, ?, ?, ?)", (new_id, r.get("Name", ""), r.get("Email", ""), r.get("AttachmentFile", ""), r.get("Status", "PENDING"), r.get("SentTimestamp", "")))

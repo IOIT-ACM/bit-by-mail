@@ -6,6 +6,9 @@ import {
   Maximize,
   Minimize,
   Trash2,
+  CheckCircle2,
+  AlertCircle,
+  FastForward,
 } from 'lucide-react'
 import type { LogEntry } from '@/types'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -47,6 +50,7 @@ const LogViewerContent: React.FC<{
   const logs = useAppStore((state) => state.logs)
   const isSending = useAppStore((state) => state.isSending)
   const progress = useAppStore((state) => state.progress)
+  const statusCounts = useAppStore((state) => state.statusCounts)
   const isLogCollapsed = useAppStore((state) => state.isLogCollapsed)
   const setIsLogCollapsed = useAppStore((state) => state.setIsLogCollapsed)
   const clearLogs = useAppStore((state) => state.clearLogs)
@@ -67,21 +71,65 @@ const LogViewerContent: React.FC<{
 
   const percentage =
     progress.total > 0 ? (progress.sent / progress.total) * 100 : 0
-
   const lastLog = logs.length > 0 ? logs[logs.length - 1] : null
 
   return (
     <div
-      className={`flex flex-col w-full bg-surface-header transition-all duration-300 ${isLogCollapsed && !isMaximized ? 'h-[46px] border-t border-borders-primary' : isMaximized ? 'h-full' : 'h-64 border-t border-borders-primary'}`}
+      className={`flex flex-col w-full bg-surface-header transition-all duration-300 ${isLogCollapsed && !isMaximized ? 'h-[60px] border-t border-borders-primary' : isMaximized ? 'h-full' : 'h-64 border-t border-borders-primary'}`}
     >
-      <div className="flex justify-between items-center p-2 h-[45px] flex-shrink-0">
-        <div
-          className="flex items-center gap-4 flex-grow cursor-pointer overflow-hidden pr-4"
-          onClick={() => !isMaximized && setIsLogCollapsed(!isLogCollapsed)}
-        >
-          <h3 className="text-sm font-medium text-text-secondary whitespace-nowrap pl-2">
-            Live Logs
-          </h3>
+      <div
+        className="flex justify-between items-center p-2 h-[60px] flex-shrink-0 cursor-pointer"
+        onClick={() => !isMaximized && setIsLogCollapsed(!isLogCollapsed)}
+      >
+        <div className="flex items-center gap-6 px-2 flex-grow overflow-hidden">
+          <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
+            <svg className="w-full h-full transform -rotate-90">
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                fill="transparent"
+                stroke="currentColor"
+                strokeWidth="4"
+                className="text-surface-element"
+              />
+              <circle
+                cx="20"
+                cy="20"
+                r="16"
+                fill="transparent"
+                stroke="currentColor"
+                strokeWidth="4"
+                strokeDasharray="100.53"
+                strokeDashoffset={100.53 - (100.53 * percentage) / 100}
+                className="text-accent-blue transition-all duration-300"
+              />
+            </svg>
+            <span className="absolute text-[10px] font-bold">
+              {Math.round(percentage)}%
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <div className="flex items-center gap-2 bg-status-success-bg/10 border border-status-success-bg/30 px-3 py-1.5 rounded-full">
+              <CheckCircle2 size={14} className="text-status-success-text" />
+              <span className="text-xs font-medium text-status-success-text">
+                Sent: {statusCounts.sent}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 bg-status-danger-bg/10 border border-status-danger-bg/30 px-3 py-1.5 rounded-full">
+              <AlertCircle size={14} className="text-status-danger-text" />
+              <span className="text-xs font-medium text-status-danger-text">
+                Failed: {statusCounts.error}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 bg-accent-orange/10 border border-accent-orange/30 px-3 py-1.5 rounded-full">
+              <FastForward size={14} className="text-accent-orange" />
+              <span className="text-xs font-medium text-accent-orange">
+                Skipped: {statusCounts.skipped}
+              </span>
+            </div>
+          </div>
 
           {isLogCollapsed && !isMaximized && lastLog && !isSending && (
             <div className="flex items-center gap-2 truncate opacity-80 border-l border-borders-primary pl-4 ml-2">
@@ -97,24 +145,19 @@ const LogViewerContent: React.FC<{
               </span>
             </div>
           )}
-
-          {isSending && progress.total > 0 && (
-            <div className="flex items-center gap-2 w-64 border-l border-borders-primary pl-4 ml-2">
-              <div className="w-full bg-surface-element rounded-full h-2">
-                <div
-                  className="bg-accent-blue h-2 rounded-full transition-all duration-300 ease-linear"
-                  style={{ width: `${percentage}%` }}
-                ></div>
-              </div>
-              <span className="text-xs text-text-secondary font-mono w-24 text-right">
-                {progress.sent} / {progress.total}
-              </span>
-            </div>
-          )}
         </div>
+
         <div className="flex items-center gap-1">
+          {isSending && (
+            <span className="text-xs text-text-secondary mr-4 animate-pulse">
+              Processing...
+            </span>
+          )}
           <button
-            onClick={clearLogs}
+            onClick={(e) => {
+              e.stopPropagation()
+              clearLogs()
+            }}
             title="Clear Logs"
             className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-status-danger-text transition-colors"
           >
@@ -122,7 +165,10 @@ const LogViewerContent: React.FC<{
           </button>
           {!isMaximized && (
             <button
-              onClick={() => setIsLogCollapsed(!isLogCollapsed)}
+              onClick={(e) => {
+                e.stopPropagation()
+                setIsLogCollapsed(!isLogCollapsed)
+              }}
               aria-label={isLogCollapsed ? 'Expand logs' : 'Collapse logs'}
               className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
             >
@@ -134,7 +180,10 @@ const LogViewerContent: React.FC<{
             </button>
           )}
           <button
-            onClick={onToggleMaximize}
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleMaximize()
+            }}
             aria-label={isMaximized ? 'Minimize logs' : 'Maximize logs'}
             className="p-1 rounded-full text-text-secondary hover:bg-surface-element-hover hover:text-text-primary transition-colors"
           >
@@ -142,6 +191,7 @@ const LogViewerContent: React.FC<{
           </button>
         </div>
       </div>
+
       <AnimatePresence initial={false}>
         {!isLogCollapsed && (
           <motion.div

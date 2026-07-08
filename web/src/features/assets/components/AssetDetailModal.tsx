@@ -19,14 +19,14 @@ export const AssetDetailModal: React.FC<{
 
   const handleDelete = () => {
     apiService.deleteAssets([asset.id])
-    toast.success('Asset deleted')
+    toast.success('Image deleted')
     onClose()
   }
 
   const handleSave = () => {
     if (name.trim() && name !== asset.name) {
       apiService.updateAsset(asset.id, { name: name.trim() })
-      toast.success('Asset updated')
+      toast.success('Image updated')
     }
     onClose()
   }
@@ -35,7 +35,7 @@ export const AssetDetailModal: React.FC<{
     <Modal
       isOpen={true}
       onClose={onClose}
-      title="Asset Details"
+      title="Image Details"
       maxWidth="max-w-3xl"
     >
       <div className="flex flex-col md:flex-row gap-6">
@@ -50,7 +50,7 @@ export const AssetDetailModal: React.FC<{
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
-                Asset Name
+                Image Name
               </label>
               <input
                 type="text"

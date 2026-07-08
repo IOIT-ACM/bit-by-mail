@@ -17,6 +17,9 @@ export const useWebSocket = () => {
   const clearLogs = useAppStore((state) => state.clearLogs)
   const setConnectionStatus = useAppStore((state) => state.setConnectionStatus)
   const setProgress = useAppStore((state) => state.setProgress)
+  const incrementStatusCount = useAppStore(
+    (state) => state.incrementStatusCount,
+  )
   const setRecipientIssues = useAppStore((state) => state.setRecipientIssues)
   const clearRecipientIssues = useAppStore(
     (state) => state.clearRecipientIssues,
@@ -24,6 +27,10 @@ export const useWebSocket = () => {
   const setCampaignSummary = useAppStore((state) => state.setCampaignSummary)
   const setShowCampaignSummaryModal = useAppStore(
     (state) => state.setShowCampaignSummaryModal,
+  )
+  const setPreflightResult = useAppStore((state) => state.setPreflightResult)
+  const setShowPreflightModal = useAppStore(
+    (state) => state.setShowPreflightModal,
   )
 
   const connect = useCallback(() => {
@@ -84,6 +91,13 @@ export const useWebSocket = () => {
         case 'config_updated':
           queryClient.setQueryData(['config'], payload)
           break
+        case 'test_smtp_connection_result':
+          if (payload.success) {
+            toast.success(payload.message)
+          } else {
+            toast.error(`Connection failed: ${payload.message}`)
+          }
+          break
         case 'campaigns_list':
           queryClient.setQueryData(['campaigns'], payload)
           apiService.handleResponse('campaigns_list', payload)
@@ -141,6 +155,13 @@ export const useWebSocket = () => {
               message: `To: ${payload.email} - ${payload.details}`,
             })
 
+            if (payload.status.toUpperCase() === 'SENT')
+              incrementStatusCount('SENT')
+            else if (payload.status.toUpperCase() === 'ERROR')
+              incrementStatusCount('ERROR')
+            else if (payload.status.toUpperCase() === 'SKIPPED')
+              incrementStatusCount('SKIPPED')
+
             const matchesStatus = router.state.matches
             const currentMatchStatus = matchesStatus[matchesStatus.length - 1]
             const paramsStatus = currentMatchStatus?.params as Record<
@@ -167,38 +188,8 @@ export const useWebSocket = () => {
           break
         case 'preflight_result':
           clearRecipientIssues()
-          addLog({ level: 'info', message: '--- PREFLIGHT CHECK RESULTS ---' })
-          if (payload.successes && payload.successes.length > 0) {
-            addLog({ level: 'info', message: 'CHECKS PASSED:' })
-            payload.successes.forEach((msg: string) =>
-              addLog({ level: 'success', message: `+ ${msg}` }),
-            )
-          }
-          if (payload.errors && payload.errors.length > 0) {
-            addLog({ level: 'info', message: 'ERRORS:' })
-            payload.errors.forEach((err: string) =>
-              addLog({ level: 'error', message: `- ${err}` }),
-            )
-          }
-          if (payload.warnings && payload.warnings.length > 0) {
-            addLog({ level: 'info', message: 'WARNINGS:' })
-            payload.warnings.forEach((warn: string) =>
-              addLog({ level: 'warn', message: `! ${warn}` }),
-            )
-          }
-          if (payload.ok) {
-            addLog({
-              level: 'success',
-              message: 'Preflight complete. System is ready.',
-            })
-          } else {
-            toast.error('Preflight failed. See logs for details.')
-            addLog({
-              level: 'error',
-              message: 'Preflight failed. Please resolve the errors above.',
-            })
-          }
-          addLog({ level: 'info', message: '-----------------------------' })
+          setPreflightResult(payload)
+          setShowPreflightModal(true)
           const issues: Record<number, RecipientIssue> = {}
           if (
             payload.recipient_issues &&
@@ -313,10 +304,13 @@ export const useWebSocket = () => {
     setIsStopping,
     clearLogs,
     setProgress,
+    incrementStatusCount,
     setRecipientIssues,
     clearRecipientIssues,
     setCampaignSummary,
     setShowCampaignSummaryModal,
+    setPreflightResult,
+    setShowPreflightModal,
     setConnectionStatus,
     router,
   ])

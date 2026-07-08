@@ -156,6 +156,10 @@ class ApiService {
     this.sendMessage('clear_config')
   }
 
+  testSmtpConnection(account: any) {
+    this.sendMessage('test_smtp_connection', account)
+  }
+
   factoryReset(eraseAccounts: boolean) {
     this.sendMessage('factory_reset', { erase_accounts: eraseAccounts })
   }

@@ -38,18 +38,18 @@ function AssetsList() {
   return (
     <div className="p-8 h-full overflow-y-auto custom-scrollbar relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <h1 className="text-3xl font-bold">Asset Library</h1>
+        <h1 className="text-3xl font-bold">Image Library</h1>
         <div className="flex items-center gap-3 w-full md:w-auto">
           <input
             type="text"
-            placeholder="Search assets..."
+            placeholder="Search images..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-10 px-3 bg-surface-element border border-borders-primary rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
           />
           <Button variant="primary" onClick={() => setShowUpload(true)}>
             <Plus size={18} />
-            Add Asset
+            Add Image
           </Button>
         </div>
       </div>
@@ -57,18 +57,18 @@ function AssetsList() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center h-64 mt-12 text-text-secondary">
           <Loader size={32} className="animate-spin mb-4 text-accent-blue" />
-          <p>Loading assets...</p>
+          <p>Loading images...</p>
         </div>
       ) : !assets || assets.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 bg-surface-card border border-borders-primary border-dashed rounded-card mt-12">
           <ImageIcon size={48} className="text-text-tertiary mb-4" />
-          <h2 className="text-xl font-semibold mb-2">No assets yet</h2>
+          <h2 className="text-xl font-semibold mb-2">No images yet</h2>
           <p className="text-text-secondary mb-6">
             Store URLs of images to use them directly in your email templates.
           </p>
           <Button variant="primary" onClick={() => setShowUpload(true)}>
             <Plus size={18} />
-            Add Asset
+            Add Image
           </Button>
         </div>
       ) : (

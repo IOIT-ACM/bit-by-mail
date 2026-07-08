@@ -14,7 +14,7 @@ export const AssetUploadModal: React.FC<{
 
   useEffect(() => {
     setName(
-      `Asset-${Math.floor(Date.now() / 1000)
+      `Image-${Math.floor(Date.now() / 1000)
         .toString()
         .slice(-6)}`,
     )
@@ -40,12 +40,12 @@ export const AssetUploadModal: React.FC<{
     }
     setIsUploading(true)
     apiService.createAsset(name.trim(), url.trim(), isGDrive)
-    toast.success('Asset added successfully')
+    toast.success('Image added successfully')
     onClose()
   }
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="Add New Asset">
+    <Modal isOpen={true} onClose={onClose} title="Add New Image">
       <div className="space-y-6">
         <p className="text-sm text-text-secondary leading-relaxed">
           To send images in your emails, they must first be hosted online. You
@@ -56,7 +56,7 @@ export const AssetUploadModal: React.FC<{
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Asset ID / Name
+              Image Name
             </label>
             <input
               type="text"
@@ -102,7 +102,7 @@ export const AssetUploadModal: React.FC<{
               disabled={!isValidUrl || !name.trim() || isUploading}
             >
               <LinkIcon size={16} />
-              <span>Add Asset</span>
+              <span>Add Image</span>
             </Button>
           </div>
         </div>
