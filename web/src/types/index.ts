@@ -130,9 +130,16 @@ export interface AppState {
     sent: number
     total: number
   }
+  statusCounts: {
+    sent: number
+    error: number
+    skipped: number
+  }
   recipientIssues: Record<number, RecipientIssue>
   showCampaignSummaryModal: boolean
   campaignSummary: CampaignSummary | null
+  showPreflightModal: boolean
+  preflightResult: PreflightResult | null
   selectedCampaignIds: Set<string>
   selectedDatabaseIds: Set<string>
   selectedTemplateIds: Set<string>

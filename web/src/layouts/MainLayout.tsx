@@ -1,7 +1,6 @@
 import React from 'react'
 import { Sidebar } from './Sidebar'
 import { useWebSocket } from '@/hooks/useWebSocket'
-import { RecipientActionPopup } from '@/features/campaigns/components/RecipientActionPopup'
 import { useAppStore } from '@/store/useAppStore'
 import { WifiOff } from 'lucide-react'
 
@@ -15,7 +14,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <main className="flex-1 min-w-0 h-full overflow-hidden relative">
         {children}
       </main>
-      <RecipientActionPopup />
 
       {connectionStatus === 'closed' && (
         <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center backdrop-blur-sm">

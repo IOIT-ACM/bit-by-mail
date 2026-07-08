@@ -5,6 +5,7 @@ import type {
   LogEntry,
   CampaignSummary,
   RecipientIssue,
+  PreflightResult,
 } from '@/types'
 
 type ConnectionStatus = 'connecting' | 'open' | 'closed'
@@ -18,10 +19,13 @@ interface AppActions {
   setSaveStatus: (status: 'saved' | 'saving' | 'error') => void
   setPreviewRecipient: (recipient: Recipient | null) => void
   setProgress: (sent: number, total: number) => void
+  incrementStatusCount: (status: 'SENT' | 'ERROR' | 'SKIPPED') => void
   setRecipientIssues: (issues: Record<number, RecipientIssue>) => void
   clearRecipientIssues: () => void
   setShowCampaignSummaryModal: (show: boolean) => void
   setCampaignSummary: (summary: CampaignSummary | null) => void
+  setShowPreflightModal: (show: boolean) => void
+  setPreflightResult: (result: PreflightResult | null) => void
   setSelectedCampaignIds: (ids: Set<string>) => void
   clearCampaignSelection: () => void
   toggleCampaignSelection: (id: string) => void
@@ -59,9 +63,12 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   saveStatus: 'saved',
   previewRecipient: null,
   progress: { sent: 0, total: 0 },
+  statusCounts: { sent: 0, error: 0, skipped: 0 },
   recipientIssues: {},
   showCampaignSummaryModal: false,
   campaignSummary: null,
+  showPreflightModal: false,
+  preflightResult: null,
   selectedCampaignIds: new Set(),
   selectedDatabaseIds: new Set(),
   selectedTemplateIds: new Set(),
@@ -79,7 +86,11 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   setIsSending: (isSending) => {
     set({ isSending })
     if (isSending) {
-      set({ progress: { sent: 0, total: 0 }, recipientIssues: {} })
+      set({
+        progress: { sent: 0, total: 0 },
+        statusCounts: { sent: 0, error: 0, skipped: 0 },
+        recipientIssues: {},
+      })
     }
   },
   setIsStopping: (isStopping) => set({ isStopping }),
@@ -87,11 +98,23 @@ export const useAppStore = create<AppState & AppActions>((set) => ({
   setSaveStatus: (status) => set({ saveStatus: status }),
   setPreviewRecipient: (recipient) => set({ previewRecipient: recipient }),
   setProgress: (sent, total) => set({ progress: { sent, total } }),
+  incrementStatusCount: (status) =>
+    set((state) => {
+      const key = status.toLowerCase() as 'sent' | 'error' | 'skipped'
+      return {
+        statusCounts: {
+          ...state.statusCounts,
+          [key]: state.statusCounts[key] + 1,
+        },
+      }
+    }),
   setRecipientIssues: (issues) => set({ recipientIssues: issues }),
   clearRecipientIssues: () => set({ recipientIssues: {} }),
   setShowCampaignSummaryModal: (show) =>
     set({ showCampaignSummaryModal: show }),
   setCampaignSummary: (summary) => set({ campaignSummary: summary }),
+  setShowPreflightModal: (show) => set({ showPreflightModal: show }),
+  setPreflightResult: (result) => set({ preflightResult: result }),
   setSelectedCampaignIds: (ids) => set({ selectedCampaignIds: ids }),
   clearCampaignSelection: () => set({ selectedCampaignIds: new Set() }),
   toggleCampaignSelection: (id) =>

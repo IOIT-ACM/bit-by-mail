@@ -24,13 +24,13 @@ export const AssetPickerModal: React.FC<{
     <Modal
       isOpen={true}
       onClose={onClose}
-      title="Select Asset"
+      title="Select Image"
       maxWidth="max-w-4xl"
     >
       <div className="space-y-4">
         <input
           type="text"
-          placeholder="Search assets..."
+          placeholder="Search images..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-full h-10 px-3 bg-surface-element border border-borders-primary rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-blue"
@@ -39,7 +39,7 @@ export const AssetPickerModal: React.FC<{
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar p-1">
           {filteredAssets.length === 0 ? (
             <div className="col-span-full py-8 text-center text-text-tertiary">
-              No assets found. Add some in the Asset Library.
+              No images found. Add some in the Image Library.
             </div>
           ) : (
             filteredAssets.map((asset) => (

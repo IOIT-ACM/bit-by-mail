@@ -1,6 +1,7 @@
 import json
 import os
 import logging
+import smtplib
 import tornado.websocket
 from urllib.parse import urlparse
 
@@ -29,6 +30,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
             "delete_campaigns": self._handle_delete_campaigns,
             "save_config": self._handle_save_config,
             "clear_config": self._handle_clear_config,
+            "test_smtp_connection": self._handle_test_smtp_connection,
             "save_template": self._handle_save_template,
             "upload_recipients": self._handle_upload_recipients,
             "save_recipients": self._handle_save_recipients,
@@ -156,6 +158,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not campaign_id:
             return
 
+        await self.campaign_service.touch(campaign_id)
         name = await self._get_campaign_name(campaign_id)
         logger.info(f"Opened campaign data for: {name}")
         recipients = await self.recipient_service.get_recipients(campaign_id)
@@ -267,6 +270,31 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         self.application.settings["websocket_manager"].broadcast(
             {"action": "config_cleared", "payload": config}
         )
+
+    async def _handle_test_smtp_connection(self, payload):
+        try:
+            host = payload.get("smtp_server")
+            port = int(payload.get("smtp_port", 587))
+            use_ssl = payload.get("use_ssl", False)
+            sender_email = payload.get("sender_email")
+            password = payload.get("sender_password")
+
+            if use_ssl:
+                server = smtplib.SMTP_SSL(host, port, timeout=10)
+            else:
+                server = smtplib.SMTP(host, port, timeout=10)
+                server.starttls()
+            server.login(sender_email, password)
+            server.quit()
+            await self.safe_write_message(json.dumps({
+                "action": "test_smtp_connection_result",
+                "payload": {"success": True, "message": "Connection successful!"}
+            }))
+        except Exception as e:
+            await self.safe_write_message(json.dumps({
+                "action": "test_smtp_connection_result",
+                "payload": {"success": False, "message": str(e)}
+            }))
 
     async def _handle_save_template(self, payload):
         campaign_id = payload.get("campaign_id")
@@ -383,6 +411,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not db_id:
             return
 
+        await self.database_service.touch(db_id)
         name = await self._get_db_name(db_id)
         logger.info(f"Opened database data for: {name}")
         recipients = await self.database_service.get_database_data(db_id)
@@ -465,6 +494,7 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
         if not template_id:
             return
 
+        await self.global_template_service.touch(template_id)
         name = await self._get_template_name(template_id)
         logger.info(f"Opened global template data for: {name}")
         data = await self.global_template_service.get_template_data(template_id)

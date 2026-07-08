@@ -12,7 +12,7 @@ class DatabaseService:
     async def get_databases(self):
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            async with db.execute("SELECT * FROM databases ORDER BY created_at DESC") as cursor:
+            async with db.execute("SELECT * FROM databases ORDER BY COALESCE(last_accessed_at, created_at) DESC") as cursor:
                 rows = await cursor.fetchall()
             dbs = []
             for r in rows:
@@ -24,11 +24,17 @@ class DatabaseService:
                 dbs.append(d)
             return dbs
 
+    async def touch(self, db_id):
+        updated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("UPDATE databases SET last_accessed_at = ? WHERE id = ?", (updated_at, db_id))
+            await db.commit()
+
     async def create_database(self, name, base64_content=None):
         new_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("INSERT INTO databases (id, name, created_at) VALUES (?, ?, ?)", (new_id, name, created_at))
+            await db.execute("INSERT INTO databases (id, name, created_at, last_accessed_at) VALUES (?, ?, ?, ?)", (new_id, name, created_at, created_at))
             if base64_content:
                 content_str = base64.b64decode(base64_content).decode("utf-8")
                 df = pd.read_csv(io.StringIO(content_str)).fillna("")
@@ -77,3 +83,4 @@ class DatabaseService:
             for _, r in df.iterrows():
                 await db.execute("INSERT INTO database_recipients (db_id, name, email, attachment_file) VALUES (?, ?, ?, ?)", (db_id, r.get("Name", ""), r.get("Email", ""), r.get("AttachmentFile", "")))
             await db.commit()
+

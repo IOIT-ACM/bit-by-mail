@@ -10,6 +10,7 @@ import { EmailPreviewModal } from '@/features/campaigns/components/EmailPreviewM
 import { AddRecipientModal } from '@/features/campaigns/components/AddRecipientModal'
 import { CampaignSettingsModal } from '@/features/campaigns/components/CampaignSettingsModal'
 import { ActivityDashboard } from '@/features/campaigns/components/ActivityDashboard'
+import { PreflightResultsModal } from '@/features/campaigns/components/PreflightResultsModal'
 import { useAppStore } from '@/store/useAppStore'
 import { useEffect } from 'react'
 import { apiService } from '@/services/apiService'
@@ -109,6 +110,7 @@ function CampaignDetail() {
         <StatusBar />
       </div>
 
+      <PreflightResultsModal campaignId={campaignId} />
       {showCampaignSummaryModal && <CampaignSummaryModal />}
       {showCampaignSettingsModal && (
         <CampaignSettingsModal campaign={campaign} />

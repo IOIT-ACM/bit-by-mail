@@ -1,12 +1,12 @@
 import { useParams } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
-import { AlertTriangle, FileStack, Send, Users } from 'lucide-react'
+import { AlertTriangle, FileStack, Send, Users, Server } from 'lucide-react'
 import React, { useMemo } from 'react'
 import { apiService } from '@/services/apiService'
 import { useAppStore } from '@/store/useAppStore'
 import { Button } from '@/components/common/Button'
 import { Modal } from '@/components/common/Modal'
-import type { CampaignData } from '@/types'
+import type { CampaignData, Config, Campaign } from '@/types'
 
 const formatBytes = (bytes: number, decimals = 2) => {
   if (!bytes || bytes === 0) return '0 Bytes'
@@ -55,6 +55,16 @@ export const CampaignSummaryModal: React.FC = () => {
     enabled: !!campaignId,
   })
 
+  const { data: config } = useQuery<Config>({ queryKey: ['config'] })
+  const { data: campaigns } = useQuery<Campaign[]>({ queryKey: ['campaigns'] })
+
+  const activeCampaign = campaigns?.find((c) => c.id === campaignId)
+  const accounts = config?.accounts || []
+  const senderAccount =
+    accounts.find((a) => a.id === activeCampaign?.sender_account_id) ||
+    accounts.find((a) => a.is_default) ||
+    accounts[0]
+
   const recipientsToSend = useMemo(() => {
     const allRecipients = campaignData?.recipients || []
     if (selectedRecipientIndices.size > 0) {
@@ -94,6 +104,13 @@ export const CampaignSummaryModal: React.FC = () => {
             Summary
           </h3>
           <div className="flex-shrink-0 space-y-4">
+            <SummaryItem
+              icon={<Server size={20} />}
+              label="Sending From"
+              value={
+                senderAccount ? senderAccount.sender_email : 'Not Configured'
+              }
+            />
             <SummaryItem
               icon={<Users size={20} />}
               label="Total Recipients"

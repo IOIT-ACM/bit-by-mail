@@ -17,6 +17,10 @@ import {
   Pencil,
   Upload,
   MoreHorizontal,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  X,
 } from 'lucide-react'
 import React, { useState, useMemo } from 'react'
 import { useDebouncedEffect } from '@/hooks/useDebouncedEffect'
@@ -29,6 +33,7 @@ import { MaximizableView } from '@/components/common/MaximizableView'
 import { Modal } from '@/components/common/Modal'
 import { Button } from '@/components/common/Button'
 import { toast } from 'sonner'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 const EMPTY_ARRAY: any[] = []
 
@@ -78,6 +83,7 @@ const RecipientTableContent: React.FC<{
   const [showMoreMenu, setShowMoreMenu] = useState(false)
   const [renamingCol, setRenamingCol] = useState<string | null>(null)
   const [newColName, setNewColName] = useState('')
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false)
 
   const isAllSelected =
     recipients.length > 0 && selectedRecipientIndices.size === recipients.length
@@ -203,6 +209,73 @@ const RecipientTableContent: React.FC<{
       }
     }
     if (event.target) event.target.value = ''
+  }
+
+  const confirmDelete = () => {
+    if (!contextId) return
+    const selectedCount = selectedRecipientIndices.size
+    if (contextType === 'campaign') {
+      const data = queryClient.getQueryData<CampaignData>([
+        'campaignData',
+        contextId,
+      ])
+      if (data) {
+        const newRecipients = data.recipients.filter(
+          (_, i) => !selectedRecipientIndices.has(i),
+        )
+        queryClient.setQueryData<CampaignData>(['campaignData', contextId], {
+          ...data,
+          recipients: newRecipients,
+        })
+        apiService.saveRecipients(contextId, newRecipients)
+      }
+    } else {
+      const data = queryClient.getQueryData<DatabaseData>([
+        'databaseData',
+        contextId,
+      ])
+      if (data) {
+        const newRecipients = data.recipients.filter(
+          (_, i) => !selectedRecipientIndices.has(i),
+        )
+        queryClient.setQueryData<DatabaseData>(['databaseData', contextId], {
+          ...data,
+          recipients: newRecipients,
+        })
+        apiService.saveDatabaseData(contextId, newRecipients)
+      }
+    }
+    clearRecipientSelection()
+    toast.success(`${selectedCount} recipient(s) deleted`)
+  }
+
+  const updateStatus = (status: 'SENT' | 'PENDING') => {
+    if (contextType !== 'campaign' || !contextId) return
+    const data = queryClient.getQueryData<CampaignData>([
+      'campaignData',
+      contextId,
+    ])
+    if (data) {
+      const newRecipients = data.recipients.map((r, i) => {
+        if (selectedRecipientIndices.has(i)) {
+          const updated = { ...r, Status: status }
+          if (status === 'SENT' && r.Status !== 'SENT')
+            updated.SentTimestamp = new Date().toISOString()
+          else if (status === 'PENDING') updated.SentTimestamp = undefined
+          return updated
+        }
+        return r
+      })
+      queryClient.setQueryData<CampaignData>(['campaignData', contextId], {
+        ...data,
+        recipients: newRecipients,
+      })
+      apiService.saveRecipients(contextId, newRecipients)
+    }
+    clearRecipientSelection()
+    toast.success(
+      `${selectedRecipientIndices.size} recipient(s) marked as ${status}`,
+    )
   }
 
   const columns = useMemo(() => {
@@ -371,141 +444,183 @@ const RecipientTableContent: React.FC<{
 
   return (
     <div className="p-2 flex flex-col h-full overflow-hidden relative">
-      <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <div>
-          <div className="flex items-center gap-3">
-            <h2 className="text-heading-3 font-medium text-text-primary truncate max-w-[200px] sm:max-w-none">
-              Recipients ({recipients.length})
-            </h2>
-            <button
-              onClick={() => setShowAddRecipientModal(true)}
-              aria-label="Add Recipient"
-              className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors flex-shrink-0"
+      {selectedRecipientIndices.size > 0 ? (
+        <div className="bg-accent-blue/20 border border-accent-blue/30 rounded-lg p-2 flex items-center justify-between mb-4 flex-shrink-0">
+          <span className="text-sm font-medium text-accent-blue ml-2">
+            {selectedRecipientIndices.size} selected
+          </span>
+          <div className="grid grid-cols-2 gap-2">
+            {contextType === 'campaign' && (
+              <>
+                <Button
+                  onClick={() => updateStatus('SENT')}
+                  variant="success"
+                  className="h-8 px-2 text-xs"
+                >
+                  <CheckCircle size={14} /> Mark Sent
+                </Button>
+                <Button
+                  onClick={() => updateStatus('PENDING')}
+                  variant="warning"
+                  className="h-8 px-2 text-xs"
+                >
+                  <XCircle size={14} /> Mark Pending
+                </Button>
+              </>
+            )}
+            <Button
+              onClick={() => setShowConfirmDelete(true)}
+              variant="danger"
+              className="h-8 px-2 text-xs"
             >
-              <Plus size={16} />
-            </button>
+              <Trash2 size={14} /> Delete
+            </Button>
+            <Button
+              onClick={clearRecipientSelection}
+              variant="secondary"
+              className="h-8 px-2 text-xs"
+            >
+              <X size={14} /> Cancel
+            </Button>
           </div>
-          {!showAttachments && contextType === 'campaign' && (
-            <p className="text-sm text-text-secondary italic mt-1">
-              Attachments disabled.
-            </p>
-          )}
         </div>
-
-        <div className="flex items-center gap-2">
-          {contextType === 'campaign' && (
-            <>
-              <input
-                type="file"
-                id="csv-upload-table"
-                accept=".csv"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-              <Button
-                as="label"
-                htmlFor="csv-upload-table"
-                variant="secondary"
-                className="cursor-pointer px-3 h-8 text-xs font-medium bg-surface-element hover:bg-surface-element-hover"
+      ) : (
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+          <div>
+            <div className="flex items-center gap-3">
+              <h2 className="text-heading-3 font-medium text-text-primary truncate max-w-[200px] sm:max-w-none">
+                Recipients ({recipients.length})
+              </h2>
+              <button
+                onClick={() => setShowAddRecipientModal(true)}
+                aria-label="Add Recipient"
+                className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors flex-shrink-0"
               >
-                <Upload size={14} />
-                <span className="hidden sm:inline">Upload CSV</span>
-              </Button>
-            </>
-          )}
-
-          <div className="relative">
-            <button
-              onClick={() => setShowMoreMenu(!showMoreMenu)}
-              className="p-1.5 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
-              title="More Options"
-            >
-              <MoreHorizontal size={16} />
-            </button>
-            {showMoreMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-surface-card border border-borders-primary rounded-md shadow-lg z-50 p-2">
-                <div className="flex flex-col gap-1">
-                  <button
-                    onClick={() => {
-                      handleDownloadSample()
-                      setShowMoreMenu(false)
-                    }}
-                    className="text-left text-sm px-2 py-1.5 hover:bg-surface-element rounded flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
-                  >
-                    <Download size={14} /> Download Sample
-                  </button>
-                  {recipients.length > 0 && (
-                    <>
-                      <button
-                        onClick={() => {
-                          exportCSV()
-                          setShowMoreMenu(false)
-                        }}
-                        className="text-left text-sm px-2 py-1.5 hover:bg-surface-element rounded flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
-                      >
-                        <Download size={14} /> Export CSV
-                      </button>
-                      <div className="h-px bg-borders-primary my-1"></div>
-                      <div className="px-2 py-1 flex justify-between items-center">
-                        <span className="text-xs font-medium text-text-tertiary uppercase">
-                          Columns
-                        </span>
-                        <button
-                          className="text-[10px] text-accent-blue hover:underline"
-                          onClick={() => {
-                            const newVis: Record<string, boolean> = {}
-                            table.getAllLeafColumns().forEach((c) => {
-                              newVis[c.id] = true
-                            })
-                            setColumnVisibility(newVis)
-                          }}
-                        >
-                          All
-                        </button>
-                      </div>
-                      <div className="max-h-40 overflow-y-auto custom-scrollbar">
-                        {table.getAllLeafColumns().map((col) => {
-                          if (
-                            col.id === 'index' ||
-                            col.id === 'select' ||
-                            col.id === 'preview' ||
-                            col.id === 'Status'
-                          )
-                            return null
-                          return (
-                            <label
-                              key={col.id}
-                              className="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-element rounded cursor-pointer"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={col.getIsVisible()}
-                                onChange={col.getToggleVisibilityHandler()}
-                                className="custom-checkbox flex-shrink-0"
-                              />
-                              <span className="text-sm truncate text-text-secondary hover:text-text-primary transition-colors">
-                                {col.id}
-                              </span>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
+                <Plus size={16} />
+              </button>
+            </div>
+            {!showAttachments && contextType === 'campaign' && (
+              <p className="text-sm text-text-secondary italic mt-1">
+                Attachments disabled.
+              </p>
             )}
           </div>
 
-          <button
-            onClick={onToggleMaximize}
-            aria-label={isMaximized ? 'Minimize Table' : 'Maximize Table'}
-            className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
-          >
-            {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
-          </button>
+          <div className="flex items-center gap-2">
+            {contextType === 'campaign' && (
+              <>
+                <input
+                  type="file"
+                  id="csv-upload-table"
+                  accept=".csv"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+                <Button
+                  as="label"
+                  htmlFor="csv-upload-table"
+                  variant="secondary"
+                  className="cursor-pointer px-3 h-8 text-xs font-medium bg-surface-element hover:bg-surface-element-hover"
+                >
+                  <Upload size={14} />
+                  <span className="hidden sm:inline">Upload CSV</span>
+                </Button>
+              </>
+            )}
+
+            <div className="relative">
+              <button
+                onClick={() => setShowMoreMenu(!showMoreMenu)}
+                className="p-1.5 rounded-md text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+                title="More Options"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {showMoreMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-surface-card border border-borders-primary rounded-md shadow-lg z-50 p-2">
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => {
+                        handleDownloadSample()
+                        setShowMoreMenu(false)
+                      }}
+                      className="text-left text-sm px-2 py-1.5 hover:bg-surface-element rounded flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
+                    >
+                      <Download size={14} /> Download Sample
+                    </button>
+                    {recipients.length > 0 && (
+                      <>
+                        <button
+                          onClick={() => {
+                            exportCSV()
+                            setShowMoreMenu(false)
+                          }}
+                          className="text-left text-sm px-2 py-1.5 hover:bg-surface-element rounded flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors"
+                        >
+                          <Download size={14} /> Export CSV
+                        </button>
+                        <div className="h-px bg-borders-primary my-1"></div>
+                        <div className="px-2 py-1 flex justify-between items-center">
+                          <span className="text-xs font-medium text-text-tertiary uppercase">
+                            Columns
+                          </span>
+                          <button
+                            className="text-[10px] text-accent-blue hover:underline"
+                            onClick={() => {
+                              const newVis: Record<string, boolean> = {}
+                              table.getAllLeafColumns().forEach((c) => {
+                                newVis[c.id] = true
+                              })
+                              setColumnVisibility(newVis)
+                            }}
+                          >
+                            All
+                          </button>
+                        </div>
+                        <div className="max-h-40 overflow-y-auto custom-scrollbar">
+                          {table.getAllLeafColumns().map((col) => {
+                            if (
+                              col.id === 'index' ||
+                              col.id === 'select' ||
+                              col.id === 'preview' ||
+                              col.id === 'Status'
+                            )
+                              return null
+                            return (
+                              <label
+                                key={col.id}
+                                className="flex items-center gap-2 px-2 py-1.5 hover:bg-surface-element rounded cursor-pointer"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={col.getIsVisible()}
+                                  onChange={col.getToggleVisibilityHandler()}
+                                  className="custom-checkbox flex-shrink-0"
+                                />
+                                <span className="text-sm truncate text-text-secondary hover:text-text-primary transition-colors">
+                                  {col.id}
+                                </span>
+                              </label>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <button
+              onClick={onToggleMaximize}
+              aria-label={isMaximized ? 'Minimize Table' : 'Maximize Table'}
+              className="p-1.5 rounded-full text-text-secondary bg-surface-element hover:bg-surface-element-hover hover:text-text-primary transition-colors"
+            >
+              {isMaximized ? <Minimize size={16} /> : <Maximize size={16} />}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="overflow-auto flex-grow custom-scrollbar border border-borders-primary rounded-lg bg-[#1e1e2a]">
         <table className="w-full text-sm text-left relative">
@@ -609,6 +724,16 @@ const RecipientTableContent: React.FC<{
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        isOpen={showConfirmDelete}
+        title="Delete Recipients"
+        message={`Are you sure you want to delete ${selectedRecipientIndices.size} selected recipient(s)? This action cannot be undone.`}
+        confirmText="Delete"
+        isDestructive={true}
+        onConfirm={confirmDelete}
+        onCancel={() => setShowConfirmDelete(false)}
+      />
 
       {renamingCol && (
         <Modal

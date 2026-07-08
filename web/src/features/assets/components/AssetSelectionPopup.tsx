@@ -23,8 +23,8 @@ export const AssetSelectionPopup: React.FC = () => {
     apiService.deleteAssets(Array.from(selectedAssetIds))
     toast.success(
       selectedCount === 1
-        ? `Asset deleted successfully`
-        : `${selectedCount} assets deleted successfully`,
+        ? `Image deleted successfully`
+        : `${selectedCount} images deleted successfully`,
     )
     clearAssetSelection()
   }
@@ -47,7 +47,7 @@ export const AssetSelectionPopup: React.FC = () => {
           >
             <div className="flex flex-col gap-3">
               <p className="text-sm font-medium text-text-primary text-center">
-                {selectedCount} {selectedCount === 1 ? 'asset' : 'assets'}{' '}
+                {selectedCount} {selectedCount === 1 ? 'image' : 'images'}{' '}
                 selected
               </p>
               <div className="flex flex-col gap-2">
@@ -63,11 +63,11 @@ export const AssetSelectionPopup: React.FC = () => {
 
       <ConfirmDialog
         isOpen={showConfirm}
-        title="Delete Assets"
+        title="Delete Images"
         message={
           selectedCount === 1
-            ? `Are you sure you want to delete the asset "${assetNames}"? This action cannot be undone.`
-            : `Are you sure you want to delete ${selectedCount} assets? This action cannot be undone.`
+            ? `Are you sure you want to delete the image "${assetNames}"? This action cannot be undone.`
+            : `Are you sure you want to delete ${selectedCount} images? This action cannot be undone.`
         }
         confirmText="Delete"
         isDestructive={true}

@@ -9,9 +9,15 @@ class GlobalTemplateService:
     async def get_templates(self):
         async with aiosqlite.connect(self.db_path) as db:
             db.row_factory = aiosqlite.Row
-            async with db.execute("SELECT id, name, category, subject, body, is_html, created_at FROM global_templates ORDER BY created_at DESC") as cursor:
+            async with db.execute("SELECT id, name, category, subject, body, is_html, created_at FROM global_templates ORDER BY COALESCE(last_accessed_at, created_at) DESC") as cursor:
                 rows = await cursor.fetchall()
                 return [{"id": r["id"], "name": r["name"], "category": r["category"], "subject": r["subject"], "body": r["body"], "is_html": bool(r["is_html"]), "createdAt": r["created_at"]} for r in rows]
+
+    async def touch(self, template_id):
+        updated_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("UPDATE global_templates SET last_accessed_at = ? WHERE id = ?", (updated_at, template_id))
+            await db.commit()
 
     async def get_template_data(self, template_id):
         async with aiosqlite.connect(self.db_path) as db:
@@ -26,7 +32,7 @@ class GlobalTemplateService:
         new_id = str(uuid.uuid4())
         created_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         async with aiosqlite.connect(self.db_path) as db:
-            await db.execute("INSERT INTO global_templates (id, name, category, subject, body, is_html, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)", (new_id, name, category, subject, body, is_html, created_at))
+            await db.execute("INSERT INTO global_templates (id, name, category, subject, body, is_html, created_at, last_accessed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (new_id, name, category, subject, body, is_html, created_at, created_at))
             await db.commit()
         t = await self.get_template_data(new_id)
         return t, await self.get_templates()
@@ -53,3 +59,4 @@ class GlobalTemplateService:
         if src:
             await self.create_template(src["name"] + " (Copy)", src["category"], src["subject"], src["body"], src["is_html"])
         return await self.get_templates()
+

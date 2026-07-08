@@ -124,8 +124,8 @@ export const Sidebar: React.FC = () => {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 routerState.location.pathname === '/campaigns' ||
                 routerState.location.pathname === '/'
-                  ? 'bg-accent-blue/10 text-accent-blue'
-                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+                  ? 'bg-accent-blue/10 text-accent-blue border-l-4 border-accent-blue'
+                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary border-l-4 border-transparent'
               } ${!isVisuallyExpanded ? 'justify-center' : ''}`}
               title="Campaigns"
             >
@@ -138,8 +138,8 @@ export const Sidebar: React.FC = () => {
               to="/databases"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 routerState.location.pathname.startsWith('/databases')
-                  ? 'bg-accent-blue/10 text-accent-blue'
-                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+                  ? 'bg-accent-blue/10 text-accent-blue border-l-4 border-accent-blue'
+                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary border-l-4 border-transparent'
               } ${!isVisuallyExpanded ? 'justify-center' : ''}`}
               title="Databases"
             >
@@ -152,8 +152,8 @@ export const Sidebar: React.FC = () => {
               to="/templates"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 routerState.location.pathname.startsWith('/templates')
-                  ? 'bg-accent-blue/10 text-accent-blue'
-                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+                  ? 'bg-accent-blue/10 text-accent-blue border-l-4 border-accent-blue'
+                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary border-l-4 border-transparent'
               } ${!isVisuallyExpanded ? 'justify-center' : ''}`}
               title="Templates"
             >
@@ -166,20 +166,22 @@ export const Sidebar: React.FC = () => {
               to="/assets"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 routerState.location.pathname.startsWith('/assets')
-                  ? 'bg-accent-blue/10 text-accent-blue'
-                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+                  ? 'bg-accent-blue/10 text-accent-blue border-l-4 border-accent-blue'
+                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary border-l-4 border-transparent'
               } ${!isVisuallyExpanded ? 'justify-center' : ''}`}
-              title="Assets"
+              title="Image Library"
             >
               <ImageIcon size={20} />
-              {isVisuallyExpanded && <span>Assets ({assets.length})</span>}
+              {isVisuallyExpanded && (
+                <span>Image Library ({assets.length})</span>
+              )}
             </Link>
             <Link
               to="/docs"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 routerState.location.pathname === '/docs'
-                  ? 'bg-accent-blue/10 text-accent-blue'
-                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+                  ? 'bg-accent-blue/10 text-accent-blue border-l-4 border-accent-blue'
+                  : 'text-text-secondary hover:bg-surface-element hover:text-text-primary border-l-4 border-transparent'
               } ${!isVisuallyExpanded ? 'justify-center' : ''}`}
               title="Documentation"
             >
@@ -266,10 +268,10 @@ export const Sidebar: React.FC = () => {
 
         <Link
           to="/settings"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+          className={`flex items-center gap-3 px-3 py-2.5 mx-3 mb-2 rounded-lg text-sm font-medium transition-colors ${
             routerState.location.pathname === '/settings'
-              ? 'bg-accent-blue/30 text-accent-blue'
-              : 'text-text-secondary hover:bg-surface-element hover:text-text-primary'
+              ? 'bg-accent-blue/10 text-accent-blue border-l-4 border-accent-blue'
+              : 'text-text-secondary hover:bg-surface-element hover:text-text-primary border-l-4 border-transparent'
           } ${!isVisuallyExpanded ? 'justify-center' : ''}`}
           title="Settings"
         >
