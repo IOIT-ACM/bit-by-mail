@@ -18,6 +18,7 @@ from .services.global_template_service import GlobalTemplateService
 from .services.asset_service import AssetService
 from .services.analytics_service import AnalyticsService
 from .services.seeder_service import SeederService
+from .utils import check_for_updates
 
 class SPAStaticFileHandler(tornado.web.StaticFileHandler):
     def validate_absolute_path(self, root, absolute_path):
@@ -57,6 +58,8 @@ def make_app():
     seeder_service = SeederService(db_path, global_template_service, asset_service, database_service)
     ioloop.add_callback(seeder_service.seed)
 
+    ioloop.add_callback(check_for_updates)
+
     settings = {
         "static_path": static_path,
         "template_path": static_path,
@@ -83,4 +86,3 @@ def make_app():
         (r"/reports/(.*)/(.*)", ReportHandler, {"db_path": db_path}),
         (r"/(.*)", SPAStaticFileHandler, {"path": static_path, "default_filename": "index.html"}),
     ], **settings)
-
